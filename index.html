@@ -5374,7 +5374,7 @@ if (typeof module !== 'undefined' && module.exports) { module.exports = QRCodeLi
 <!-- Firebase SDK for activation system -->
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
-</head>
+<style>@keyframes actPulse{0%,100%{transform:scale(1);box-shadow:0 4px 14px rgba(233,30,99,.6),0 0 0 0 rgba(255,152,0,.6)}50%{transform:scale(1.05);box-shadow:0 6px 20px rgba(233,30,99,.8),0 0 0 12px rgba(255,152,0,0)}}</style></head>
 <body>
 
 
@@ -5401,8 +5401,7 @@ if (typeof module !== 'undefined' && module.exports) { module.exports = QRCodeLi
 <div id="topbar">
   <button type="button" id="btnMainMenu" class="top-main-menu-btn" onclick="openMainMenuFromTop()" title="القائمة الرئيسية" aria-label="القائمة الرئيسية">▦<i id="hwDot"></i></button>
   <b id="topBrand" onclick="openMainMenuFromTop()">الاداره المدرسيه</b>
-  <button type="button" id="btnActivateTop" onclick="triggerEarlyActivation()" title="تفعيل التطبيق قبل انتهاء التجربة" style="display:none;padding:5px 12px;border-radius:20px;background:linear-gradient(135deg,#ff9800,#e91e63);color:#fff;font-size:12px;border:2px solid #ffd54f88;font-weight:800;cursor:pointer;font-family:inherit;box-shadow:0 2px 8px rgba(233,30,99,.5);margin:0 8px;animation:actPulse 1.8s infinite">🔑 تفعيل التطبيق</button>
-  <style>@keyframes actPulse{0%,100%{box-shadow:0 2px 8px rgba(233,30,99,.5),0 0 0 0 rgba(255,152,0,.6)}50%{box-shadow:0 2px 12px rgba(233,30,99,.7),0 0 0 8px rgba(255,152,0,0)}}</style>
+  <button type="button" id="btnActivateTop" onclick="triggerEarlyActivation()" title="تفعيل التطبيق قبل انتهاء التجربة" style="display:none;position:fixed;top:60px;left:12px;padding:10px 16px;border-radius:30px;background:linear-gradient(135deg,#ff9800,#e91e63);color:#fff;font-size:13px;border:2px solid #ffd54f;font-weight:900;cursor:pointer;font-family:inherit;box-shadow:0 4px 14px rgba(233,30,99,.6);z-index:99999;animation:actPulse 1.6s infinite">🔑 تفعيل التطبيق</button>
   <nav class="topbar-nav" aria-label="التنقل">
     <a class="apps-mini-link" href="https://t.me/hu_sain123" target="_blank" rel="noopener noreferrer" title="تطبيقاتي">تطبيقاتي</a>
     <button type="button" class="top-search-btn" onclick="openStudentSearch()" title="بحث عن طالب" aria-label="بحث عن طالب">🔍</button>
@@ -16472,7 +16471,7 @@ if(document.readyState==='loading'){
       if(!btn) return;
       const acc=currentAccount();
       const showEarly = !!(acc && acc.status==="trial" && !acc.phone);
-      btn.style.display = showEarly ? "inline-block" : "none";
+      btn.style.setProperty("display", showEarly ? "inline-block" : "none", "important");
     }catch(e){}
   }
 
@@ -16497,7 +16496,7 @@ if(document.readyState==='loading'){
       if(!btn) return;
       const acc=currentAccount();
       const show = !!(acc && acc.status==="trial" && !acc.phone);
-      btn.style.display = show ? "inline-block" : "none";
+      btn.style.setProperty("display", show ? "inline-block" : "none", "important");
     }catch(e){}
   }
   setInterval(refreshActivateButton, 1500);
@@ -16560,7 +16559,7 @@ if(document.readyState==='loading'){
 <!-- ===== AUTO UPDATE NOTIFICATION (small icon in topbar) ===== -->
 <script>
 (function(){
-  const APP_VERSION = "1.2.4";
+  const APP_VERSION = "1.2.7";
   const CHECK_EVERY_MINUTES = 30;
   const LS_ACCEPTED = "daragat_accepted_version";
   const LS_SNOOZE   = "daragat_update_snooze";
