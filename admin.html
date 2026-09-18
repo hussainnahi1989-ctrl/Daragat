@@ -138,6 +138,8 @@ function planLabel(p){return{weekly:"أسبوعي",monthly:"شهري",yearly:"س
 function statusLabel(s){return{trial:"تجريبي",pending:"ينتظر التفعيل",approved:"مُفعّلة",rejected:"مرفوض",expired:"منتهية"}[s]||s||"-";}
 function fmtDate(ts){if(!ts)return"-";try{return new Date(ts).toLocaleString("ar-IQ");}catch(e){return String(ts);}}
 function $(id){return document.getElementById(id);}
+function stageLabel(st){return {elementary:"ابتدائية",intermediate:"متوسطة",prep:"إعدادية"}[st]||st||"-";}
+function genderLabel(g){return {boys:"بنين",girls:"بنات",mixed:"مختلطة"}[g]||g||"-";}
 function esc(s){return String(s==null?"":s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));}
 function loadCfg(){try{return JSON.parse(localStorage.getItem(LS_CFG)||"null")||{};}catch(e){return {};}}
 function saveCfgObj(c){
@@ -329,6 +331,7 @@ function renderTable(list,title){
     if(isExp) cls="rejected";
     return `<tr class="${cls}">
       <td><span class="code" dir="ltr">${esc(r.email)}</span></td>
+      <td>${esc(r.schoolStage?stageLabel(r.schoolStage):"")} ${esc(r.schoolGender?genderLabel(r.schoolGender):"")}</td>
       <td>${esc(r.name||"-")}</td>
       <td><a href="${waLink(r.phone)}" target="_blank" class="whatsapp" dir="ltr">${esc(r.phone||"-")} 💬</a>
         <input type="text" data-phone-for="${esc(r.email)}" value="${esc(r.phone||"")}" placeholder="رقم الهاتف" style="width:110px;display:inline-block;padding:3px;font-size:11px;direction:ltr" />
@@ -359,7 +362,7 @@ function renderTable(list,title){
     </div>
     <div style="overflow:auto"><table>
       <thead><tr>
-        <th>البريد</th><th>الاسم</th><th>الهاتف</th><th>الجهاز</th><th>معرّف الجهاز</th><th>تاريخ التسجيل</th><th>الحالة</th><th>الخطة</th><th>المبلغ</th><th>إجراءات</th>
+        <th>البريد</th><th>الاسم</th><th>المدرسة</th><th>الهاتف</th><th>الجهاز</th><th>معرّف الجهاز</th><th>تاريخ التسجيل</th><th>الحالة</th><th>الخطة</th><th>المبلغ</th><th>إجراءات</th>
       </tr></thead>
       <tbody>${rows}</tbody>
     </table></div>

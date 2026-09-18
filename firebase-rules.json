@@ -1,19 +1,10 @@
 {
   "rules": {
     "activation": {
-      "requests": {
-        // Clients (app) can CREATE/UPDATE their own device record, and READ their own record.
-        // Admin dashboard (uses a ?auth=xxx secret via query or anonymous auth? For simplicity we allow
-        // reading/writing only when a shared secret matches - but for security we'll use Firebase
-        // anonymous auth + admin claim is overkill. Since this is a small app, we use open write
-        // for the user's own deviceId (so trial users can submit), and full access is protected by
-        // the admin password client-side.  For better security, deploy these rules and later add auth.
-        "$deviceId": {
-          ".read": true,
-          ".write": "newData.exists() && (data.val() === null || newData.child('status').val() === 'pending' || auth != null || query.orderByChild != null)"
-        },
-        ".read": "auth != null",
-        ".indexOn": ["createdAt","status","approvedAt"]
+      "accounts": {
+        ".read": true,
+        ".write": true,
+        ".indexOn": ["status","registeredAt","phone","schoolStage"]
       }
     }
   }

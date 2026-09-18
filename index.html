@@ -7287,12 +7287,16 @@ function initApp(){
   if(!_adm){ _adm={id:'admin_1',name:'المدير',login:'admin',password:'admin',role:'admin'}; AUTH_STATE.accounts.push(_adm); saveAuthState(); }
   authSetSession(_adm);
   if(!APP.school) APP.school = {};
-  if(!APP.school.stage) APP.school.stage = 'prep';
+  if(!APP.school.stage) APP.school.stage = '';
   if(!APP.school.name) APP.school.name = 'الاداره المدرسيه';
   if(!APP.school.principal) APP.school.principal = 'مدير المدرسة';
   saveApp();
   if(authRole()==='teacher'){ renderTeacherHome(); navigateTo('view-teacher',{page:'home'}, true); return; }
   if(authRole()==='student'){ renderStudentHome(); navigateTo('view-student',{page:'home'}, true); return; }
+  if(!localStorage.getItem("daragat_school_setup_v2")){
+    showSchoolSetupOverlay();
+    return;
+  }
   renderDashboard();
   navigateTo('view-dashboard', {}, true);
   }
@@ -16041,6 +16045,8 @@ if(document.readyState==='loading'){
       activeDeviceId:acc.activeDeviceId||deviceId(),
       lastSeenDevice:{ id:deviceId(), type:d.type, os:d.os, browser:d.browser, screen:d.screen },
       phone:acc.phone||"",
+      schoolStage: acc.schoolStage||APP.school.stage||"",
+      schoolGender: acc.schoolGender||APP.school.gender||"",
       deviceHistory: acc.deviceHistory||[ {id:deviceId(), registeredAt:acc.registeredAt, info:d} ]
     };
     try{ fbRef("activation/accounts/"+emailKey).update(payload); }catch(e){}
@@ -16323,6 +16329,67 @@ if(document.readyState==='loading'){
     var b=document.getElementById("btnLogoutX"); if(b) b.onclick=function(){state.activeEmail=null;saveState(state);resume();};
     showOverlay();
   }
+  function showSchoolSetupOverlay(){
+    title().textContent="إعداد المدرسة";
+    subtitle().textContent="اختر المرحلة ونوع المدرسة للبدء";
+    body().innerHTML='<div style="display:grid;gap:14px">'+
+      '<div style="background:#ffffff15;padding:14px;border-radius:10px">'+
+      '<label style="font-size:13px;opacity:.95;display:block;margin-bottom:8px;font-weight:700">🎓 المرحلة الدراسية:</label>'+
+      '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px">'+
+      '<button data-stage="elementary" class="sbtn">ابتدائية</button>'+
+      '<button data-stage="intermediate" class="sbtn">متوسطة</button>'+
+      '<button data-stage="prep" class="sbtn">إعدادية / ثانوية</button>'+
+      '</div></div>'+
+      '<div style="background:#ffffff15;padding:14px;border-radius:10px">'+
+      '<label style="font-size:13px;opacity:.95;display:block;margin-bottom:8px;font-weight:700">👥 نوع المدرسة:</label>'+
+      '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px">'+
+      '<button data-gender="boys" class="gbtn">بنين</button>'+
+      '<button data-gender="girls" class="gbtn">بنات</button>'+
+      '<button data-gender="mixed" class="gbtn">مختلطة</button>'+
+      '</div></div>'+
+      '<div id="setupErr" style="color:#ff8a80;font-size:13px;text-align:center;min-height:18px"></div>'+
+      '<button id="setupStart" style="padding:14px;border:none;border-radius:10px;background:#1976d2;color:#fff;font-weight:800;font-size:16px;cursor:pointer;opacity:.5" disabled>🚀 ابدأ استخدام التطبيق</button>'+
+      '</div>'+
+      '<style>.sbtn,.gbtn{padding:12px;border-radius:10px;border:2px solid #ffffff33;background:#00000040;color:#fff;font-weight:800;cursor:pointer;font-family:inherit;font-size:14px;transition:.2s}.sbtn:active,.gbtn:active{transform:scale(.96)}.sbtn.sel,.gbtn.sel{border-color:#ffd54f;background:linear-gradient(135deg,#ffd54f40,#ff980040);color:#ffd54f;box-shadow:0 0 0 2px #ffd54f33}</style>';
+    hideMsg(); showOverlay();
+    let pickedStage=null, pickedGender=null;
+    const err=document.getElementById("setupErr");
+    const startBtn=document.getElementById("setupStart");
+    function refresh(){
+      document.querySelectorAll(".sbtn").forEach(b=>b.classList.toggle("sel",b.dataset.stage===pickedStage));
+      document.querySelectorAll(".gbtn").forEach(b=>b.classList.toggle("sel",b.dataset.gender===pickedGender));
+      if(pickedStage && pickedGender){ startBtn.disabled=false; startBtn.style.opacity=1; err.textContent=""; }
+      else { startBtn.disabled=true; startBtn.style.opacity=.5; }
+    }
+    document.querySelectorAll(".sbtn").forEach(b=>b.onclick=function(){pickedStage=b.dataset.stage;refresh();});
+    document.querySelectorAll(".gbtn").forEach(b=>b.onclick=function(){pickedGender=b.dataset.gender;refresh();});
+    startBtn.onclick=function(){
+      if(!pickedStage||!pickedGender){err.textContent="اختر المرحلة والنوع أولاً";return;}
+      if(!APP.school) APP.school={};
+      APP.school.stage = pickedStage;
+      APP.school.gender = pickedGender;
+      if(!APP.school.name) APP.school.name="الاداره المدرسيه";
+      if(!APP.school.principal) APP.school.principal="مدير المدرسة";
+      saveApp();
+      localStorage.setItem("daragat_school_setup_v2","1");
+      const acc=currentAccount();
+      if(acc){
+        acc.schoolStage=pickedStage; acc.schoolGender=pickedGender; saveState(state);
+        initFB();
+        try{ fbRef("activation/accounts/"+acc.email.replace(/\./g,",")).update({schoolStage:pickedStage,schoolGender:pickedGender}); }catch(e){}
+      }
+      hideOverlay();
+      if(window.__appStarted){
+        if(typeof goDashboard==='function'){
+          try{ location.reload(); }catch(e){ goDashboard(); }
+        }
+        return;
+      }
+      window.__appStarted=true;
+      setTimeout(function(){ if(window.__realInitApp) window.__realInitApp(); },30);
+    };
+    refresh();
+  }
   function screenConflict(){
     title().textContent="الحساب مُفعل على جهاز آخر";
     subtitle().textContent="";
@@ -16414,6 +16481,7 @@ if(document.readyState==='loading'){
       syncToCloud(acc);
     }
     if(v.ok){
+      if(!localStorage.getItem("daragat_school_setup_v2")){ showOverlay(); showSchoolSetupOverlay(); return; }
       hideOverlay();
       if(v.trial) setStatusLabel("تجريبي - "+v.daysLeft+" يوم");
       else setStatusLabel("مفعّلة - "+planLabel(acc.plan));
@@ -16454,7 +16522,7 @@ if(document.readyState==='loading'){
 <!-- ===== AUTO UPDATE NOTIFICATION (small icon in topbar) ===== -->
 <script>
 (function(){
-  const APP_VERSION = "1.1.1";
+  const APP_VERSION = "1.2.0";
   const CHECK_EVERY_MINUTES = 30;
   const LS_ACCEPTED = "daragat_accepted_version";
   const LS_SNOOZE   = "daragat_update_snooze";
