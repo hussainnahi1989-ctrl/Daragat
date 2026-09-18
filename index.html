@@ -5401,6 +5401,8 @@ if (typeof module !== 'undefined' && module.exports) { module.exports = QRCodeLi
 <div id="topbar">
   <button type="button" id="btnMainMenu" class="top-main-menu-btn" onclick="openMainMenuFromTop()" title="القائمة الرئيسية" aria-label="القائمة الرئيسية">▦<i id="hwDot"></i></button>
   <b id="topBrand" onclick="openMainMenuFromTop()">الاداره المدرسيه</b>
+  <button type="button" id="btnActivateTop" onclick="triggerEarlyActivation()" title="تفعيل التطبيق قبل انتهاء التجربة" style="display:none;padding:5px 12px;border-radius:20px;background:linear-gradient(135deg,#ff9800,#e91e63);color:#fff;font-size:12px;border:2px solid #ffd54f88;font-weight:800;cursor:pointer;font-family:inherit;box-shadow:0 2px 8px rgba(233,30,99,.5);margin:0 8px;animation:actPulse 1.8s infinite">🔑 تفعيل التطبيق</button>
+  <style>@keyframes actPulse{0%,100%{box-shadow:0 2px 8px rgba(233,30,99,.5),0 0 0 0 rgba(255,152,0,.6)}50%{box-shadow:0 2px 12px rgba(233,30,99,.7),0 0 0 8px rgba(255,152,0,0)}}</style>
   <nav class="topbar-nav" aria-label="التنقل">
     <a class="apps-mini-link" href="https://t.me/hu_sain123" target="_blank" rel="noopener noreferrer" title="تطبيقاتي">تطبيقاتي</a>
     <button type="button" class="top-search-btn" onclick="openStudentSearch()" title="بحث عن طالب" aria-label="بحث عن طالب">🔍</button>
@@ -5412,7 +5414,7 @@ if (typeof module !== 'undefined' && module.exports) { module.exports = QRCodeLi
     <button type="button" id="btnGlobalMenu" onclick="openGlobalNav()">☰ القائمة</button>
   </nav>
 </div>
-<div id="creditBar" aria-hidden="true"><a href="#" onclick="event.preventDefault();if(window.__actResume)window.__actResume();return false;" id="actStatusLabel" style="margin-left:10px;padding:2px 8px;border-radius:6px;background:#ffecb3;color:#5d4037;font-size:10px;text-decoration:none;font-weight:700">…</a><button type="button" id="btnActivateTop" onclick="triggerEarlyActivation()" title="تفعيل التطبيق قبل انتهاء التجربة" style="display:none;margin-left:6px;padding:2px 8px;border-radius:6px;background:linear-gradient(135deg,#ff9800,#e91e63);color:#fff;font-size:10px;border:none;font-weight:800;cursor:pointer;font-family:inherit;box-shadow:0 1px 3px rgba(233,30,99,.35)">🔑 تفعيل التطبيق</button>تصميم الأستاذ حسين ناهي المسعودي</div>
+<div id="creditBar" aria-hidden="true"><a href="#" onclick="event.preventDefault();if(window.__actResume)window.__actResume();return false;" id="actStatusLabel" style="margin-left:10px;padding:2px 8px;border-radius:6px;background:#ffecb3;color:#5d4037;font-size:10px;text-decoration:none;font-weight:700">…</a>تصميم الأستاذ حسين ناهي المسعودي</div>
 </div>
 <div id="notifPanel" class="notif-panel"></div>
 
@@ -16522,7 +16524,7 @@ if(document.readyState==='loading'){
 <!-- ===== AUTO UPDATE NOTIFICATION (small icon in topbar) ===== -->
 <script>
 (function(){
-  const APP_VERSION = "1.2.1";
+  const APP_VERSION = "1.2.2";
   const CHECK_EVERY_MINUTES = 30;
   const LS_ACCEPTED = "daragat_accepted_version";
   const LS_SNOOZE   = "daragat_update_snooze";
