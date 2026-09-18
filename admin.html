@@ -1,0 +1,449 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>لوحة تحكم التفعيل - الاداره المدرسيه</title>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+<style>
+  *{box-sizing:border-box}
+  body{margin:0;font-family:Tahoma,'Segoe UI',Arial,sans-serif;background:#f1f3f6;color:#222}
+  header{background:linear-gradient(135deg,#1a237e,#283593);color:#fff;padding:14px 20px;display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+  header h1{margin:0;font-size:18px;flex:1;min-width:200px}
+  header .cfg{font-size:12px;opacity:.8}
+  header button{background:#ef5350;color:#fff;border:none;padding:8px 14px;border-radius:8px;font-weight:700;cursor:pointer}
+  nav.tabs{background:#fff;border-bottom:1px solid #ddd;display:flex;flex-wrap:wrap;padding:0 12px;position:sticky;top:0;z-index:5}
+  nav.tabs button{background:none;border:none;padding:12px 16px;font-size:14px;font-weight:700;color:#555;cursor:pointer;border-bottom:3px solid transparent}
+  nav.tabs button.active{color:#1a237e;border-bottom-color:#1a237e}
+  nav.tabs button .badge{background:#ef5350;color:#fff;border-radius:10px;padding:1px 7px;font-size:11px;margin-right:6px}
+  main{padding:18px;max-width:1200px;margin:0 auto}
+  .card{background:#fff;border-radius:12px;padding:16px;margin-bottom:14px;box-shadow:0 2px 6px #00000012}
+  .login-wrap{max-width:420px;margin:60px auto}
+  .login-wrap h2{text-align:center;color:#1a237e}
+  input,select,textarea{width:100%;padding:10px 12px;border:1px solid #cfd4dc;border-radius:8px;font-family:inherit;font-size:14px;margin-top:6px}
+  label{font-size:13px;font-weight:700;color:#444;display:block;margin-top:10px}
+  button.primary{background:#1a237e;color:#fff;border:none;padding:10px 16px;border-radius:8px;font-weight:700;cursor:pointer}
+  button.success{background:#2e7d32;color:#fff;border:none;padding:8px 14px;border-radius:8px;font-weight:700;cursor:pointer}
+  button.warn{background:#ef6c00;color:#fff;border:none;padding:8px 14px;border-radius:8px;font-weight:700;cursor:pointer}
+  button.danger{background:#c62828;color:#fff;border:none;padding:8px 14px;border-radius:8px;font-weight:700;cursor:pointer}
+  button.ghost{background:#eceff1;color:#333;border:none;padding:8px 14px;border-radius:8px;font-weight:700;cursor:pointer}
+  table{width:100%;border-collapse:collapse;margin-top:10px;font-size:13px}
+  th,td{padding:8px 10px;border:1px solid #e0e3e8;text-align:right;vertical-align:middle}
+  th{background:#f4f6fa;font-weight:700}
+  tr.approved{background:#e8f5e9}
+  tr.pending{background:#fff8e1}
+  tr.rejected{background:#ffebee}
+  tr.expired{background:#eceff1;color:#777}
+  .badge-plan{background:#e3f2fd;color:#0d47a1;padding:2px 8px;border-radius:6px;font-size:11px;font-weight:700}
+  .badge-status{padding:2px 8px;border-radius:6px;font-size:11px;font-weight:700}
+  .s-pending{background:#fff3cd;color:#856404}
+  .s-approved{background:#d4edda;color:#155724}
+  .s-rejected{background:#f8d7da;color:#721c24}
+  .code{font-family:monospace;direction:ltr;background:#f6f8fa;padding:2px 6px;border-radius:4px;font-size:12px}
+  .keybox{direction:ltr;text-align:center;letter-spacing:3px;font-family:monospace;font-size:20px;font-weight:800;background:#e8f5e9;color:#1b5e20;padding:12px;border-radius:10px;margin:10px 0}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  @media(max-width:680px){.grid2{grid-template-columns:1fr} table{font-size:12px} th,td{padding:5px 6px}}
+  .muted{color:#777;font-size:12px}
+  .toolbar{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px;align-items:center}
+  .cfgbox{background:#ede7f6;padding:12px;border-radius:10px;font-size:12px;color:#4527a0;word-break:break-all;margin-top:10px}
+</style>
+</head>
+<body>
+
+<!-- LOGIN -->
+<div id="loginPage" class="login-wrap">
+  <div class="card">
+    <h2>🔐 دخول لوحة التحكم</h2>
+    <label>كلمة السر
+      <input type="password" id="loginPass" placeholder="أدخل كلمة سر الأدمن" />
+    </label>
+    <div style="margin-top:14px"><button class="primary" onclick="doLogin()" style="width:100%">دخول</button></div>
+    <p class="muted" style="margin-top:12px;text-align:center">كلمة السر الافتراضية: <span class="code">hsm@2026</span></p>
+    <p class="muted" style="margin-top:6px;text-align:center">إذا لم تكن قد ضبطت إعدادات Firebase بعد، افتح <a href="#" onclick="showCfg(event)">الإعدادات</a></p>
+  </div>
+  <div id="cfgPanel" class="card" style="display:none">
+    <h3>⚙️ إعدادات Firebase</h3>
+    <p class="muted">الصق كائن التهيئة (firebaseConfig) من مشروعك هنا. يُحفظ محلياً في متصفحك فقط.</p>
+    <textarea id="cfgJson" rows="8" placeholder='{&#10;  "apiKey": "...",&#10;  "authDomain": "...",&#10;  "databaseURL": "...",&#10;  "projectId": "...",&#10;  "storageBucket": "...",&#10;  "messagingSenderId": "...",&#10;  "appId": "..."&#10;}'></textarea>
+    <label>كلمة سر الأدمن (لتغييرها أدخل كلمة سر جديدة ثم احفظ):
+      <input type="password" id="newAdminPass" placeholder="اتركه فارغاً للإبقاء على الحالية" />
+    </label>
+    <label>السر المشترك (مفتاح توليد الأوفلاين) - يجب مطابقته للتطبيق:
+      <input type="text" id="secKey" value="HSM-DARAGAT-2026-V1" />
+    </label>
+    <div style="margin-top:12px;display:flex;gap:8px">
+      <button class="primary" onclick="saveCfg()">حفظ الإعدادات</button>
+      <button class="ghost" onclick="document.getElementById('cfgPanel').style.display='none'">إغلاق</button>
+    </div>
+  </div>
+</div>
+
+<!-- DASHBOARD -->
+<div id="dashPage" style="display:none">
+  <header>
+    <h1>🎛️ لوحة تحكم التفعيل - الاداره المدرسيه</h1>
+    <span class="cfg" id="fbStatus">…</span>
+    <button onclick="logout()">خروج</button>
+  </header>
+  <nav class="tabs">
+    <button data-tab="all" class="active">الكل <span class="badge" id="bAll">0</span></button>
+    <button data-tab="today">طلبات اليوم <span class="badge" id="bToday">0</span></button>
+    <button data-tab="approved">المفعّلة <span class="badge" id="bApp">0</span></button>
+    <button data-tab="pending">غير المفعّلة <span class="badge" id="bPen">0</span></button>
+    <button data-tab="accounts">الحسابات <span class="badge" id="bAcc">0</span></button>
+    <button data-tab="keygen">🔑 توليد مفتاح</button>
+    <button data-tab="settings">⚙️ الإعدادات</button>
+  </nav>
+  <main>
+    <div id="tab-all" class="tab"></div>
+    <div id="tab-today" class="tab" style="display:none"></div>
+    <div id="tab-approved" class="tab" style="display:none"></div>
+    <div id="tab-pending" class="tab" style="display:none"></div>
+    <div id="tab-accounts" class="tab" style="display:none"></div>
+    <div id="tab-keygen" class="tab" style="display:none"></div>
+    <div id="tab-settings" class="tab" style="display:none"></div>
+  </main>
+</div>
+
+<script>
+// ====== CONFIG ======
+const LS_CFG="daragat_admin_cfg";
+const LS_SES="daragat_admin_ses";
+let db=null, SECRET="HSM-DARAGAT-2026-V1";
+
+// Same hash functions as client
+function hash32(str){
+  let h=0x811c9dc5>>>0;
+  for(let i=0;i<str.length;i++){ h ^= str.charCodeAt(i); h=(h+((h<<1)+(h<<4)+(h<<7)+(h<<8)+(h<<24)))>>>0; }
+  return (h>>>0).toString(16).padStart(8,"0");
+}
+function offSig(devId,plan){
+  const base = SECRET+"|"+devId+"|"+plan;
+  const h1=hash32(base), h2=hash32(base+"|chk");
+  return (h1+h2).toUpperCase().match(/.{1,4}/g).join("-");
+}
+function planDays(p){return {weekly:7,monthly:30,yearly:365,permanent:99999}[p]||0;}
+function planLabel(p){return {weekly:"أسبوعي",monthly:"شهري",yearly:"سنوي",permanent:"دائم"}[p]||p;}
+function fmtDate(ts){ if(!ts) return "-"; try{ return new Date(ts).toLocaleString("ar-IQ");}catch(e){return String(ts);} }
+function $(id){return document.getElementById(id);}
+function esc(s){ return (s==null?"":String(s)).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c])); }
+
+function loadCfg(){
+  try{return JSON.parse(localStorage.getItem(LS_CFG)||"null")||{};}catch(e){return {};}
+}
+function saveCfgObj(c){localStorage.setItem(LS_CFG,JSON.stringify(c));}
+let cfg = loadCfg();
+if(cfg.secret) SECRET=cfg.secret;
+let adminHash = cfg.adminHash || "65a4456f"; // default: hsm@2026
+
+function showCfg(e){
+  if(e) e.preventDefault();
+  $("cfgPanel").style.display = $("cfgPanel").style.display==="none"?"block":"none";
+  $("cfgJson").value = cfg.firebase? JSON.stringify(cfg.firebase,null,2) : "";
+  $("secKey").value = SECRET;
+}
+function saveCfg(){
+  let fb=null;
+  try{
+    const t=$("cfgJson").value.trim();
+    if(t) fb=JSON.parse(t);
+  }catch(e){ alert("كائن Firebase غير صالح: "+e.message); return; }
+  if(fb) cfg.firebase=fb;
+  const np=$("newAdminPass").value;
+  if(np && np.length>=4){ cfg.adminHash=hash32(np); adminHash=cfg.adminHash; }
+  const sk=$("secKey").value.trim();
+  if(sk){ cfg.secret=sk; SECRET=sk; }
+  saveCfgObj(cfg);
+  alert("✅ تم حفظ الإعدادات. سيتم إعادة الاتصال.");
+  location.reload();
+}
+
+// ====== AUTH ======
+function doLogin(){
+  const p=$("loginPass").value;
+  if(hash32(p)===adminHash){
+    localStorage.setItem(LS_SES,"1");
+    goDash();
+  }else{
+    alert("كلمة السر غير صحيحة");
+  }
+}
+function logout(){ localStorage.removeItem(LS_SES); location.reload(); }
+
+// ====== FIREBASE ======
+function initFB(){
+  if(!cfg.firebase || !cfg.firebase.apiKey){
+    $("fbStatus").textContent = "⚠️ لم يتم ضبط Firebase — افتح الإعدادات";
+    return false;
+  }
+  try{
+    firebase.initializeApp(cfg.firebase);
+    db=firebase.database();
+    $("fbStatus").textContent = "✅ متصل بـ "+cfg.firebase.projectId;
+    return true;
+  }catch(e){ $("fbStatus").textContent="❌ خطأ: "+e.message; return false; }
+}
+
+// ====== DATA ======
+let allRecords = {};
+function listenAll(){
+  db.ref("activation/requests").on("value", snap=>{
+    allRecords = snap.val()||{};
+    renderAll();
+  });
+}
+
+// ====== ACTIONS ======
+function approve(devId, plan){
+  const paid = prompt("المبلغ المدفوع (بالدينار/اختياري):", "");
+  const days=planDays(plan);
+  const updates={
+    status:"approved",
+    approvedPlan:plan,
+    approvedAt:firebase.database.ServerValue.TIMESTAMP,
+    expiresAt: Date.now()+days*86400000,
+    paidAmount: paid||""
+  };
+  db.ref("activation/requests/"+devId).update(updates, err=>{
+    if(err) alert("فشل: "+err.message);
+  });
+}
+function reject(devId){
+  if(!confirm("تأكيد رفض هذا الطلب؟")) return;
+  db.ref("activation/requests/"+devId).update({status:"rejected",rejectedAt:firebase.database.ServerValue.TIMESTAMP});
+}
+function del(devId){
+  if(!confirm("حذف هذا السجل نهائياً؟")) return;
+  db.ref("activation/requests/"+devId).remove();
+}
+function setPaid(devId, amount){
+  db.ref("activation/requests/"+devId).update({paidAmount:amount});
+}
+function extend(devId, plan){
+  const days=planDays(plan);
+  db.ref("activation/requests/"+devId).update({
+    status:"approved",
+    approvedPlan:plan,
+    expiresAt:Date.now()+days*86400000,
+    approvedAt:firebase.database.ServerValue.TIMESTAMP
+  });
+}
+
+// ====== TABS ======
+function switchTab(name){
+  document.querySelectorAll("nav.tabs button").forEach(b=>b.classList.toggle("active",b.dataset.tab===name));
+  document.querySelectorAll(".tab").forEach(t=>t.style.display="none");
+  $("tab-"+name).style.display="block";
+}
+document.addEventListener("click",e=>{
+  const b=e.target.closest("nav.tabs button[data-tab]");
+  if(b) switchTab(b.dataset.tab);
+});
+
+// ====== RENDER ======
+function renderAll(){
+  const recs=Object.entries(allRecords).map(([id,v])=>({id,...v}));
+  const d0=new Date(); d0.setHours(0,0,0,0); const d0ms=d0.getTime();
+  const all=[], todayList=[], approved=[], pending=[], accounts=[];
+  for(const r of recs){
+    all.push(r);
+    if(r.createdAt>=d0ms) todayList.push(r);
+    if(r.status==="approved"){ approved.push(r); accounts.push(r); }
+    if(r.status==="pending"||!r.status) pending.push(r);
+  }
+  $("bAll").textContent=all.length;
+  $("bToday").textContent=todayList.length;
+  $("bApp").textContent=approved.length;
+  $("bPen").textContent=pending.length;
+  $("bAcc").textContent=accounts.length;
+  $("tab-all").innerHTML=renderTable(all,"all");
+  $("tab-today").innerHTML=renderTable(todayList,"today");
+  $("tab-approved").innerHTML=renderTable(approved,"approved");
+  $("tab-pending").innerHTML=renderTable(pending,"pending");
+  $("tab-accounts").innerHTML=renderAccounts(accounts);
+  $("tab-keygen").innerHTML=renderKeygen();
+  $("tab-settings").innerHTML=renderSettings();
+  // Wire paid-input inline edits
+  document.querySelectorAll("input[data-paid-for]").forEach(inp=>{
+    inp.addEventListener("change",()=>setPaid(inp.dataset.paidFor,inp.value));
+  });
+}
+function renderTable(list, mode){
+  if(!list.length) return `<div class="card"><p class="muted">لا توجد سجلات.</p></div>`;
+  let rows=list.sort((a,b)=>(b.createdAt||0)-(a.createdAt||0)).map(r=>{
+    const isExp = r.status==="approved" && r.approvedPlan!=="permanent" && r.expiresAt && r.expiresAt < Date.now();
+    const cls = isExp?"expired":(r.status==="approved"?"approved":(r.status==="rejected"?"rejected":"pending"));
+    return `<tr class="${cls}">
+      <td><span class="code">${esc(r.deviceId||r.id)}</span></td>
+      <td>${esc(r.managerName||"-")}</td>
+      <td>${esc(r.schoolName||"-")}</td>
+      <td><a href="tel:${esc(r.phone||"")}" class="code" dir="ltr">${esc(r.phone||"-")}</a></td>
+      <td>${fmtDate(r.createdAt)}</td>
+      <td><span class="badge-plan">${planLabel(r.requestedPlan||r.approvedPlan||"-")}</span></td>
+      <td><span class="badge-status s-${r.status||'pending'}">${r.status==="approved"?"مفعّلة":r.status==="rejected"?"مرفوضة":"قيد الانتظار"}</span></td>
+      <td style="min-width:200px">
+        ${r.status!=="approved"?
+          `<select id="plan-${esc(r.id)}" style="width:auto;display:inline-block;padding:4px">
+             <option value="weekly" ${r.requestedPlan==="weekly"?"selected":""}>أسبوعي</option>
+             <option value="monthly" ${(!r.requestedPlan||r.requestedPlan==="monthly")?"selected":""}>شهري</option>
+             <option value="yearly" ${r.requestedPlan==="yearly"?"selected":""}>سنوي</option>
+             <option value="permanent" ${r.requestedPlan==="permanent"?"selected":""}>دائم</option>
+           </select>
+           <button class="success" onclick="approve('${esc(r.id)}',document.getElementById('plan-${esc(r.id)}').value)">✔ موافقة</button>`:
+          `<select id="ext-${esc(r.id)}" style="width:auto;display:inline-block;padding:4px">
+             <option value="weekly">أسبوعي</option><option value="monthly">شهري</option><option value="yearly">سنوي</option><option value="permanent">دائم</option>
+           </select>
+           <button class="warn" onclick="extend('${esc(r.id)}',document.getElementById('ext-${esc(r.id)}').value)">↻ تجديد</button>`
+        }
+        ${r.status!=="rejected"?` <button class="ghost" onclick="reject('${esc(r.id)}')">✖ رفض</button>`:""}
+        <button class="danger" onclick="del('${esc(r.id)}')">🗑</button>
+      </td>
+    </tr>`;
+  }).join("");
+  return `
+  <div class="card">
+    <div class="toolbar">
+      <strong>السجلات (${list.length})</strong>
+      <button class="ghost" onclick="exportCSV()">⬇ تصدير CSV</button>
+    </div>
+    <div style="overflow:auto">
+    <table>
+      <thead><tr>
+        <th>معرّف الجهاز</th><th>اسم المدير</th><th>المدرسة</th><th>الهاتف</th><th>تاريخ الطلب</th><th>الخطة</th><th>الحالة</th><th>إجراءات</th>
+      </tr></thead>
+      <tbody>${rows}</tbody>
+    </table>
+    </div>
+  </div>`;
+}
+function renderAccounts(list){
+  const act = list.filter(r=>r.status==="approved").sort((a,b)=>(b.approvedAt||b.createdAt||0)-(a.approvedAt||a.createdAt||0));
+  if(!act.length) return `<div class="card"><p class="muted">لا يوجد حسابات مفعّلة بعد.</p></div>`;
+  const rows = act.map(r=>{
+    const isExp = r.approvedPlan!=="permanent" && r.expiresAt && r.expiresAt<Date.now();
+    return `<tr class="${isExp?'expired':'approved'}">
+      <td><span class="code">${esc(r.deviceId||r.id)}</span></td>
+      <td>${esc(r.managerName||"-")}</td>
+      <td>${esc(r.schoolName||"-")}</td>
+      <td><a href="tel:${esc(r.phone||'')}" class="code" dir="ltr">${esc(r.phone||"-")}</a></td>
+      <td>${fmtDate(r.approvedAt||r.createdAt)}</td>
+      <td><span class="badge-plan">${planLabel(r.approvedPlan||"-")}</span></td>
+      <td>${r.approvedPlan==="permanent"?"—":fmtDate(r.expiresAt)}${isExp?" ⚠️ منتهي":""}</td>
+      <td><input type="text" data-paid-for="${esc(r.id)}" value="${esc(r.paidAmount||"")}" placeholder="المبلغ المدفوع" style="width:120px;display:inline-block;padding:4px;text-align:center;direction:ltr" /></td>
+    </tr>`;
+  }).join("");
+  return `
+  <div class="card">
+    <strong>💼 الحسابات المفعّلة (${act.length})</strong>
+    <p class="muted">تعديل حقل المبلغ يتم حفظه تلقائياً عند الضغط خارج الحقل.</p>
+    <div style="overflow:auto">
+    <table>
+      <thead><tr><th>الجهاز</th><th>المدير</th><th>المدرسة</th><th>الهاتف</th><th>تاريخ التفعيل</th><th>الخطة</th><th>انتهاء الاشتراك</th><th>المبلغ المدفوع</th></tr></thead>
+      <tbody>${rows}</tbody>
+    </table>
+    </div>
+  </div>`;
+}
+function renderKeygen(){
+  return `
+  <div class="card">
+    <h3>🔑 توليد مفتاح أوفلاين</h3>
+    <p class="muted">أدخل معرّف جهاز المستخدم ونوع الاشتراك لتوليد مفتاح يعمل بدون إنترنت.</p>
+    <label>معرّف الجهاز
+      <input type="text" id="kgDev" placeholder="مثال: A1B2C3D8" dir="ltr" style="text-align:center;letter-spacing:2px;font-family:monospace" />
+    </label>
+    <label>نوع الاشتراك
+      <select id="kgPlan">
+        <option value="weekly">أسبوعي (7 أيام)</option>
+        <option value="monthly" selected>شهري (30 يوم)</option>
+        <option value="yearly">سنوي (365 يوم)</option>
+        <option value="permanent">دائم</option>
+      </select>
+    </label>
+    <div style="margin-top:14px"><button class="primary" onclick="genKey()">توليد المفتاح</button></div>
+    <div id="kgResult"></div>
+  </div>
+  <div class="card">
+    <h3>📋 طريقة الاستخدام</h3>
+    <ol style="line-height:2">
+      <li>اطلب من المستخدم معرّف جهازه (يظهر في شاشة التفعيل).</li>
+      <li>أدخله هنا واختر نوع الاشتراك.</li>
+      <li>أعطِه المفتاح الناتج ليقوم بإدخاله في شاشة "إدخال مفتاح أوفلاين" بالتطبيق.</li>
+      <li>المفتاح مرتبط بهذا الجهاز فقط ولا يمكن استخدامه على جهاز آخر.</li>
+    </ol>
+  </div>`;
+}
+function genKey(){
+  const dev=$("kgDev").value.trim().toUpperCase().replace(/[^0-9A-F]/g,"");
+  const plan=$("kgPlan").value;
+  if(dev.length<6){ alert("أدخل معرّف جهاز صحيح"); return; }
+  const key=offSig(dev,plan);
+  $("kgResult").innerHTML=`
+    <p style="margin-top:14px;font-weight:700">المفتاح (${planLabel(plan)}):</p>
+    <div class="keybox" id="keyOut">${key}</div>
+    <button class="ghost" onclick="navigator.clipboard&&navigator.clipboard.writeText(document.getElementById('keyOut').textContent)">📋 نسخ</button>
+  `;
+}
+function renderSettings(){
+  return `
+  <div class="card">
+    <h3>⚙️ الإعدادات</h3>
+    <p class="muted">الإعدادات محفوظة في متصفحك فقط (لا تُرفع إلى أي خادم).</p>
+    <label>تهيئة Firebase (كائن JSON):
+      <textarea id="sFb" rows="8">${esc(cfg.firebase?JSON.stringify(cfg.firebase,null,2):"")}</textarea>
+    </label>
+    <label>تغيير كلمة سر الأدمن:
+      <input type="password" id="sPass" placeholder="اتركها فارغة للإبقاء" />
+    </label>
+    <label>السر المشترك (مفتاح الأوفلاين):
+      <input type="text" id="sSec" value="${esc(SECRET)}" />
+    </label>
+    <div style="margin-top:14px"><button class="primary" onclick="saveSettings()">💾 حفظ</button></div>
+    <p class="muted" style="margin-top:10px">ملاحظة: إذا غيّرت السر المشترك، يجب أن تطابقه القيمة في ملف index.html داخل كود التطبيق (الثابت SECRET).</p>
+  </div>`;
+}
+function saveSettings(){
+  try{
+    const t=$("sFb").value.trim();
+    const fb = t?JSON.parse(t):cfg.firebase;
+    cfg.firebase=fb;
+    const np=$("sPass").value;
+    if(np&&np.length>=4){cfg.adminHash=hash32(np);adminHash=cfg.adminHash;}
+    const sk=$("sSec").value.trim();
+    if(sk){cfg.secret=sk;SECRET=sk;}
+    saveCfgObj(cfg);
+    alert("✅ تم الحفظ. أعد تحميل الصفحة للتطبيق.");
+  }catch(e){alert("خطأ: "+e.message);}
+}
+
+function exportCSV(){
+  const recs=Object.entries(allRecords).map(([id,v])=>({id,...v}));
+  const rows=[["deviceId","managerName","schoolName","phone","requestedPlan","approvedPlan","status","createdAt","approvedAt","expiresAt","paidAmount"]];
+  recs.forEach(r=>rows.push([r.deviceId||r.id,r.managerName||"",r.schoolName||"",r.phone||"",r.requestedPlan||"",r.approvedPlan||"",r.status||"pending",r.createdAt||"",r.approvedAt||"",r.expiresAt||"",r.paidAmount||""]));
+  const csv=rows.map(r=>r.map(c=>'"'+String(c).replace(/"/g,'""')+'"').join(",")).join("\n");
+  const blob=new Blob(["\ufeff"+csv],{type:"text/csv;charset=utf-8"});
+  const a=document.createElement("a"); a.href=URL.createObjectURL(blob); a.download="daragat-licenses-"+new Date().toISOString().slice(0,10)+".csv"; a.click();
+}
+
+// ====== BOOT ======
+function goDash(){
+  $("loginPage").style.display="none";
+  $("dashPage").style.display="block";
+  if(!initFB()){
+    switchTab("settings");
+    return;
+  }
+  listenAll();
+  switchTab("all");
+}
+if(localStorage.getItem(LS_SES)==="1"){
+  // verify hash not rotated — just enter dashboard (password can only change via settings)
+  goDash();
+}else{
+  $("loginPass").addEventListener("keydown",e=>{ if(e.key==="Enter") doLogin(); });
+  window.addEventListener("load",()=>$("loginPass").focus());
+}
+</script>
+</body>
+</html>
