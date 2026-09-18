@@ -16490,6 +16490,21 @@ if(document.readyState==='loading'){
     screenExpired(true);
   }
 
+  // Ensure activate button visibility is re-checked whenever the DOM/app state may have changed
+  function refreshActivateButton(){
+    try{
+      const btn=document.getElementById("btnActivateTop");
+      if(!btn) return;
+      const acc=currentAccount();
+      const show = !!(acc && acc.status==="trial" && !acc.phone);
+      btn.style.display = show ? "inline-block" : "none";
+    }catch(e){}
+  }
+  setInterval(refreshActivateButton, 1500);
+  // Also re-check when tab becomes visible
+  document.addEventListener("visibilitychange", refreshActivateButton);
+
+
   function resume(){
     initFB();
     const v=canOpenApp();
@@ -16545,7 +16560,7 @@ if(document.readyState==='loading'){
 <!-- ===== AUTO UPDATE NOTIFICATION (small icon in topbar) ===== -->
 <script>
 (function(){
-  const APP_VERSION = "1.2.3";
+  const APP_VERSION = "1.2.4";
   const CHECK_EVERY_MINUTES = 30;
   const LS_ACCEPTED = "daragat_accepted_version";
   const LS_SNOOZE   = "daragat_update_snooze";
