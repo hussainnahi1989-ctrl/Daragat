@@ -5374,7 +5374,7 @@ if (typeof module !== 'undefined' && module.exports) { module.exports = QRCodeLi
 <!-- Firebase SDK for activation system -->
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
-<style>@keyframes actPulse{0%,100%{transform:scale(1);box-shadow:0 4px 14px rgba(233,30,99,.6),0 0 0 0 rgba(255,152,0,.6)}50%{transform:scale(1.05);box-shadow:0 6px 20px rgba(233,30,99,.8),0 0 0 12px rgba(255,152,0,0)}}</style></head>
+<style>@keyframes actPulseS{0%,100%{box-shadow:0 1px 3px rgba(198,40,40,.4),0 0 0 0 rgba(239,108,0,.5)}50%{box-shadow:0 1px 6px rgba(198,40,40,.65),0 0 0 5px rgba(239,108,0,0)}}</style></head>
 <body>
 
 
@@ -5401,7 +5401,6 @@ if (typeof module !== 'undefined' && module.exports) { module.exports = QRCodeLi
 <div id="topbar">
   <button type="button" id="btnMainMenu" class="top-main-menu-btn" onclick="openMainMenuFromTop()" title="القائمة الرئيسية" aria-label="القائمة الرئيسية">▦<i id="hwDot"></i></button>
   <b id="topBrand" onclick="openMainMenuFromTop()">الاداره المدرسيه</b>
-  <button type="button" id="btnActivateTop" onclick="triggerEarlyActivation()" title="تفعيل التطبيق قبل انتهاء التجربة" style="display:none;position:fixed;top:12px;right:12px;padding:10px 18px;border-radius:30px;background:linear-gradient(135deg,#ff6f00,#d50000);color:#fff;font-size:14px;border:2px solid #ffd54f;font-weight:900;cursor:pointer;font-family:inherit;box-shadow:0 4px 18px rgba(213,0,0,.7);z-index:10000000;animation:actPulse 1.4s infinite;direction:rtl">🔑 تفعيل التطبيق</button>
   <nav class="topbar-nav" aria-label="التنقل">
     <a class="apps-mini-link" href="https://t.me/hu_sain123" target="_blank" rel="noopener noreferrer" title="تطبيقاتي">تطبيقاتي</a>
     <button type="button" class="top-search-btn" onclick="openStudentSearch()" title="بحث عن طالب" aria-label="بحث عن طالب">🔍</button>
@@ -5410,6 +5409,7 @@ if (typeof module !== 'undefined' && module.exports) { module.exports = QRCodeLi
     <button type="button" id="btnNotif" class="top-search-btn" onclick="openNotifPanel();event.stopPropagation();" title="الإشعارات">🔔<i id="notifDot" class="notif-red-dot" hidden></i></button>
     <a id="btnFacebook" class="logout-top-btn portal-fb-top" href="#" target="_blank" rel="noopener noreferrer" hidden>فيسبوك</a>
     
+    <button type="button" id="btnActivateTop" onclick="window.__actOpen && window.__actOpen(event);return false;" title="تفعيل الاشتراك" style="display:none;padding:1px 7px;border-radius:8px;background:linear-gradient(135deg,#ef6c00,#c62828);color:#fff;font-size:9px;border:1px solid #ffd54f66;font-weight:800;cursor:pointer;font-family:inherit;line-height:1.5;white-space:nowrap;flex-shrink:0;animation:actPulseS 2.2s infinite;align-self:center">🔑<span style="margin-inline-start:2px">تفعيل</span></button>
     <button type="button" id="btnGlobalMenu" onclick="openGlobalNav()">☰ القائمة</button>
   </nav>
 </div>
@@ -16475,46 +16475,90 @@ if(document.readyState==='loading'){
     }catch(e){}
   }
 
-  function triggerEarlyActivation(){
+  function __actOpenActivation(){
     try{
-      // First, ensure overlay is brought to front and visible, clear any leftover spinner content
-      const ov=document.getElementById("actOverlay");
-      if(ov){ ov.style.display="block"; ov.style.zIndex="10000001"; document.body.style.overflow="hidden"; }
-      // If no active account, start fresh by resetting state
-      let acc=currentAccount();
-      if(!acc){
-        // Try to re-read from localStorage in case state object was stale
-        state = loadState() || { accounts:[], activeEmail:null, knownDevices:{} };
-        acc=currentAccount();
-      }
-      if(!acc){
-        // No account at all → go to register screen
-        screenRegister();
+      var raw=null; try{ raw=JSON.parse(localStorage.getItem("daragat_license_v2")||"null"); }catch(e){ raw=null; }
+      if(!raw||!raw.accounts||!raw.activeEmail){
+        try{ showOverlay(); screenRegister(); }catch(e){ alert("لا يوجد حساب — سيتم إنشاء حساب جديد."); location.reload(); }
         return;
       }
-      // Repair legacy accounts missing expiresAt
-      if(!acc.expiresAt||acc.expiresAt<Date.now()){
-        const base=acc.registeredAt||Date.now();
-        acc.expiresAt=Math.max(base+3*86400000, Date.now()+3600000);
-        saveState(state);
-        try{ fbRef("activation/accounts/"+acc.email.replace(/\./g,",")).update({expiresAt:acc.expiresAt}); }catch(e){}
+      var acc=null;
+      for(var i=0;i<raw.accounts.length;i++){ if(raw.accounts[i].email===raw.activeEmail){acc=raw.accounts[i];break;} }
+      if(!acc){ showOverlay(); screenRegister(); return; }
+      var now=Date.now();
+      if(!acc.expiresAt||acc.expiresAt<now){
+        var base=acc.registeredAt||now;
+        acc.expiresAt=Math.max(base+3*86400000, now+3600000);
+        localStorage.setItem("daragat_license_v2",JSON.stringify(raw));
+        try{ initFB(); fbRef("activation/accounts/"+acc.email.replace(/\./g,",")).update({expiresAt:acc.expiresAt}); }catch(e){}
       }
-      screenExpired(true);
+      var ov=document.getElementById("actOverlay");
+      var ttl=document.getElementById("actTitle");
+      var sub=document.getElementById("actSubtitle");
+      var bd=document.getElementById("actBody");
+      if(ttl) ttl.textContent="🔑 تفعيل التطبيق";
+      if(sub) sub.textContent="أدخل رقم هاتفك وسنتواصل معك عبر الواتساب.";
+      if(bd){
+        bd.innerHTML =
+          '<div style="background:#ffcdd240;border:1px solid #ef535055;border-radius:12px;padding:14px;margin-bottom:14px;font-size:13px;line-height:1.9">'+
+          '<b>معلوماتك:</b><br>'+
+          '📧 <span dir="ltr" style="font-family:monospace">'+(acc.email||"")+'</span><br>'+
+          '💻 '+(typeof deviceType==="function"?deviceType():"")+' ('+(typeof deviceInfo==="function"?deviceInfo().os:"")+' / '+(typeof deviceInfo==="function"?deviceInfo().browser:"")+')<br>'+
+          '🆔 <span style="font-family:monospace;direction:ltr" dir="ltr">'+(typeof deviceId==="function"?deviceId():"")+'</span>'+
+          '</div>'+
+          '<div style="display:grid;gap:10px">'+
+          '<label style="font-size:13px;opacity:.9;display:block">📱 رقم الهاتف (واتساب)'+
+          '<input id="__actPhone" type="tel" dir="ltr" placeholder="مثال: 07801381381" style="width:100%;margin-top:6px;padding:12px;border-radius:10px;border:2px solid #25D366;background:#00000040;color:#fff;font-size:16px;text-align:center;font-family:monospace;letter-spacing:1px">'+
+          '</label>'+
+          '<button id="__actSend" style="padding:14px;border:none;border-radius:10px;background:#25D366;color:#fff;font-weight:800;cursor:pointer;font-size:16px">📨 إرسال طلب التفعيل</button>'+
+          '<button id="__actClose" style="padding:10px;border:none;border-radius:10px;background:#ffffff22;color:#fff;cursor:pointer;font-size:13px">إغلاق</button>'+
+          '<p style="font-size:12px;opacity:.8;text-align:center;margin:6px 0 0">سنستخدم رقم الهاتف للتواصل معك عبر واتساب.</p>'+
+          '</div>';
+      }
+      ov.style.display="block";
+      ov.style.zIndex="2147483647";
+      document.body.style.overflow="hidden";
+      setTimeout(function(){
+        var c=document.getElementById("__actClose"); if(c) c.onclick=function(){ov.style.display="none";document.body.style.overflow="";};
+        var snd=document.getElementById("__actSend"); if(snd) snd.onclick=function(){
+          var inp=document.getElementById("__actPhone");
+          var p=inp?String(inp.value||"").trim():"";
+          if(!/^[0-9+\s-]{7,20}$/.test(p)){ alert("أدخل رقم هاتف صحيح (مثال: 07801381381)"); return; }
+          acc.phone=p; acc.status="pending";
+          localStorage.setItem("daragat_license_v2",JSON.stringify(raw));
+          try{ initFB(); fbRef("activation/accounts/"+acc.email.replace(/\./g,",")).update({phone:p,status:"pending",requestedAt:firebase.database.ServerValue.TIMESTAMP,activeDeviceId:deviceId(),lastSeenDevice:{id:deviceId(),type:deviceInfo().type,os:deviceInfo().os,browser:deviceInfo().browser,screen:deviceInfo().screen}}); }catch(e){}
+          if(ttl) ttl.textContent="✅ تم استلام طلبك";
+          if(sub) sub.textContent="سنتواصل معك قريباً على الواتساب.";
+          if(bd){ bd.innerHTML='<div style="text-align:center;padding:20px"><div style="font-size:48px">📞</div><h3 style="color:#a5d6a7;margin:10px 0">بانتظار مكالمة الإدارة</h3><p style="font-size:13px">رقمك: <span dir="ltr" style="font-family:monospace;background:#00000040;padding:2px 8px;border-radius:6px;color:#80deea">'+p+'</span></p><button id="__actClose2" style="margin-top:14px;padding:10px 16px;border:none;border-radius:8px;background:#ffffff22;color:#fff;cursor:pointer">إغلاق</button></div>'; }
+          setTimeout(function(){var c2=document.getElementById("__actClose2");if(c2)c2.onclick=function(){ov.style.display="none";document.body.style.overflow="";refreshActivateButton();};},50);
+          refreshActivateButton();
+        };
+        var ph=document.getElementById("__actPhone"); if(ph) ph.addEventListener("keydown",function(e){if(e.key==="Enter"&&snd)snd.click();});
+      },50);
     }catch(e){
       alert("خطأ: "+(e&&e.message?e.message:e));
     }
   }
+  function triggerEarlyActivation(){ __actOpenActivation(); }
+  window.__actOpen=function(ev){ try{ev.preventDefault();ev.stopPropagation();ev.stopImmediatePropagation();}catch(e){} __actOpenActivation(); return false; };
 
   // Ensure activate button visibility is re-checked whenever the DOM/app state may have changed
   function refreshActivateButton(){
     try{
       const btn=document.getElementById("btnActivateTop");
       if(!btn) return;
-      // Rehydrate state if stale (e.g. after admin login, state may have been empty object)
-      if(!state||!state.accounts){ state = loadState() || {accounts:[],activeEmail:null,knownDevices:{}}; }
-      const acc=currentAccount();
-      const show = !!(acc && (acc.status==="trial" || (!acc.status && acc.registeredAt)) && !acc.phone);
-      btn.style.setProperty("display", show ? "block" : "none", "important");
+      var raw=null; try{raw=JSON.parse(localStorage.getItem("daragat_license_v2")||"null");}catch(e){raw=null;}
+      var show=false;
+      if(raw&&raw.accounts&&raw.activeEmail){
+        for(var j=0;j<raw.accounts.length;j++){
+          var a=raw.accounts[j];
+          if(a.email===raw.activeEmail){
+            if((a.status==="trial"||(!a.status&&a.registeredAt))&&!a.phone){show=true;}
+            break;
+          }
+        }
+      }
+      btn.style.setProperty("display", show ? "inline-block" : "none", "important");
     }catch(e){}
   }
   setInterval(refreshActivateButton, 1500);
@@ -16577,7 +16621,7 @@ if(document.readyState==='loading'){
 <!-- ===== AUTO UPDATE NOTIFICATION (small icon in topbar) ===== -->
 <script>
 (function(){
-  const APP_VERSION = "1.2.8";
+  const APP_VERSION = "1.2.9";
   const CHECK_EVERY_MINUTES = 30;
   const LS_ACCEPTED = "daragat_accepted_version";
   const LS_SNOOZE   = "daragat_update_snooze";
