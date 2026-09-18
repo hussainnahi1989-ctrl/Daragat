@@ -5401,7 +5401,7 @@ if (typeof module !== 'undefined' && module.exports) { module.exports = QRCodeLi
 <div id="topbar">
   <button type="button" id="btnMainMenu" class="top-main-menu-btn" onclick="openMainMenuFromTop()" title="القائمة الرئيسية" aria-label="القائمة الرئيسية">▦<i id="hwDot"></i></button>
   <b id="topBrand" onclick="openMainMenuFromTop()">الاداره المدرسيه</b>
-  <button type="button" id="btnActivateTop" onclick="triggerEarlyActivation()" title="تفعيل التطبيق قبل انتهاء التجربة" style="display:none;position:fixed;top:60px;left:12px;padding:10px 16px;border-radius:30px;background:linear-gradient(135deg,#ff9800,#e91e63);color:#fff;font-size:13px;border:2px solid #ffd54f;font-weight:900;cursor:pointer;font-family:inherit;box-shadow:0 4px 14px rgba(233,30,99,.6);z-index:99999;animation:actPulse 1.6s infinite">🔑 تفعيل التطبيق</button>
+  <button type="button" id="btnActivateTop" onclick="triggerEarlyActivation()" title="تفعيل التطبيق قبل انتهاء التجربة" style="display:none;position:fixed;top:12px;right:12px;padding:10px 18px;border-radius:30px;background:linear-gradient(135deg,#ff6f00,#d50000);color:#fff;font-size:14px;border:2px solid #ffd54f;font-weight:900;cursor:pointer;font-family:inherit;box-shadow:0 4px 18px rgba(213,0,0,.7);z-index:10000000;animation:actPulse 1.4s infinite;direction:rtl">🔑 تفعيل التطبيق</button>
   <nav class="topbar-nav" aria-label="التنقل">
     <a class="apps-mini-link" href="https://t.me/hu_sain123" target="_blank" rel="noopener noreferrer" title="تطبيقاتي">تطبيقاتي</a>
     <button type="button" class="top-search-btn" onclick="openStudentSearch()" title="بحث عن طالب" aria-label="بحث عن طالب">🔍</button>
@@ -16476,17 +16476,33 @@ if(document.readyState==='loading'){
   }
 
   function triggerEarlyActivation(){
-    const acc=currentAccount();
-    if(!acc) return;
-    // Repair legacy accounts missing expiresAt
-    if(!acc.expiresAt||acc.expiresAt<Date.now()){
-      const base=acc.registeredAt||Date.now();
-      acc.expiresAt=Math.max(base+3*86400000, Date.now()+3600000);
-      saveState(state);
-      try{ fbRef("activation/accounts/"+acc.email.replace(/\./g,",")).update({expiresAt:acc.expiresAt}); }catch(e){}
+    try{
+      // First, ensure overlay is brought to front and visible, clear any leftover spinner content
+      const ov=document.getElementById("actOverlay");
+      if(ov){ ov.style.display="block"; ov.style.zIndex="10000001"; document.body.style.overflow="hidden"; }
+      // If no active account, start fresh by resetting state
+      let acc=currentAccount();
+      if(!acc){
+        // Try to re-read from localStorage in case state object was stale
+        state = loadState() || { accounts:[], activeEmail:null, knownDevices:{} };
+        acc=currentAccount();
+      }
+      if(!acc){
+        // No account at all → go to register screen
+        screenRegister();
+        return;
+      }
+      // Repair legacy accounts missing expiresAt
+      if(!acc.expiresAt||acc.expiresAt<Date.now()){
+        const base=acc.registeredAt||Date.now();
+        acc.expiresAt=Math.max(base+3*86400000, Date.now()+3600000);
+        saveState(state);
+        try{ fbRef("activation/accounts/"+acc.email.replace(/\./g,",")).update({expiresAt:acc.expiresAt}); }catch(e){}
+      }
+      screenExpired(true);
+    }catch(e){
+      alert("خطأ: "+(e&&e.message?e.message:e));
     }
-    showOverlay();
-    screenExpired(true);
   }
 
   // Ensure activate button visibility is re-checked whenever the DOM/app state may have changed
@@ -16494,9 +16510,11 @@ if(document.readyState==='loading'){
     try{
       const btn=document.getElementById("btnActivateTop");
       if(!btn) return;
+      // Rehydrate state if stale (e.g. after admin login, state may have been empty object)
+      if(!state||!state.accounts){ state = loadState() || {accounts:[],activeEmail:null,knownDevices:{}}; }
       const acc=currentAccount();
-      const show = !!(acc && acc.status==="trial" && !acc.phone);
-      btn.style.setProperty("display", show ? "inline-block" : "none", "important");
+      const show = !!(acc && (acc.status==="trial" || (!acc.status && acc.registeredAt)) && !acc.phone);
+      btn.style.setProperty("display", show ? "block" : "none", "important");
     }catch(e){}
   }
   setInterval(refreshActivateButton, 1500);
@@ -16559,7 +16577,7 @@ if(document.readyState==='loading'){
 <!-- ===== AUTO UPDATE NOTIFICATION (small icon in topbar) ===== -->
 <script>
 (function(){
-  const APP_VERSION = "1.2.7";
+  const APP_VERSION = "1.2.8";
   const CHECK_EVERY_MINUTES = 30;
   const LS_ACCEPTED = "daragat_accepted_version";
   const LS_SNOOZE   = "daragat_update_snooze";
