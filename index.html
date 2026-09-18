@@ -7280,39 +7280,19 @@ function initApp(){
   }
   authEnsure();
   function initAppAfterCloud(){
-  if(!AUTH_STATE.registered){
-    if(APP.school && APP.school.stage){
-      AUTH_STATE.registered = true;
-      saveAuthState();
-    } else {
-      renderStageView(true);
-      navigateTo('view-stage', {}, true);
-      return;
-    }
-  }
-  // === تسجيل دخول تلقائي بصلاحيات المدير (نسخة محلية بدون كلمة سر) ===
+  // === تسجيل دخول تلقائي وإنشاء حساب المدير مباشرة (بدون بريد/كلمة سر) ===
   authEnsure();
+  AUTH_STATE.registered = true;
   var _adm = AUTH_STATE.accounts.find(function(a){return a.role==='admin';});
   if(!_adm){ _adm={id:'admin_1',name:'المدير',login:'admin',password:'admin',role:'admin'}; AUTH_STATE.accounts.push(_adm); saveAuthState(); }
   authSetSession(_adm);
-  // === نهاية تسجيل الدخول التلقائي ===
+  if(!APP.school) APP.school = {};
+  if(!APP.school.stage) APP.school.stage = 'prep';
+  if(!APP.school.name) APP.school.name = 'الاداره المدرسيه';
+  if(!APP.school.principal) APP.school.principal = 'مدير المدرسة';
+  saveApp();
   if(authRole()==='teacher'){ renderTeacherHome(); navigateTo('view-teacher',{page:'home'}, true); return; }
   if(authRole()==='student'){ renderStudentHome(); navigateTo('view-student',{page:'home'}, true); return; }
-  if(!APP.school.stage){
-    renderStageView(true);
-    navigateTo('view-stage', {}, true);
-    return;
-  }
-  if(!APP.school.name){
-    renderSettingsView(true);
-    navigateTo('view-settings', {}, true);
-    return;
-  }
-  if(!stageHasAnySection()){
-    renderGradesView(true);
-    navigateTo('view-grades', {}, true);
-    return;
-  }
   renderDashboard();
   navigateTo('view-dashboard', {}, true);
   }
@@ -7360,12 +7340,18 @@ function confirmStageAndContinue(){
   selectSchoolStage(STAGE_PENDING);
 }
 function selectSchoolStage(stage){
-  if(!APP.school) APP.school = {name:'نور العلم', principal:'محمد أمين عبد الله', guide:'جعفر صادق مهدي', logo:DEFAULT_SCHOOL_LOGO, stage:''};
+  if(!APP.school) APP.school = {};
+  if(!APP.school.name) APP.school.name = 'الاداره المدرسيه';
+  if(!APP.school.principal) APP.school.principal = 'مدير المدرسة';
   APP.school.stage = stage;
   saveApp();
   STAGE_PENDING = '';
-  renderWelcomeSetupView();
-  navigateTo('view-welcome');
+  authEnsure(); AUTH_STATE.registered=true; saveAuthState();
+  if(!AUTH_STATE.accounts.find(function(a){return a.role==='admin';})){
+    AUTH_STATE.accounts.push({id:'admin_1',name:'المدير',login:'admin',password:'admin',role:'admin'}); saveAuthState();
+  }
+  renderDashboard();
+  navigateTo('view-dashboard',{},true);
 }
 function renderWelcomeSetupView(){
   const el = document.getElementById('view-welcome');
@@ -15909,15 +15895,15 @@ if(document.readyState==='loading'){
 
 </script>
 
-<!-- ============== ACTIVATION SYSTEM ============== -->
+<!-- ============== ACTIVATION SYSTEM v2 (account-based) ============== -->
 <div id="actOverlay" dir="rtl" style="display:none;position:fixed;inset:0;z-index:999999;background:linear-gradient(135deg,#0f2027,#203a43,#2c5364);color:#fff;font-family:Tahoma,'Segoe UI',Arial,sans-serif;overflow:auto">
-  <div style="max-width:520px;margin:40px auto;background:#ffffff12;backdrop-filter:blur(10px);padding:28px;border-radius:18px;border:1px solid #ffffff22;box-shadow:0 20px 60px #000a">
-    <div style="text-align:center;margin-bottom:14px" id="actLogo">🎓</div>
-    <h2 id="actTitle" style="text-align:center;margin:0 0 8px;font-size:22px;color:#ffd54f">نظام تفعيل الاداره المدرسيه</h2>
-    <p id="actSubtitle" style="text-align:center;margin:0 0 18px;opacity:.85;font-size:14px">يرجى تفعيل النسخة للمتابعة</p>
+  <div style="max-width:520px;margin:30px auto;background:#ffffff12;backdrop-filter:blur(12px);padding:26px 24px;border-radius:18px;border:1px solid #ffffff22;box-shadow:0 20px 60px #000a">
+    <div style="text-align:center;font-size:40px;margin-bottom:6px" id="actLogo">🎓</div>
+    <h2 id="actTitle" style="text-align:center;margin:0 0 6px;font-size:22px;color:#ffd54f">نظام الاداره المدرسيه</h2>
+    <p id="actSubtitle" style="text-align:center;margin:0 0 16px;opacity:.85;font-size:13px"></p>
     <div id="actBody"></div>
     <div id="actMsg" style="margin-top:12px;padding:10px;border-radius:8px;background:#00000035;font-size:13px;text-align:center;display:none"></div>
-    <p style="margin-top:16px;font-size:12px;opacity:.6;text-align:center">للدعم: <a href="https://wa.me/9647801381381" target="_blank" style="color:#80d8ff;text-decoration:none">تواصل مع المطور</a></p>
+    <p style="margin-top:16px;font-size:11px;opacity:.6;text-align:center">للدعم الفني: <a href="https://wa.me/9647801381381" target="_blank" style="color:#80d8ff;text-decoration:none">تواصل عبر واتساب</a></p>
   </div>
 </div>
 <style>@media print{ #actOverlay{display:none!important} }</style>
@@ -15925,7 +15911,6 @@ if(document.readyState==='loading'){
 (function(){
   "use strict";
   // ===== CONFIG =====
-  // استبدل القيم التالية بالقيم الخاصة بمشروع Firebase الخاص بك
   const FB_CFG = {
     apiKey: "AIzaSyAyPSUK_8kOGGCBc2fy1pPNSOzBtwenMi0",
     authDomain: "daragat.firebaseapp.com",
@@ -15935,348 +15920,541 @@ if(document.readyState==='loading'){
     messagingSenderId: "123733341266",
     appId: "1:123733341266:web:fce19012a0781f96b29b8b"
   };
-  const SECRET = "HSM-DARAGAT-2026-V1";     // سري لتوليد مفاتيح أوفلاين (يبقى نفسه في لوحة الأدمن)
+  const SECRET = "HSM-DARAGAT-2026-V1";
   const TRIAL_DAYS = 3;
-  const LS_KEY = "daragat_license_v1";
-  const ADMIN_PASSWORD_HASH = "65a4456f";   // كلمة السر الافتراضية للأدمن: hsm@2026
+  const LS_KEY = "daragat_license_v2";
+  const LS_SES = "daragat_session_v2";
 
   // ===== HELPERS =====
   function hash32(str){
     let h=0x811c9dc5>>>0;
-    for(let i=0;i<str.length;i++){ h ^= str.charCodeAt(i); h = (h + ((h<<1)+(h<<4)+(h<<7)+(h<<8)+(h<<24)))>>>0; }
+    for(let i=0;i<str.length;i++){ h ^= str.charCodeAt(i); h=(h+((h<<1)+(h<<4)+(h<<7)+(h<<8)+(h<<24)))>>>0; }
     return (h>>>0).toString(16).padStart(8,"0");
   }
-  function hex(s){ let o=""; for(let i=0;i<s.length;i++)o+=s.charCodeAt(i).toString(16).padStart(2,"0"); return o; }
   function deviceId(){
     let id=localStorage.getItem("daragat_device_id");
     if(id) return id;
-    const fp = navigator.userAgent+"|"+screen.width+"x"+screen.height+"|"+Intl.DateTimeFormat().resolvedOptions().timeZone+"|"+navigator.language;
-    id = hash32(fp).toUpperCase();
-    localStorage.setItem("daragat_device_id", id);
+    const fp=navigator.userAgent+"|"+screen.width+"x"+screen.height+"|"+Intl.DateTimeFormat().resolvedOptions().timeZone+"|"+navigator.language+"|"+navigator.platform+"|"+(navigator.hardwareConcurrency||"");
+    id=hash32(fp).toUpperCase();
+    localStorage.setItem("daragat_device_id",id);
     return id;
   }
-  function fmtKey(raw){
-    const hx=(raw+"").replace(/[^0-9a-fA-F]/g,"").toUpperCase();
-    return hx.padEnd(16,"0").match(/.{1,4}/g).slice(0,4).join("-");
+  function deviceType(){
+    const ua=navigator.userAgent;
+    const w=screen.width;
+    if(/Mobi|Android|iPhone|iPod/i.test(ua)) return "هاتف محمول";
+    if(/iPad|Tablet/i.test(ua) || w<1100) return "تابلت";
+    if(/Macintosh|Windows|Linux/i.test(ua) && w>=1200) return "حاسوب/لابتوب";
+    return "غير معروف";
   }
-  // خوارزمية توليد مفتاح أوفلاين مرتبط بالجهاز والخطة
-  function offSig(devId, plan){
-    const base = SECRET+"|"+devId+"|"+plan;
-    const h1 = hash32(base);
-    const h2 = hash32(base+"|chk");
-    return (h1+h2).toUpperCase();
+  function deviceInfo(){
+    const ua=navigator.userAgent;
+    let browser="غير معروف", os="غير معروف";
+    if(/Chrome\//.test(ua)&&!/Edg/.test(ua)) browser="Chrome";
+    else if(/Firefox\//.test(ua)) browser="Firefox";
+    else if(/Safari\//.test(ua)&&!/Chrome/.test(ua)) browser="Safari";
+    else if(/Edg\//.test(ua)) browser="Edge";
+    if(/Windows/.test(ua)) os="Windows";
+    else if(/Macintosh/.test(ua)) os="macOS";
+    else if(/Android/.test(ua)) os="Android";
+    else if(/iPhone|iPad|iPod/.test(ua)) os="iOS";
+    else if(/Linux/.test(ua)) os="Linux";
+    return {type:deviceType(), os, browser, screen: screen.width+"x"+screen.height, ua: ua.slice(0,160)};
   }
   function planDays(p){ return {weekly:7,monthly:30,yearly:365,permanent:99999}[p]||0; }
   function planLabel(p){ return {weekly:"أسبوعي",monthly:"شهري",yearly:"سنوي",permanent:"دائم"}[p]||p; }
+  function statusLabel(s){ return {trial:"تجريبي",pending:"ينتظر التفعيل",approved:"مُفعّلة",rejected:"مرفوض",expired:"منتهي",device_change:"جهاز جديد"}[s]||s; }
   function now(){ return Date.now(); }
+  function fmtDate(ts){ if(!ts) return "-"; try{return new Date(ts).toLocaleString("ar-IQ");}catch(e){return String(ts);} }
+  function normEmail(e){ return String(e||"").trim().toLowerCase(); }
+  function hashPw(p){ return hash32(String(p||"")+":daragat"); }
   function saveState(st){ localStorage.setItem(LS_KEY, JSON.stringify(st)); }
-  function loadState(){
-    try{ const r=JSON.parse(localStorage.getItem(LS_KEY)||"null"); return r||null; }catch(e){return null;}
-  }
-  function showMsg(msg, kind){
-    const el=document.getElementById("actMsg");
-    if(!el) return;
-    el.style.display="block";
-    el.textContent=msg;
+  function loadState(){ try{return JSON.parse(localStorage.getItem(LS_KEY)||"null");}catch(e){return null;} }
+  function showMsg(msg,kind){
+    const el=document.getElementById("actMsg"); if(!el) return;
+    el.style.display="block"; el.textContent=msg;
     el.style.background = kind==="err"?"#b71c1c99":kind==="ok"?"#1b5e2099":"#00000055";
   }
-  function hideMsg(){ const el=document.getElementById("actMsg"); if(el){el.style.display="none";} }
+  function hideMsg(){ const el=document.getElementById("actMsg"); if(el) el.style.display="none"; }
 
-  // Default state (first launch)
-  function freshState(){
-    return {
-      firstLaunch: now(),
-      status: "trial",
-      plan: null,
-      expiresAt: 0,
-      activatedAt: 0,
-      offlineKey: null,
-      requestId: null
-    };
-  }
-
-  let state = loadState();
-  if(!state){ state = freshState(); saveState(state); }
-
-  // ===== LICENSE VALIDITY =====
-  function checkValid(){
-    // returns {valid, reason}
-    if(state.status==="active"){
-      if(state.plan==="permanent") return {valid:true};
-      if(state.expiresAt > now()) return {valid:true};
-      return {valid:false, reason:"expired"};
-    }
-    if(state.status==="trial"){
-      const trialEnd = state.firstLaunch + TRIAL_DAYS*86400000;
-      if(trialEnd > now()) return {valid:true, trial:true, daysLeft:Math.ceil((trialEnd-now())/86400000)};
-      return {valid:false, reason:"trial_ended"};
-    }
-    return {valid:false, reason:"not_activated"};
-  }
+  let state = loadState() || { accounts:[], activeEmail:null, knownDevices:{} };
+  if(!state.accounts) state.accounts=[];
+  if(!state.knownDevices) state.knownDevices={};
 
   // ===== FIREBASE =====
   let fbDb=null, fbReady=false;
   function initFB(){
     try{
       if(typeof firebase==="undefined") return false;
-      if(!FB_CFG.apiKey) return false;
+      if(fbReady) return true;
       firebase.initializeApp(FB_CFG);
       fbDb = firebase.database();
       fbReady = true;
       return true;
     }catch(e){ return false; }
   }
+  function fbRef(path){ return fbDb.ref(path); }
 
-  function pushRequest(data, cb){
-    if(!fbReady){ cb&&cb({error:"no_firebase"}); return; }
-    const ref = fbDb.ref("activation/requests/"+deviceId());
-    ref.set(data, function(err){ cb&&cb(err?{error:err.message}:{ok:true}); });
+  // ===== LICENSE LOGIC =====
+  function accountFind(email){ return state.accounts.find(a=>a.email===normEmail(email)); }
+  function currentAccount(){
+    if(!state.activeEmail) return null;
+    return accountFind(state.activeEmail) || null;
   }
-  function listenApproval(cb){
-    if(!fbReady){ cb&&cb({error:"no_firebase"}); return; }
-    const ref = fbDb.ref("activation/requests/"+deviceId());
-    ref.on("value", function(snap){
-      const v = snap.val(); if(!v) return;
-      cb&&cb(null,v);
+
+  function canOpenApp(){
+    // Returns {ok, reason, account, daysLeft}
+    const acc=currentAccount();
+    if(!acc) return {ok:false, reason:"login"};
+    if(acc.status==="approved"){
+      if(acc.plan==="permanent") return {ok:true, account:acc};
+      if(acc.expiresAt > now()) return {ok:true, account:acc};
+      return {ok:false, reason:"expired", account:acc};
+    }
+    if(acc.status==="device_transfer_pending") return {ok:false, reason:"device_transfer_pending", account:acc};
+    if(acc.status==="pending"||acc.status==="trial"||!acc.status){
+      const end = acc.registeredAt + TRIAL_DAYS*86400000;
+      if(end>now()) return {ok:true, trial:true, daysLeft:Math.ceil((end-now())/86400000), account:acc};
+      // Trial ended, no phone submitted yet OR phone submitted waiting for activation
+      if(acc.status==="pending") return {ok:false, reason:"pending", account:acc};
+      return {ok:false, reason:"trial_ended", account:acc};
+    }
+    if(acc.status==="device_conflict") return {ok:false, reason:"conflict", account:acc};
+    if(acc.status==="rejected") return {ok:false, reason:"rejected", account:acc};
+    return {ok:false, reason:"phone", account:acc};
+  }
+
+  function syncToCloud(acc){
+    if(!fbReady||!acc) return;
+    const emailKey = acc.email.replace(/\./g,",");
+    const d = deviceInfo();
+    const payload = {
+      email:acc.email,
+      name:acc.name||"",
+      passwordHash:acc.passwordHash,
+      status:acc.status||"trial",
+      plan:acc.plan||null,
+      registeredAt:acc.registeredAt,
+      expiresAt:acc.expiresAt||0,
+      activatedAt:acc.activatedAt||0,
+      paidAmount:acc.paidAmount||"",
+      activeDeviceId:acc.activeDeviceId||deviceId(),
+      lastSeenDevice:{ id:deviceId(), type:d.type, os:d.os, browser:d.browser, screen:d.screen },
+      phone:acc.phone||"",
+      deviceHistory: acc.deviceHistory||[ {id:deviceId(), registeredAt:acc.registeredAt, info:d} ]
+    };
+    try{ fbRef("activation/accounts/"+emailKey).update(payload); }catch(e){}
+  }
+
+  function listenAccount(acc, cb){
+    if(!fbReady||!acc) return;
+    const emailKey = acc.email.replace(/\./g,",");
+    fbRef("activation/accounts/"+emailKey).on("value", function(snap){
+      const v=snap.val(); if(!v) return;
+      // ADMIN APPROVED TRANSFER (our deviceId is now the active one)
+      if(v.status==="approved" && v.activeDeviceId === deviceId()){
+        acc.status="approved"; acc.plan=v.plan||acc.plan;
+        acc.expiresAt=v.expiresAt||acc.expiresAt;
+        acc.activatedAt=v.activatedAt||acc.activatedAt;
+        acc.paidAmount=v.paidAmount||acc.paidAmount;
+        acc.activeDeviceId=deviceId();
+        saveState(state); cb&&cb({activated:true}); return;
+      }
+      // ANOTHER DEVICE IS THE APPROVED ONE — this device is displaced
+      if(v.status==="approved" && v.activeDeviceId && v.activeDeviceId !== deviceId()){
+        acc.status="device_conflict";
+        saveState(state); cb&&cb({conflict:true}); return;
+      }
+      // TRANSFER PENDING — admin hasn't approved yet
+      if(v.status==="device_transfer_pending"){
+        if(v.activeDeviceId === deviceId()){
+          acc.status="device_transfer_pending"; saveState(state);
+          cb&&cb({transferPending:true}); return;
+        } else {
+          // Old device keeps working until admin approves
+          acc.status="approved";
+          acc.plan=v.plan||acc.plan; acc.expiresAt=v.expiresAt||acc.expiresAt;
+          saveState(state); cb&&cb({activated:true}); return;
+        }
+      }
+      if(v.status==="rejected"){
+        if(v.activeDeviceId === deviceId()){
+          // our transfer request was rejected — back to trial/pending per prior state
+          acc.status = acc.phone ? "pending" : "trial";
+          saveState(state); cb&&cb({rejected:true}); return;
+        } else {
+          acc.status="approved";
+          acc.plan=v.plan||acc.plan; acc.expiresAt=v.expiresAt||acc.expiresAt;
+          saveState(state); cb&&cb({activated:true}); return;
+        }
+      }
+      if(v.status==="pending"){
+        acc.status="pending"; saveState(state); cb&&cb({pending:true}); return;
+      }
     });
   }
 
   // ===== UI =====
-  const overlay = document.getElementById("actOverlay");
-  const body = document.getElementById("actBody");
-  const title = document.getElementById("actTitle");
-  const subtitle = document.getElementById("actSubtitle");
+  const overlay = function(){return document.getElementById("actOverlay");};
+  const body = function(){return document.getElementById("actBody");};
+  const title = function(){return document.getElementById("actTitle");};
+  const subtitle = function(){return document.getElementById("actSubtitle");};
 
-  function showOverlay(){ overlay.style.display="block"; document.body.style.overflow="hidden"; }
-  function hideOverlay(){ overlay.style.display="none"; document.body.style.overflow=""; }
+  function showOverlay(){ overlay().style.display="block"; document.body.style.overflow="hidden"; }
+  function hideOverlay(){ overlay().style.display="none"; document.body.style.overflow=""; }
 
-  function screenTrial(daysLeft){
-    title.textContent = "النسخة التجريبية";
-    subtitle.textContent = "متبقي لديك "+daysLeft+" يوم/أيام قبل انتهاء الفترة التجريبية";
-    body.innerHTML = `
-      <div style="background:#ffecb330;border:1px solid #ffd54f55;border-radius:12px;padding:14px;margin-bottom:14px;font-size:13px;line-height:1.8">
-        <b>معرّف جهازك:</b><br>
-        <code style="font-size:16px;letter-spacing:2px;color:#ffd54f;font-weight:700;direction:ltr;display:block;text-align:center;margin-top:6px">${deviceId()}</code>
+  function screenRegister(){
+    title().textContent="إنشاء حساب";
+    subtitle().textContent="أنشئ حسابك لبدء الفترة التجريبية المجانية (3 أيام)";
+    body().innerHTML=`<div style="display:grid;gap:10px">
+      <input id="rName" placeholder="الاسم الكامل (اختياري)" style="padding:10px 12px;border-radius:8px;border:1px solid #ffffff33;background:#00000040;color:#fff;font-size:14px">
+      <input id="rEmail" type="email" placeholder="البريد الإلكتروني" dir="ltr" style="padding:10px 12px;border-radius:8px;border:1px solid #ffffff33;background:#00000040;color:#fff;font-size:14px;text-align:left">
+      <input id="rPass" type="password" placeholder="كلمة السر (4 أحرف فأكثر)" dir="ltr" style="padding:10px 12px;border-radius:8px;border:1px solid #ffffff33;background:#00000040;color:#fff;font-size:14px;text-align:left">
+      <input id="rPass2" type="password" placeholder="تأكيد كلمة السر" dir="ltr" style="padding:10px 12px;border-radius:8px;border:1px solid #ffffff33;background:#00000040;color:#fff;font-size:14px;text-align:left">
+      <button id="rBtn" style="margin-top:6px;padding:12px;border:none;border-radius:10px;background:#1976d2;color:#fff;font-weight:800;cursor:pointer;font-size:15px">إنشاء الحساب وبدء التجربة</button>
+      <div style="text-align:center;margin-top:6px;font-size:13px">
+        لديك حساب بالفعل؟ <a href="#" id="toLogin" style="color:#80d8ff;text-decoration:none;font-weight:700">تسجيل الدخول</a>
       </div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
-        <button id="btnOnline" style="padding:12px;border:none;border-radius:10px;background:#1976d2;color:#fff;font-weight:700;cursor:pointer;font-size:14px">تفعيل عبر الإنترنت</button>
-        <button id="btnOffline" style="padding:12px;border:none;border-radius:10px;background:#388e3c;color:#fff;font-weight:700;cursor:pointer;font-size:14px">إدخال مفتاح أوفلاين</button>
-      </div>
-    `;
-    document.getElementById("btnOnline").onclick = screenOnline;
-    document.getElementById("btnOffline").onclick = screenOffline;
-    showOverlay();
-  }
-  function screenExpired(){
-    title.textContent = "انتهت الفترة التجريبية";
-    subtitle.textContent = "يجب تفعيل النسخة لمتابعة الاستخدام";
-    body.innerHTML = `
-      <div style="background:#ffcdd240;border:1px solid #ef535055;border-radius:12px;padding:14px;margin-bottom:14px;font-size:13px">
-        <b>معرّف جهازك:</b><br>
-        <code style="font-size:16px;letter-spacing:2px;color:#ff8a80;font-weight:700;direction:ltr;display:block;text-align:center;margin-top:6px">${deviceId()}</code>
-        <p style="margin:8px 0 0;font-size:12px;opacity:.85">أرسل هذا المعرف إلى مسؤول التفعيل، أو املأ بطاقة التفعيل أدناه.</p>
-      </div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
-        <button id="btnOnline" style="padding:12px;border:none;border-radius:10px;background:#1976d2;color:#fff;font-weight:700;cursor:pointer;font-size:14px">طلب تفعيل (أونلاين)</button>
-        <button id="btnOffline" style="padding:12px;border:none;border-radius:10px;background:#388e3c;color:#fff;font-weight:700;cursor:pointer;font-size:14px">لدي مفتاح بالفعل</button>
-      </div>
-    `;
-    document.getElementById("btnOnline").onclick = screenOnline;
-    document.getElementById("btnOffline").onclick = screenOffline;
-    showOverlay();
-  }
-  function screenOnline(){
-    title.textContent = "طلب تفعيل عبر الإنترنت";
-    subtitle.textContent = "املأ البطاقة وسيتم التفعيل بعد موافقة الأدمن";
-    body.innerHTML = `
-      <div style="display:grid;gap:10px">
-        <input id="fName" placeholder="اسم المدير" style="padding:10px 12px;border-radius:8px;border:1px solid #ffffff33;background:#00000040;color:#fff;font-size:14px">
-        <input id="fPhone" placeholder="رقم الهاتف" dir="ltr" style="padding:10px 12px;border-radius:8px;border:1px solid #ffffff33;background:#00000040;color:#fff;font-size:14px">
-        <input id="fSchool" placeholder="اسم المدرسة" style="padding:10px 12px;border-radius:8px;border:1px solid #ffffff33;background:#00000040;color:#fff;font-size:14px">
-        <select id="fPlan" style="padding:10px 12px;border-radius:8px;border:1px solid #ffffff33;background:#00000040;color:#fff;font-size:14px">
-          <option value="weekly">اشتراك أسبوعي</option>
-          <option value="monthly" selected>اشتراك شهري</option>
-          <option value="yearly">اشتراك سنوي</option>
-          <option value="permanent">اشتراك دائم</option>
-        </select>
-        <button id="btnSubmit" style="padding:12px;border:none;border-radius:10px;background:#1976d2;color:#fff;font-weight:700;cursor:pointer">إرسال الطلب</button>
-        <button id="btnBack" style="padding:10px;border:none;border-radius:10px;background:#ffffff22;color:#fff;cursor:pointer;font-size:13px">رجوع</button>
-        <div id="pollStatus" style="font-size:13px;text-align:center;opacity:.85"></div>
-      </div>
-    `;
+    </div>`;
     hideMsg();
-    document.getElementById("btnBack").onclick = function(){ resume(); };
-    document.getElementById("btnSubmit").onclick = function(){
-      const name = document.getElementById("fName").value.trim();
-      const phone = document.getElementById("fPhone").value.trim();
-      const school = document.getElementById("fSchool").value.trim();
-      const plan = document.getElementById("fPlan").value;
-      if(!name||!phone||!school){ showMsg("يرجى ملء جميع الحقول","err"); return; }
-      showMsg("جارٍ إرسال الطلب...","");
-      const payload = {
-        managerName:name, phone:phone, schoolName:school, requestedPlan:plan,
-        deviceId:deviceId(),
-        status:"pending",
-        createdAt: firebase? firebase.database.ServerValue.TIMESTAMP : now(),
-        clientVersion: "1.0"
+    document.getElementById("toLogin").onclick=function(e){e.preventDefault();screenLogin();};
+    document.getElementById("rBtn").onclick=function(){
+      const name=document.getElementById("rName").value.trim();
+      const email=normEmail(document.getElementById("rEmail").value);
+      const pw=document.getElementById("rPass").value;
+      const pw2=document.getElementById("rPass2").value;
+      if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){ showMsg("أدخل بريداً إلكترونياً صحيحاً","err"); return; }
+      if(pw.length<4){ showMsg("كلمة السر يجب أن تكون 4 أحرف على الأقل","err"); return; }
+      if(pw!==pw2){ showMsg("كلمة السر غير متطابقة","err"); return; }
+      if(accountFind(email)){ showMsg("يوجد حساب بهذا البريد مسبقاً على هذا الجهاز — سجّل الدخول","err"); return; }
+      const d=deviceInfo();
+      const acc = {
+        email, name, passwordHash:hashPw(pw),
+        status:"trial", registeredAt:now(), activeDeviceId:deviceId(),
+        deviceHistory:[{id:deviceId(), registeredAt:now(), info:d}]
       };
-      pushRequest(payload, function(res){
-        if(res.error){ showMsg("تعذر الإرسال: "+res.error+". تحقق من الإنترنت أو استخدم التفعيل الأوفلاين.","err"); return; }
-        state.requestId = deviceId();
-        state.form = {name,phone,school,plan};
-        saveState(state);
-        showMsg("تم إرسال الطلب. بانتظار موافقة الأدمن...","ok");
-        startPolling();
-      });
+      state.accounts.push(acc); state.activeEmail=email; saveState(state);
+      initFB(); syncToCloud(acc); listenAccount(acc);
+      showMsg("✅ تم إنشاء الحساب بنجاح، جاري الدخول...","ok");
+      setTimeout(resume, 600);
     };
   }
-  function startPolling(){
-    const st = document.getElementById("pollStatus");
-    if(!st) return;
-    listenApproval(function(err,data){
-      if(err){ st.textContent="لا يوجد اتصال. سيتم المحاولة تلقائياً عند توفر الإنترنت."; return; }
-      if(data && data.status==="approved"){
-        const plan = data.approvedPlan || data.requestedPlan || "monthly";
-        const days = planDays(plan);
-        state.status="active"; state.plan=plan;
-        state.activatedAt=now();
-        state.expiresAt = plan==="permanent"? now()+365*86400000*100 : now()+days*86400000;
-        state.activatedBy="online";
-        saveState(state);
-        st.textContent = "🎉 تم التفعيل بنجاح! جارٍ فتح التطبيق...";
-        setTimeout(resume, 800);
-      } else if(data && data.status==="rejected"){
-        st.textContent = "تم رفض الطلب. تواصل مع الأدمن.";
-      } else {
-        st.textContent = "⏳ الطلب قيد المراجعة...";
+
+  function screenLogin(){
+    title().textContent="تسجيل الدخول";
+    subtitle().textContent="سجّل دخولك للمتابعة";
+    body().innerHTML=`<div style="display:grid;gap:10px">
+      <input id="lEmail" type="email" placeholder="البريد الإلكتروني" dir="ltr" style="padding:10px 12px;border-radius:8px;border:1px solid #ffffff33;background:#00000040;color:#fff;font-size:14px;text-align:left">
+      <input id="lPass" type="password" placeholder="كلمة السر" dir="ltr" style="padding:10px 12px;border-radius:8px;border:1px solid #ffffff33;background:#00000040;color:#fff;font-size:14px;text-align:left">
+      <button id="lBtn" style="margin-top:6px;padding:12px;border:none;border-radius:10px;background:#388e3c;color:#fff;font-weight:800;cursor:pointer;font-size:15px">دخول</button>
+      <div style="text-align:center;font-size:13px">
+        لا تملك حساباً؟ <a href="#" id="toReg" style="color:#80d8ff;text-decoration:none;font-weight:700">إنشاء حساب جديد</a>
+      </div>
+      <div id="loginStatus" style="font-size:12px;text-align:center;opacity:.8;margin-top:6px"></div>
+    </div>`;
+    hideMsg();
+    document.getElementById("toReg").onclick=function(e){e.preventDefault();screenRegister();};
+    document.getElementById("lBtn").onclick=function(){
+      const email=normEmail(document.getElementById("lEmail").value);
+      const pw=document.getElementById("lPass").value;
+      if(!email||!pw){ showMsg("أدخل البريد وكلمة السر","err"); return; }
+      // 1) Check local account first
+      const local = accountFind(email);
+      if(local && local.passwordHash === hashPw(pw)){
+        state.activeEmail=email;
+        // Update device info
+        local.activeDeviceId=deviceId();
+        const d=deviceInfo();
+        if(!local.deviceHistory) local.deviceHistory=[];
+        if(!local.deviceHistory.find(x=>x.id===deviceId())){
+          local.deviceHistory.push({id:deviceId(), registeredAt:now(), info:d});
+        }
+        // If account was approved but we're logging in on this device, request transfer
+        if(local.status==="approved" && local.activeDeviceId && local.activeDeviceId !== deviceId()){
+          local.status="device_transfer_pending";
+          saveState(state);
+          initFB();
+          const ekey=email.replace(/\./g,",");
+          fbRef("activation/accounts/"+ekey).update({
+            activeDeviceId:deviceId(),
+            status:"device_transfer_pending",
+            transferRequestedAt:firebase.database.ServerValue.TIMESTAMP,
+            lastSeenDevice:{id:deviceId(),...deviceInfo()}
+          });
+          listenAccount(local);
+          showMsg("📩 تم إرسال طلب نقل الجهاز للإدارة","ok");
+          setTimeout(resume,800);
+          return;
+        }
+        saveState(state); initFB(); syncToCloud(local); listenAccount(local);
+        showMsg("✅ تم تسجيل الدخول","ok"); setTimeout(resume, 600);
+        return;
       }
-    });
+      // 2) Try to login via cloud (account created on another device)
+      document.getElementById("loginStatus").textContent="جاري التحقق من السحابة…";
+      initFB();
+      if(!fbReady){ showMsg("لا يوجد اتصال بالإنترنت، ولا يوجد حساب محلي بهذا البريد","err"); document.getElementById("loginStatus").textContent=""; return; }
+      const emailKey=email.replace(/\./g,",");
+      fbRef("activation/accounts/"+emailKey).once("value", function(snap){
+        const v=snap.val();
+        if(!v){ showMsg("الحساب غير موجود","err"); document.getElementById("loginStatus").textContent=""; return; }
+        if(v.passwordHash !== hashPw(pw)){ showMsg("كلمة السر غير صحيحة","err"); document.getElementById("loginStatus").textContent=""; return; }
+        // Cloud account exists and password correct — create local copy & claim device
+        const acc={
+          email, name:v.name||"", passwordHash:v.passwordHash,
+          status: v.status==="approved" ? "approved" : (v.status||"trial"),
+          registeredAt: v.registeredAt||now(),
+          expiresAt: v.expiresAt||0, activatedAt:v.activatedAt||0, paidAmount:v.paidAmount||"",
+          plan:v.plan||null, phone:v.phone||"", activeDeviceId:deviceId(),
+          deviceHistory:v.deviceHistory||[{id:deviceId(),registeredAt:now(),info:deviceInfo()}]
+        };
+        // Push new device claim to cloud
+        state.accounts = state.accounts.filter(a=>a.email!==email);
+        state.accounts.push(acc); state.activeEmail=email; saveState(state);
+        fbRef("activation/accounts/"+emailKey+"/deviceHistory").transaction(function(list){
+          list=list||[];
+          if(!list.find(x=>x.id===deviceId())){ list.push({id:deviceId(),registeredAt:now(),info:deviceInfo()}); }
+          return list;
+        });
+        if(acc.status!=="approved"){
+          // Mark pending-device-change on cloud so admin sees it
+          fbRef("activation/accounts/"+emailKey).update({activeDeviceId:deviceId, status:acc.status==="trial"||!acc.status?"trial":acc.status});
+        }else{
+          // Request device transfer — admin must approve
+          acc.status="device_transfer_pending";
+          fbRef("activation/accounts/"+emailKey).update({
+            activeDeviceId:deviceId,
+            status:"device_transfer_pending",
+            transferRequestedAt:firebase.database.ServerValue.TIMESTAMP,
+            lastSeenDevice:{id:deviceId(),...deviceInfo()}
+          });
+          saveState(state);
+        }
+        listenAccount(acc);
+        document.getElementById("loginStatus").textContent="";
+        showMsg("✅ تم تسجيل الدخول بنجاح","ok"); setTimeout(resume,700);
+      }, function(err){ showMsg("تعذر الاتصال: "+err.message,"err"); document.getElementById("loginStatus").textContent=""; });
+    };
   }
-  function screenOffline(){
-    title.textContent = "تفعيل أوفلاين";
-    subtitle.textContent = "أدخل المفتاح المرتبط بمعرّف جهازك";
-    body.innerHTML = `
-      <div style="background:#fff3;color:0f0;padding:8px 10px;border-radius:8px;font-size:13px;margin-bottom:10px">
-        معرّف الجهاز: <code dir="ltr" style="color:#ffd54f;font-weight:700">${deviceId()}</code>
+
+  function screenTrial(daysLeft){
+    title().textContent="النسخة التجريبية";
+    subtitle().textContent="متبقي لديك "+daysLeft+" يوم من الفترة التجريبية";
+    body().innerHTML=`<div style="background:#ffecb330;border:1px solid #ffd54f55;border-radius:12px;padding:14px;font-size:13px;line-height:1.8">
+      <b>معلومات الحساب:</b><br>
+      <span style="opacity:.85">📧 البريد:</span> <span dir="ltr" style="font-family:monospace">${esc(state.activeEmail||"")}</span><br>
+      <span style="opacity:.85">💻 الجهاز:</span> ${deviceType()}<br>
+      <span style="opacity:.85">🆓 الحالة:</span> تجريبية (${daysLeft} أيام متبقية)
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px">
+      <button id="btnPhone" style="padding:12px;border:none;border-radius:10px;background:#25D366;color:#fff;font-weight:800;cursor:pointer;font-size:14px">💬 طلب تفعيل</button>
+      <button id="btnLogout" style="padding:12px;border:none;border-radius:10px;background:#ffffff22;color:#fff;font-weight:700;cursor:pointer;font-size:14px">خروج</button>
+    </div>
+    <p style="text-align:center;margin-top:14px;font-size:12px;opacity:.75">عند انتهاء الفترة التجريبية ستتم مطالبتك برقم هاتفك للتواصل عبر الواتساب لتفعيل الاشتراك.</p>`;
+    hideMsg();
+    document.getElementById("btnPhone").onclick=screenPhone;
+    document.getElementById("btnLogout").onclick=function(){ state.activeEmail=null; saveState(state); resume(); };
+    showOverlay();
+  }
+
+  function screenExpired(){
+    title().textContent="انتهت الفترة التجريبية";
+    subtitle().textContent="يرجى إدخال رقم هاتفك للتواصل مع الإدارة لتفعيل الاشتراك";
+    body().innerHTML=`<div style="background:#ffcdd240;border:1px solid #ef535055;border-radius:12px;padding:14px;margin-bottom:14px;font-size:13px;line-height:1.9">
+      <b>معلوماتك المسجلة:</b><br>
+      📧 <span dir="ltr" style="font-family:monospace">${esc(state.activeEmail||"")}</span><br>
+      💻 ${deviceType()} (${deviceInfo().os} / ${deviceInfo().browser})<br>
+      🆔 <span class="code" style="font-family:monospace;direction:ltr" dir="ltr">${deviceId()}</span>
+    </div>
+    <div style="display:grid;gap:10px">
+      <label style="font-size:13px;opacity:.9;display:block">📱 رقم الهاتف (واتساب)
+        <input id="fPhone" type="tel" dir="ltr" placeholder="مثال: 07801381381" style="width:100%;margin-top:6px;padding:12px;border-radius:10px;border:2px solid #25D366;background:#00000040;color:#fff;font-size:16px;text-align:center;font-family:monospace;letter-spacing:1px">
+      </label>
+      <button id="btnSendPhone" style="padding:14px;border:none;border-radius:10px;background:#25D366;color:#fff;font-weight:800;cursor:pointer;font-size:16px">📨 إرسال طلب التفعيل</button>
+      <button id="btnLogout2" style="padding:10px;border:none;border-radius:10px;background:#ffffff22;color:#fff;cursor:pointer;font-size:13px">تسجيل خروج</button>
+      <p id="phoneHint" style="font-size:12px;opacity:.8;text-align:center;margin:6px 0 0">سنستخدم رقم الهاتف للتواصل معك عبر واتساب لاستكمال التفعيل.</p>
+    </div>`;
+    hideMsg();
+    document.getElementById("btnLogout2").onclick=function(){ state.activeEmail=null; saveState(state); resume(); };
+    document.getElementById("btnSendPhone").onclick=function(){
+      const p=document.getElementById("fPhone").value.trim();
+      if(!/^[0-9+\s-]{7,20}$/.test(p)){ showMsg("أدخل رقم هاتف صحيح","err"); return; }
+      const acc=currentAccount(); if(!acc) return;
+      acc.phone=p; acc.status="pending";
+      saveState(state);
+      initFB();
+      const emailKey=acc.email.replace(/\./g,",");
+      fbRef("activation/accounts/"+emailKey).update({
+        phone:p, status:"pending", requestedAt:firebase.database.ServerValue.TIMESTAMP, activeDeviceId:deviceId(),
+        lastSeenDevice:{id:deviceId(),...deviceInfo()}
+      });
+      screenPending();
+    };
+    showOverlay();
+  }
+
+  function screenPending(){
+    title().textContent="تم استلام طلبك";
+    subtitle().textContent="جاري التواصل معك عبر الواتساب";
+    body().innerHTML=`<div style="background:#e8f5e940;border:1px solid #66bb6a55;border-radius:14px;padding:18px;text-align:center">
+      <div style="font-size:48px">📞</div>
+      <h3 style="margin:8px 0;color:#a5d6a7">بانتظار مكالمة/رسالة الإدارة</h3>
+      <p style="font-size:13px;line-height:1.9;color:#fff">
+        رقم هاتفك: <span dir="ltr" style="font-family:monospace;background:#00000040;padding:2px 8px;border-radius:6px;color:#80deea">${esc(currentAccount()&&currentAccount().phone||"")}</span><br>
+        سيتواصل معك فريق الدعم قريباً على رقم الواتساب أعلاه لاستكمال التفعيل.
+      </p>
+    </div>
+    <div style="text-align:center;margin-top:14px">
+      <button id="btnLogout3" style="padding:10px 16px;border:none;border-radius:8px;background:#ffffff22;color:#fff;cursor:pointer;font-size:13px">تسجيل خروج</button>
+    </div>`;
+    document.getElementById("btnLogout3").onclick=function(){ state.activeEmail=null; saveState(state); resume(); };
+    showOverlay();
+  }
+
+  function screenDeviceTransferPending(){
+    title().textContent="بانتظار موافقة الأدمن";
+    subtitle().textContent="تم إرسال طلب نقل الاشتراك لهذا الجهاز";
+    body().innerHTML='<div style="background:#e3f2fd40;border:1px solid #42a5f555;border-radius:14px;padding:18px;text-align:center">' +
+      '<div style="font-size:48px">🔄</div>' +
+      '<h3 style="color:#90caf9;margin:8px 0">طلب نقل اشتراك قيد المراجعة</h3>' +
+      '<p style="font-size:13px;line-height:1.9">تم إرسال طلب نقل الاشتراك لهذا الجهاز. بانتظار موافقة الإدارة. الجهاز القديم سيبقى يعمل لحين الموافقة.</p>' +
+      '<div style="margin-top:14px"><button id="btnLogoutX" style="padding:10px 16px;border:none;border-radius:8px;background:#ffffff22;color:#fff;cursor:pointer;font-size:13px">تسجيل خروج</button></div>' +
+      '</div>';
+    var b=document.getElementById("btnLogoutX"); if(b) b.onclick=function(){state.activeEmail=null;saveState(state);resume();};
+    showOverlay();
+  }
+  function screenConflict(){
+    title().textContent="الحساب مُفعل على جهاز آخر";
+    subtitle().textContent="";
+    body().innerHTML=`<div style="background:#ffcdd240;border:1px solid #ef535055;border-radius:14px;padding:16px;text-align:center">
+      <div style="font-size:48px">⚠️</div>
+      <h3 style="color:#ef9a9a">هذا الحساب نشط على جهاز آخر</h3>
+      <p style="font-size:13px;line-height:1.9">
+        تم تفعيل اشتراكك على جهاز آخر. يسمح باستخدام الجهاز الجديد فقط. إذا ضغطت "متابعة على هذا الجهاز" فسيتم تسجيل خروج الجهاز الآخر.
+      </p>
+      <div style="display:grid;gap:8px;margin-top:10px">
+        <button id="btnClaim" style="padding:12px;border:none;border-radius:10px;background:#ef6c00;color:#fff;font-weight:800;cursor:pointer">🔄 متابعة على هذا الجهاز (ينقل الاشتراك)</button>
+        <button id="btnLogout4" style="padding:10px;border:none;border-radius:8px;background:#ffffff22;color:#fff;cursor:pointer">تسجيل خروج</button>
+      </div>
+    </div>`;
+    document.getElementById("btnLogout4").onclick=function(){ state.activeEmail=null; saveState(state); resume(); };
+    document.getElementById("btnClaim").onclick=function(){
+      const acc=currentAccount(); if(!acc) return;
+      initFB();
+      const emailKey=acc.email.replace(/\./g,",");
+      fbRef("activation/accounts/"+emailKey).update({
+        activeDeviceId:deviceId(),
+        status:acc.status==="approved"?"approved":acc.status,
+        requestedTransfer:false,
+        lastSeenDevice:{id:deviceId(),...deviceInfo()}
+      });
+      acc.status="pending"; acc.activeDeviceId=deviceId();
+      saveState(state);
+      screenPending();
+    };
+    showOverlay();
+  }
+
+  function screenOfflineKey(){
+    title().textContent="إدخال مفتاح تفعيل";
+    subtitle().textContent="إذا حصلت على مفتاح تفعيل من الإدارة";
+    body().innerHTML=`<div style="display:grid;gap:10px">
+      <div style="background:#e3f2fd30;padding:8px;border-radius:8px;font-size:12px">
+        معرّف الجهاز: <code dir="ltr" style="font-family:monospace;color:#ffd54f">${deviceId()}</code>
       </div>
       <input id="fKey" placeholder="XXXX-XXXX-XXXX-XXXX" dir="ltr" style="width:100%;padding:12px;text-align:center;letter-spacing:3px;font-size:18px;font-weight:700;border-radius:10px;border:1px solid #ffffff33;background:#00000050;color:#fff;font-family:monospace">
-      <select id="fKeyPlan" style="width:100%;margin-top:10px;padding:10px;border-radius:8px;border:1px solid #ffffff33;background:#00000040;color:#fff;font-size:14px">
+      <select id="fKeyPlan" style="width:100%;padding:10px;border-radius:8px;border:1px solid #ffffff33;background:#00000040;color:#fff;font-size:14px">
         <option value="weekly">أسبوعي</option>
         <option value="monthly" selected>شهري</option>
         <option value="yearly">سنوي</option>
         <option value="permanent">دائم</option>
       </select>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px">
-        <button id="btnActKey" style="padding:12px;border:none;border-radius:10px;background:#388e3c;color:#fff;font-weight:700;cursor:pointer">تفعيل المفتاح</button>
-        <button id="btnBack" style="padding:12px;border:none;border-radius:10px;background:#ffffff22;color:#fff;cursor:pointer">رجوع</button>
-      </div>
-    `;
-    hideMsg();
-    document.getElementById("btnBack").onclick = resume;
-    document.getElementById("btnActKey").onclick = function(){
-      const raw = document.getElementById("fKey").value.trim();
-      const plan = document.getElementById("fKeyPlan").value;
+      <button id="btnActKey" style="padding:12px;border:none;border-radius:10px;background:#388e3c;color:#fff;font-weight:800;cursor:pointer">تفعيل المفتاح</button>
+      <button id="btnBack" style="padding:10px;border:none;border-radius:8px;background:#ffffff22;color:#fff;cursor:pointer">رجوع</button>
+    </div>`;
+    document.getElementById("btnBack").onclick=resume;
+    document.getElementById("btnActKey").onclick=function(){
+      const raw=document.getElementById("fKey").value.trim();
+      const plan=document.getElementById("fKeyPlan").value;
       if(!raw){ showMsg("أدخل المفتاح","err"); return; }
-      const sig = offSig(deviceId(), plan);
-      const inp = raw.replace(/[^0-9a-fA-F]/g,"").toUpperCase().padEnd(16,"0");
-      if(inp === sig){
-        const days = planDays(plan);
-        state.status="active"; state.plan=plan;
-        state.activatedAt=now();
-        state.expiresAt = plan==="permanent"? now()+365*86400000*100 : now()+days*86400000;
-        state.offlineKey = raw;
-        state.activatedBy="offline";
+      function offSig(d,p){const b=SECRET+"|"+d+"|"+p;const h1=hash32(b),h2=hash32(b+"|chk");return (h1+h2).toUpperCase();}
+      const sig=offSig(deviceId(),plan);
+      const inp=raw.replace(/[^0-9a-fA-F]/g,"").toUpperCase().padEnd(16,"0");
+      if(inp===sig){
+        const acc=currentAccount(); if(!acc) return;
+        acc.status="approved"; acc.plan=plan;
+        acc.activatedAt=now();
+        acc.expiresAt=plan==="permanent"?now()+365*86400000*100:now()+planDays(plan)*86400000;
+        acc.offlineKey=raw;
         saveState(state);
-        showMsg("🎉 تم التفعيل بنجاح!","ok");
-        setTimeout(resume, 700);
-      } else {
-        showMsg("المفتاح غير صحيح أو غير مطابق للجهاز/الخطة","err");
-      }
+        initFB(); syncToCloud(acc);
+        showMsg("🎉 تم التفعيل بنجاح!","ok"); setTimeout(resume,700);
+      } else { showMsg("المفتاح غير صحيح","err"); }
     };
   }
 
-  // ===== MAIN FLOW =====
+  function esc(s){return String(s==null?"":s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));}
+
+  function setStatusLabel(txt){
+    const el=document.getElementById("actStatusLabel");
+    if(el) el.textContent=txt;
+  }
+
   function resume(){
-    const v = checkValid();
-    if(v.valid){
-      // If online, quietly refresh expiry if approved
-      if(fbReady){
-        try{
-          const ref = fbDb.ref("activation/requests/"+deviceId());
-          ref.once("value", function(snap){
-            const d = snap.val();
-            if(d && d.status==="approved"){
-              const plan = d.approvedPlan||state.plan||"monthly";
-              if(plan){
-                state.plan = plan;
-                state.expiresAt = plan==="permanent"? state.expiresAt : (state.expiresAt > now()+planDays(plan)*86400000 - 86400000? state.expiresAt : d.expiresAt||now()+planDays(plan)*86400000);
-                state.status="active";
-                saveState(state);
-              }
-            }
-          });
-        }catch(e){}
-      }
+    initFB();
+    const v=canOpenApp();
+    const acc=v.account||null;
+    if(acc && fbReady){
+      listenAccount(acc, function(ev){
+        if(ev.conflict){ showOverlay(); screenConflict(); return; }
+        if(ev.activated){
+          showMsg("🎉 تم تفعيل اشتراكك!","ok"); setTimeout(resume,800);
+        }
+      });
+      syncToCloud(acc);
+    }
+    if(v.ok){
       hideOverlay();
-      if(v.trial){
-        setStatusLabel("تجريبي - "+v.daysLeft+" يوم");
-      } else {
-        setStatusLabel("مفعّلة - "+planLabel(state.plan));
-      }
+      if(v.trial) setStatusLabel("تجريبي - "+v.daysLeft+" يوم");
+      else setStatusLabel("مفعّلة - "+planLabel(acc.plan));
       if(window.__appStarted) return;
-      window.__appStarted = true;
-      setTimeout(function(){ if(window.__realInitApp) window.__realInitApp(); else if(typeof initApp__orig==='function') initApp__orig(); }, 30);
-    } else if(v.reason==="trial_ended"||v.reason==="not_activated"){
-      screenExpired();
-    } else if(v.reason==="expired"){
-      title.textContent = "انتهى الاشتراك";
-      subtitle.textContent = "يرجى تجديد الاشتراك";
-      body.innerHTML = `
-        <div style="background:#ffcdd240;border:1px solid #ef535055;border-radius:12px;padding:14px;margin-bottom:14px;font-size:13px">
-          انتهت صلاحية الاشتراك (${planLabel(state.plan)}). جدد الاشتراك للمتابعة.
-          <br><b>معرّف جهازك:</b><br>
-          <code dir="ltr" style="color:#ff8a80;font-weight:700">${deviceId()}</code>
-        </div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
-          <button id="btnOnline" style="padding:12px;border:none;border-radius:10px;background:#1976d2;color:#fff;font-weight:700;cursor:pointer">تجديد أونلاين</button>
-          <button id="btnOffline" style="padding:12px;border:none;border-radius:10px;background:#388e3c;color:#fff;font-weight:700;cursor:pointer">إدخال مفتاح جديد</button>
-        </div>
-      `;
-      document.getElementById("btnOnline").onclick = screenOnline;
-      document.getElementById("btnOffline").onclick = screenOffline;
+      window.__appStarted=true;
+      setTimeout(function(){ if(window.__realInitApp) window.__realInitApp(); },30);
+      return;
+    }
+    if(v.reason==="login") screenLogin();
+    else if(v.reason==="register") screenRegister();
+    else if(v.reason==="trial_ended"||v.reason==="phone") screenExpired();
+    else if(v.reason==="pending") screenPending();
+    else if(v.reason==="expired") screenExpired();
+    else if(v.reason==="conflict") screenConflict();
+    else if(v.reason==="device_transfer_pending") screenDeviceTransferPending();
+    else if(v.reason==="rejected"){
+      title().textContent="تم رفض الاشتراك";
+      subtitle().textContent="تواصل مع الإدارة";
+      body().innerHTML=`<div style="background:#ffcdd240;padding:14px;border-radius:10px;text-align:center"><p>تم رفض طلب التفعيل لهذا الحساب.</p><button class="ghost" onclick="(function(){var a=document.getElementById('actOverlay');a.style.display='none';if(window.__actResume)window.__actResume();})()" style="margin-top:10px;padding:10px 16px;border:none;border-radius:8px;background:#ffffff22;color:#fff;cursor:pointer">محاولة مرة أخرى</button></div>`;
       showOverlay();
     }
-  }
-  function setStatusLabel(txt){
-    const el = document.getElementById("actStatusLabel");
-    if(el){ el.textContent = txt; }
+    // If no account at all (first launch), show register
+    if(!acc){ screenRegister(); showOverlay(); return; }
   }
 
-  // Expose for inline call from initApp hook
-  window.__actResume = resume;
-  window.__actReady = true;
-  window.__actGetInfo = function(){
-    const v=checkValid();
-    return {valid:v.valid, trial:!!v.trial, plan:state.plan, expiresAt:state.expiresAt, deviceId:deviceId()};
-  };
-  window.__actOpenOffline = screenOffline;
+  window.__actResume=resume;
+  window.__actReady=true;
+  window.__actGetInfo=function(){ const v=canOpenApp(); return {valid:v.ok,trial:!!v.trial,plan:v.account&&v.account.plan,expiresAt:v.account&&v.account.expiresAt,deviceId:deviceId(),email:state.activeEmail}; };
+  window.__actOpenOffline=screenOfflineKey;
 
-  // Boot
-  initFB();
-  if(document.readyState==="loading"){
-    document.addEventListener("DOMContentLoaded", resume);
-  } else {
-    resume();
-  }
+  if(document.readyState==="loading") document.addEventListener("DOMContentLoaded",resume);
+  else setTimeout(resume,30);
 })();
 </script>
-<!-- ============== END ACTIVATION SYSTEM ============== -->
+<!-- ============== END ACTIVATION SYSTEM v2 ============== -->
 
 
 <!-- ===== AUTO UPDATE NOTIFICATION (small icon in topbar) ===== -->
 <script>
 (function(){
-  const APP_VERSION = "1.0.0";
+  const APP_VERSION = "1.1.1";
   const CHECK_EVERY_MINUTES = 30;
   const LS_ACCEPTED = "daragat_accepted_version";
   const LS_SNOOZE   = "daragat_update_snooze";
