@@ -235,6 +235,8 @@ function switchTab(name){
   document.querySelectorAll("nav.tabs button").forEach(b=>b.classList.toggle("active",b.dataset.tab===name));
   document.querySelectorAll(".tab").forEach(t=>t.style.display="none");
   $("tab-"+name).style.display="block";
+  if(name==="settings"){ $("tab-settings").innerHTML=renderSettings(); if($("sFb")){$("sFb").value=cfg.firebase?JSON.stringify(cfg.firebase,null,2):"";} if($("sSec")){$("sSec").value=SECRET;} }
+  if(name==="keygen"){ $("tab-keygen").innerHTML=renderKeygen(); }
 }
 document.addEventListener("click",e=>{
   const b=e.target.closest("nav.tabs button[data-tab]");
@@ -427,10 +429,21 @@ function exportCSV(){
 }
 
 // ====== BOOT ======
+function renderStatic(){
+  // Renders settings and keygen tabs even without Firebase
+  $("tab-keygen").innerHTML=renderKeygen();
+  $("tab-settings").innerHTML=renderSettings();
+  if($("sFb")){ $("sFb").value = cfg.firebase?JSON.stringify(cfg.firebase,null,2):""; }
+  if($("sSec")){ $("sSec").value = SECRET; }
+}
 function goDash(){
   $("loginPage").style.display="none";
   $("dashPage").style.display="block";
+  // render all tabs first so UI shows even without Firebase
+  renderAll();
+  renderStatic();
   if(!initFB()){
+    $("fbStatus").innerHTML = "⚠️ لم يتم ضبط Firebase — افتح <a href=\"#settings\" style=\"color:#ffd54f;font-weight:700;text-decoration:underline\" onclick=\"switchTab(\'settings\');return false\">الإعدادات</a> وأدخل البيانات";
     switchTab("settings");
     return;
   }
