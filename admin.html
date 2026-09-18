@@ -40,6 +40,7 @@ tr.pending{background:#fff3e0}
 tr.approved{background:#e8f5e9}
 tr.rejected{background:#ffebee}
 tr.conflict{background:#e3f2fd}
+tr.reset-pw{background:#f3e5f5}
 .badge-plan{background:#e3f2fd;color:#0d47a1;padding:2px 8px;border-radius:6px;font-size:11px;font-weight:700}
 .badge-status{padding:2px 8px;border-radius:6px;font-size:11px;font-weight:700}
 .s-trial{background:#fff9c4;color:#827717}
@@ -47,6 +48,7 @@ tr.conflict{background:#e3f2fd}
 .s-approved{background:#c8e6c9;color:#1b5e20}
 .s-rejected{background:#ffcdd2;color:#b71c1c}
 .s-conflict{background:#bbdefb;color:#0d47a1}
+.s-reset-pw,.s-password_reset{background:#ce93d8;color:#4a148c}
 .code{font-family:monospace;direction:ltr;background:#f6f8fa;padding:2px 6px;border-radius:4px;font-size:11px}
 .keybox{direction:ltr;text-align:center;letter-spacing:3px;font-family:monospace;font-size:20px;font-weight:800;background:#e8f5e9;color:#1b5e20;padding:12px;border-radius:10px;margin:10px 0}
 .grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
@@ -97,6 +99,7 @@ tr.conflict{background:#e3f2fd}
     <button data-tab="trial">🆓 التجريبي <span class="badge" id="bTrial">0</span></button>
     <button data-tab="pending">📞 يريد التفعيل <span class="badge warn" id="bPen">0</span></button>
     <button data-tab="transfers">🔄 نقل أجهزة <span class="badge warn" id="bTra">0</span></button>
+    <button data-tab="reset">🔑 استعادة كلمة سر <span class="badge" id="bRes" style="background:#6a1b9a">0</span></button>
     <button data-tab="approved">✅ المفعّلة <span class="badge ok" id="bApp">0</span></button>
     <button data-tab="keygen">🔑 مفتاح أوفلاين</button>
     <button data-tab="settings">⚙️ الإعدادات</button>
@@ -106,6 +109,7 @@ tr.conflict{background:#e3f2fd}
     <div id="tab-trial" class="tab" style="display:none"></div>
     <div id="tab-pending" class="tab" style="display:none"></div>
     <div id="tab-transfers" class="tab" style="display:none"></div>
+    <div id="tab-reset" class="tab" style="display:none"></div>
     <div id="tab-approved" class="tab" style="display:none"></div>
     <div id="tab-keygen" class="tab" style="display:none"></div>
     <div id="tab-settings" class="tab" style="display:none"></div>
@@ -135,7 +139,7 @@ function hash32(str){
 function offSig(dev,plan){const b=SECRET+"|"+dev+"|"+plan;const h1=hash32(b),h2=hash32(b+"|chk");return (h1+h2).toUpperCase().match(/.{1,4}/g).join("-");}
 function planDays(p){return{weekly:7,monthly:30,yearly:365,permanent:99999}[p]||0;}
 function planLabel(p){return{weekly:"أسبوعي",monthly:"شهري",yearly:"سنوي",permanent:"دائم"}[p]||p||"-";}
-function statusLabel(s){return{trial:"تجريبي",pending:"ينتظر التفعيل",approved:"مُفعّلة",rejected:"مرفوض",expired:"منتهية"}[s]||s||"-";}
+function statusLabel(s){return{trial:"تجريبي",pending:"ينتظر التفعيل",approved:"مُفعّلة",rejected:"مرفوض",expired:"منتهية",password_reset:"استعادة كلمة سر"}[s]||s||"-";}
 function fmtDate(ts){if(!ts)return"-";try{return new Date(ts).toLocaleString("ar-IQ");}catch(e){return String(ts);}}
 function $(id){return document.getElementById(id);}
 function stageLabel(st){return {elementary:"ابتدائية",intermediate:"متوسطة",prep:"إعدادية"}[st]||st||"-";}
@@ -223,6 +227,26 @@ function approveTransfer(email){
     });
   });
 }
+function resetPassword(email){
+  if(!confirm("إرسال رمز إعادة تعيين كلمة السر للزبون؟\nسيتم توليد رمز من 6 أرقام وفتح واتساب بإرساله.")) return;
+  const key = String(Math.floor(100000+Math.random()*900000));
+  const ref = firebase.database().ref("activation/accounts/"+emailKey(email));
+  ref.update({tempResetKey:key, passwordResetRequestedAt:firebase.database.ServerValue.TIMESTAMP}).then(function(){
+    const msg=encodeURIComponent("🔐 رمز إعادة تعيين كلمة السر لتطبيق الاداره المدرسيه:\nالرمز: "+key+"\n\nافتح التطبيق ⬅️ هل نسيت كلمة السر؟ وأدخل الرمز ثم اختر كلمة سر جديدة.");
+    ref.once("value").then(function(snap){
+      const v=snap.val()||{};
+      const phone=(v.phone||"").replace(/[^0-9]/g,"");
+      if(phone){
+        let wa="964"+phone.slice(-9);
+        window.open("https://wa.me/"+wa+"?text="+msg,"_blank");
+      }else{
+        prompt("لم يتم العثور على رقم هاتف — الرمز (أرسله يدوياً للزبون):",key);
+      }
+      loadData();
+    });
+  }).catch(function(e){alert("خطأ: "+e.message);});
+}
+
 function rejectTransfer(email){
   if(!confirm("رفض طلب النقل؟ (سيبقى الاشتراك على الجهاز القديم)"))return;
   const k=email.replace(/\./g,",");
@@ -265,12 +289,13 @@ function renderAll(){
     const ta=a.registeredAt||0,tb=b.registeredAt||0; return tb-ta;
   });
   const today=new Date();today.setHours(0,0,0,0);const todayMs=today.getTime();
-  const all=[],trial=[],pending=[],approved=[],transfers=[];
+  const all=[],trial=[],pending=[],approved=[],transfers=[],resets=[];
   for(const r of recs){
     all.push(r);
     if(r.status==="approved") approved.push(r);
     else if(r.status==="device_transfer_pending") transfers.push(r);
     else if(r.status==="pending") pending.push(r);
+    else if(r.passwordResetRequestedAt) resets.push(r);
     else trial.push(r);
   }
   $("bAll").textContent=all.length;
@@ -278,11 +303,13 @@ function renderAll(){
   $("bPen").textContent=pending.length;
   $("bApp").textContent=approved.length;
   $("bTra").textContent=transfers.length;
+  $("bRes").textContent=resets.length;
   $("tab-all").innerHTML=renderTable(all,"كل الحسابات");
   $("tab-trial").innerHTML=renderTable(trial,"فترة تجريبية");
   $("tab-pending").innerHTML=renderTable(pending,"طلبات التفعيل (بانتظار التواصل)");
   $("tab-approved").innerHTML=renderTable(approved,"الحسابات المُفعّلة");
   $("tab-transfers").innerHTML=renderTransfersTable(transfers,"طلبات نقل الجهاز");
+  $("tab-reset").innerHTML=renderTable(resets,"🔑 طلبات استعادة كلمة السر");
   document.querySelectorAll("input[data-paid-for]").forEach(inp=>{
     inp.addEventListener("change",()=>setPaid(inp.dataset.paidFor,inp.value));
   });
@@ -325,6 +352,7 @@ function renderTable(list,title){
     if(r.status==="approved") cls="approved";
     else if(r.status==="pending") cls="pending";
     else if(r.status==="device_transfer_pending") cls="conflict";
+    else if(r.passwordResetRequestedAt) cls="reset-pw";
     else if(r.status==="rejected") cls="rejected";
     const expLabel = r.approvedPlan&&r.approvedPlan!=="permanent"&&r.expiresAt?fmtDate(r.expiresAt):(r.plan==="permanent"?"دائم":"—");
     const isExp = r.status==="approved" && r.plan!=="permanent" && r.expiresAt && r.expiresAt<Date.now();
@@ -352,6 +380,7 @@ function renderTable(list,title){
         ${r.status==="approved"?`<select id="ext-${esc(r.emailKey)}" style="width:auto;display:inline-block;padding:3px;font-size:11px"><option value="weekly">أسبوعي</option><option value="monthly">شهري</option><option value="yearly">سنوي</option><option value="permanent">دائم</option></select>
         <button class="warn" onclick="approve('${esc(r.email).replace(/'/g,"\\'")}',document.getElementById('ext-${esc(r.emailKey)}').value,document.getElementById('pa-${esc(r.emailKey)}').value)">↻ تجديد</button>`:""}
         ${r.status!=="rejected"?` <button class="ghost" onclick="reject('${esc(r.email).replace(/'/g,"\\'")}')">رفض</button>`:""}
+        <button class="warn" onclick="resetPassword('${esc(r.email).replace(/'/g,"\\'")}')">🔑 إعادة كلمة السر</button>
         <button class="danger" onclick="del('${esc(r.email).replace(/'/g,"\\'")}')">🗑</button>
       </td>
     </tr>`;

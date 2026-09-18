@@ -5374,7 +5374,15 @@ if (typeof module !== 'undefined' && module.exports) { module.exports = QRCodeLi
 <!-- Firebase SDK for activation system -->
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
-<style>@keyframes actPulseS{0%,100%{box-shadow:0 1px 3px rgba(198,40,40,.4),0 0 0 0 rgba(239,108,0,.5)}50%{box-shadow:0 1px 6px rgba(198,40,40,.65),0 0 0 5px rgba(239,108,0,0)}}</style></head>
+<style>@keyframes actPulseS{0%,100%{box-shadow:0 1px 3px rgba(198,40,40,.4),0 0 0 0 rgba(239,108,0,.5)}50%{box-shadow:0 1px 6px rgba(198,40,40,.65),0 0 0 5px rgba(239,108,0,0)}}</style><link rel="manifest" href="manifest.json">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="الاداره المدرسيه">
+<link rel="apple-touch-icon" href="icon-192.png">
+<meta name="theme-color" content="#571127">
+<script>if('serviceWorker' in navigator){window.addEventListener('load',function(){navigator.serviceWorker.register('sw.js').catch(function(){});});}</script>
+</head>
 <body>
 
 
@@ -16025,6 +16033,7 @@ if(document.readyState==='loading'){
       return {ok:false, reason:"trial_ended", account:acc};
     }
     if(acc.status==="device_conflict") return {ok:false, reason:"conflict", account:acc};
+    if(acc.tempResetKey){ return {ok:false, reason:"password_reset", account:acc}; }
     if(acc.status==="rejected") return {ok:false, reason:"rejected", account:acc};
     return {ok:false, reason:"phone", account:acc};
   }
@@ -16157,10 +16166,14 @@ if(document.readyState==='loading'){
       <div style="text-align:center;font-size:13px">
         لا تملك حساباً؟ <a href="#" id="toReg" style="color:#80d8ff;text-decoration:none;font-weight:700">إنشاء حساب جديد</a>
       </div>
+      <div style="text-align:center;font-size:13px">
+        <a href="#" id="toForgot" style="color:#ffab91;text-decoration:none;font-weight:700">🔑 هل نسيت كلمة السر؟</a>
+      </div>
       <div id="loginStatus" style="font-size:12px;text-align:center;opacity:.8;margin-top:6px"></div>
     </div>`;
     hideMsg();
     document.getElementById("toReg").onclick=function(e){e.preventDefault();screenRegister();};
+    document.getElementById("toForgot").onclick=function(e){e.preventDefault();screenForgotPassword();};
     document.getElementById("lBtn").onclick=function(){
       const email=normEmail(document.getElementById("lEmail").value);
       const pw=document.getElementById("lPass").value;
@@ -16241,6 +16254,101 @@ if(document.readyState==='loading'){
         document.getElementById("loginStatus").textContent="";
         showMsg("✅ تم تسجيل الدخول بنجاح","ok"); setTimeout(resume,700);
       }, function(err){ showMsg("تعذر الاتصال: "+err.message,"err"); document.getElementById("loginStatus").textContent=""; });
+    };
+  }
+
+
+  function screenForgotPassword(){
+    title().textContent="استعادة كلمة السر";
+    subtitle().textContent="أدخل بريدك ورقم هاتفك المسجّل";
+    body().innerHTML=`<div style="display:grid;gap:10px">
+      <div style="background:#fff3e030;border:1px solid #ffd54f55;border-radius:10px;padding:10px;font-size:12.5px;color:#ffe082;line-height:1.7">
+        🔑 أدخل بريدك الإلكتروني ورقم هاتفك المسجّل في الحساب، وسيتم فتح واتساب للإدارة لطلب إرسال رمز التفعيل.
+      </div>
+      <input id="fpEmail" type="email" placeholder="البريد الإلكتروني" dir="ltr" style="padding:10px 12px;border-radius:8px;border:1px solid #ffffff33;background:#00000040;color:#fff;font-size:14px;text-align:left">
+      <input id="fpPhone" type="tel" placeholder="رقم الهاتف (مثال: 07801381381)" dir="ltr" style="padding:10px 12px;border-radius:8px;border:1px solid #ffffff33;background:#00000040;color:#fff;font-size:14px;text-align:left">
+      <button id="fpBtn" style="margin-top:6px;padding:12px;border:none;border-radius:10px;background:#ef6c00;color:#fff;font-weight:800;cursor:pointer;font-size:15px">📲 إرسال طلب الاستعادة</button>
+      <button id="fpBack" style="padding:10px;border:none;border-radius:10px;background:#ffffff22;color:#fff;font-weight:700;cursor:pointer">رجوع لتسجيل الدخول</button>
+      <div id="fpStatus" style="font-size:12px;text-align:center;opacity:.85;margin-top:4px"></div>
+    </div>`;
+    hideMsg();
+    if(state.activeEmail){document.getElementById("fpEmail").value=state.activeEmail;document.getElementById("fpEmail").readOnly=true;}
+    document.getElementById("fpBack").onclick=function(){screenLogin();};
+    document.getElementById("fpBtn").onclick=function(){
+      const email=normEmail(document.getElementById("fpEmail").value);
+      const phone=(document.getElementById("fpPhone").value||"").replace(/[^0-9]/g,"");
+      if(!email){ showMsg("أدخل البريد الإلكتروني","err"); return; }
+      if(phone.length<7){ showMsg("أدخل رقم الهاتف المسجّل","err"); return; }
+      initFB();
+      if(!fbReady){ showMsg("لا يوجد اتصال بالإنترنت","err"); return; }
+      const ekey=email.replace(/\./g,",");
+      document.getElementById("fpStatus").textContent="جاري التحقق…";
+      fbRef("activation/accounts/"+ekey).once("value",function(snap){
+        const v=snap.val();
+        if(!v){ document.getElementById("fpStatus").textContent=""; showMsg("الحساب غير موجود","err"); return; }
+        const regPhone=(v.phone||"").replace(/[^0-9]/g,"");
+        if(regPhone.slice(-7)!==phone.slice(-7)){
+          document.getElementById("fpStatus").textContent="";
+          showMsg("رقم الهاتف لا يطابق الحساب","err"); return;
+        }
+        // Mark request
+        fbRef("activation/accounts/"+ekey).update({passwordResetRequestedAt:firebase.database.ServerValue.TIMESTAMP},function(err){
+          if(err){ document.getElementById("fpStatus").textContent=""; showMsg("خطأ: "+err.message,"err"); return; }
+          const msg=encodeURIComponent("🔑 طلب استعادة كلمة سر في تطبيق الاداره المدرسيه\nالبريد: "+email+"\nالهاتف: "+phone+"\nالاسم: "+(v.name||"غير معروف"));
+          window.open("https://wa.me/9647801381381?text="+msg,"_blank");
+          document.getElementById("fpStatus").textContent="✅ تم فتح واتساب للإدارة — انتظر الرمز (6 أرقام) ثم استخدم شاشة إدخال الرمز.";
+        });
+      },function(err){ document.getElementById("fpStatus").textContent=""; showMsg("خطأ: "+err.message,"err"); });
+    };
+  }
+
+  function screenResetPassword(){
+    title().textContent="إعادة تعيين كلمة السر";
+    subtitle().textContent="أدخل الرمز المُرسَل واختر كلمة سر جديدة";
+    body().innerHTML=`<div style="display:grid;gap:10px">
+      <div style="background:#e3f2fd30;border:1px solid #90caf955;border-radius:10px;padding:10px;font-size:12.5px;color:#bbdefb;line-height:1.7">
+        🔐 أدخل الرمز المكوّن من 6 أرقام الذي أرسلته الإدارة، ثم اختر كلمة سر جديدة (4 أحرف على الأقل).
+      </div>
+      <input id="rpEmail" type="email" placeholder="البريد الإلكتروني" dir="ltr" style="padding:10px 12px;border-radius:8px;border:1px solid #ffffff33;background:#00000040;color:#fff;font-size:14px;text-align:left">
+      <input id="rpKey" type="text" inputmode="numeric" maxlength="6" placeholder="الرمز المكون من 6 أرقام" dir="ltr" style="padding:10px 12px;border-radius:8px;border:1px solid #ffffff33;background:#00000040;color:#fff;font-size:16px;text-align:center;letter-spacing:8px">
+      <input id="rpPass" type="password" placeholder="كلمة السر الجديدة (4 أحرف+)" dir="ltr" style="padding:10px 12px;border-radius:8px;border:1px solid #ffffff33;background:#00000040;color:#fff;font-size:14px;text-align:left">
+      <input id="rpPass2" type="password" placeholder="تأكيد كلمة السر" dir="ltr" style="padding:10px 12px;border-radius:8px;border:1px solid #ffffff33;background:#00000040;color:#fff;font-size:14px;text-align:left">
+      <button id="rpBtn" style="margin-top:6px;padding:12px;border:none;border-radius:10px;background:#388e3c;color:#fff;font-weight:800;cursor:pointer;font-size:15px">✅ حفظ كلمة السر الجديدة</button>
+      <button id="rpBack" style="padding:10px;border:none;border-radius:10px;background:#ffffff22;color:#fff;font-weight:700;cursor:pointer">رجوع لتسجيل الدخول</button>
+      <div id="rpStatus" style="font-size:12px;text-align:center;opacity:.85;margin-top:4px"></div>
+    </div>`;
+    hideMsg();
+    if(state.activeEmail){document.getElementById("rpEmail").value=state.activeEmail;document.getElementById("rpEmail").readOnly=true;}
+    document.getElementById("rpBack").onclick=function(){screenLogin();};
+    document.getElementById("rpBtn").onclick=function(){
+      const email=normEmail(document.getElementById("rpEmail").value);
+      const key=(document.getElementById("rpKey").value||"").trim();
+      const p1=document.getElementById("rpPass").value;
+      const p2=document.getElementById("rpPass2").value;
+      if(!email){ showMsg("أدخل البريد","err"); return; }
+      if(!/^[0-9]{6}$/.test(key)){ showMsg("الرمز يجب أن يكون 6 أرقام","err"); return; }
+      if(p1.length<4){ showMsg("كلمة السر يجب أن تكون 4 أحرف على الأقل","err"); return; }
+      if(p1!==p2){ showMsg("كلمتا السر غير متطابقتين","err"); return; }
+      initFB();
+      if(!fbReady){ showMsg("لا يوجد اتصال بالإنترنت","err"); return; }
+      const ekey=email.replace(/\./g,",");
+      document.getElementById("rpStatus").textContent="جاري التحقق…";
+      fbRef("activation/accounts/"+ekey).once("value",function(snap){
+        const v=snap.val();
+        if(!v){ document.getElementById("rpStatus").textContent=""; showMsg("الحساب غير موجود","err"); return; }
+        if(String(v.tempResetKey||"")!==key){ document.getElementById("rpStatus").textContent=""; showMsg("الرمز غير صحيح","err"); return; }
+        // Update passwordHash and clear reset fields
+        const newHash=hashPw(p1);
+        const updates={passwordHash:newHash, tempResetKey:null, passwordResetRequestedAt:null};
+        fbRef("activation/accounts/"+ekey).update(updates,function(err){
+          if(err){ document.getElementById("rpStatus").textContent=""; showMsg("خطأ: "+err.message,"err"); return; }
+          // Update local copy if exists
+          const local=accountFind(email);
+          if(local){ local.passwordHash=newHash; saveState(state); }
+          document.getElementById("rpStatus").textContent="✅ تم تحديث كلمة السر — يمكنك الآن تسجيل الدخول";
+          setTimeout(function(){screenLogin();},1200);
+        });
+      },function(err){ document.getElementById("rpStatus").textContent=""; showMsg("خطأ: "+err.message,"err"); });
     };
   }
 
@@ -16590,6 +16698,7 @@ if(document.readyState==='loading'){
       return;
     }
     if(v.reason==="login") screenLogin();
+    else if(v.reason==="password_reset"){ if(v.account&&v.account.email) state.activeEmail=v.account.email; screenResetPassword(); }
     else if(v.reason==="register") screenRegister();
     else if(v.reason==="trial_ended"||v.reason==="phone") screenExpired();
     else if(v.reason==="pending") screenPending();
@@ -16621,7 +16730,7 @@ if(document.readyState==='loading'){
 <!-- ===== AUTO UPDATE NOTIFICATION (small icon in topbar) ===== -->
 <script>
 (function(){
-  const APP_VERSION = "1.2.9";
+  const APP_VERSION = "1.3.2";
   const CHECK_EVERY_MINUTES = 30;
   const LS_ACCEPTED = "daragat_accepted_version";
   const LS_SNOOZE   = "daragat_update_snooze";
