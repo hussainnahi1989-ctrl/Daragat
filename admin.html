@@ -111,6 +111,15 @@
 const LS_CFG="daragat_admin_cfg";
 const LS_SES="daragat_admin_ses";
 let db=null, SECRET="HSM-DARAGAT-2026-V1";
+const DEFAULT_FIREBASE={
+  apiKey:"AIzaSyAyPSUK_8kOGGCBc2fy1pPNSOzBtwenMi0",
+  authDomain:"daragat.firebaseapp.com",
+  databaseURL:"https://daragat-default-rtdb.europe-west1.firebasedatabase.app",
+  projectId:"daragat",
+  storageBucket:"daragat.firebasestorage.app",
+  messagingSenderId:"123733341266",
+  appId:"1:123733341266:web:fce19012a0781f96b29b8b"
+};
 
 // Same hash functions as client
 function hash32(str){
@@ -132,10 +141,22 @@ function esc(s){ return (s==null?"":String(s)).replace(/[&<>"']/g,c=>({"&":"&amp
 function loadCfg(){
   try{return JSON.parse(localStorage.getItem(LS_CFG)||"null")||{};}catch(e){return {};}
 }
-function saveCfgObj(c){localStorage.setItem(LS_CFG,JSON.stringify(c));}
+function saveCfgObj(c){
+  try{ localStorage.setItem(LS_CFG,JSON.stringify(c)); }
+  catch(e){
+    try{
+      const keep=[LS_CFG,LS_SES];
+      const keys=Object.keys(localStorage).filter(k=>!keep.includes(k));
+      keys.forEach(k=>{try{localStorage.removeItem(k);}catch(_){}});
+      localStorage.setItem(LS_CFG,JSON.stringify(c));
+    }catch(e2){ alert("تعذر الحفظ: امسح بيانات الموقع من إعدادات المتصفح ثم أعد المحاولة."); throw e2; }
+  }
+}
 let cfg = loadCfg();
-if(cfg.secret) SECRET=cfg.secret;
-let adminHash = cfg.adminHash || "65a4456f"; // default: hsm@2026
+if(!cfg.firebase) cfg.firebase = {...DEFAULT_FIREBASE};
+else { for(const k in DEFAULT_FIREBASE){ if(!cfg.firebase[k]) cfg.firebase[k]=DEFAULT_FIREBASE[k]; } }
+if(cfg.secret) SECRET=cfg.secret; else SECRET="HSM-DARAGAT-2026-V1";
+let adminHash = cfg.adminHash || "65a4456f";
 
 function showCfg(e){
   if(e) e.preventDefault();
@@ -393,7 +414,7 @@ function renderSettings(){
     <h3>⚙️ الإعدادات</h3>
     <p class="muted">الإعدادات محفوظة في متصفحك فقط (لا تُرفع إلى أي خادم).</p>
     <label>تهيئة Firebase (كائن JSON):
-      <textarea id="sFb" rows="8">${esc(cfg.firebase?JSON.stringify(cfg.firebase,null,2):"")}</textarea>
+      <textarea id="sFb" dir="ltr" rows="8" style="font-family:monospace;font-size:12px;text-align:left;direction:ltr!important">${esc(cfg.firebase?JSON.stringify(cfg.firebase,null,2):"")}</textarea>
     </label>
     <label>تغيير كلمة سر الأدمن:
       <input type="password" id="sPass" placeholder="اتركها فارغة للإبقاء" />
@@ -407,8 +428,11 @@ function renderSettings(){
 }
 function saveSettings(){
   try{
-    const t=$("sFb").value.trim();
-    const fb = t?JSON.parse(t):cfg.firebase;
+    const t=($("sFb")? ($("sFb").value||"").trim() : "");
+    let fb = cfg.firebase;
+    if(t){
+      try{ fb=JSON.parse(t); }catch(pe){ alert("JSON غير صحيح. تأكد من لصق الكود بشكل سليم بدون أحرف زائدة."); return; }
+    }
     cfg.firebase=fb;
     const np=$("sPass").value;
     if(np&&np.length>=4){cfg.adminHash=hash32(np);adminHash=cfg.adminHash;}
