@@ -16138,7 +16138,7 @@ if(document.readyState==='loading'){
       const d=deviceInfo();
       const acc = {
         email, name, passwordHash:hashPw(pw),
-        status:"trial", registeredAt:now(), activeDeviceId:deviceId(),
+        status:"trial", registeredAt:now(), expiresAt:now()+3*86400000, activeDeviceId:deviceId(),
         deviceHistory:[{id:deviceId(), registeredAt:now(), info:d}]
       };
       state.accounts.push(acc); state.activeEmail=email; saveState(state);
@@ -16467,6 +16467,27 @@ if(document.readyState==='loading'){
   function setStatusLabel(txt){
     const el=document.getElementById("actStatusLabel");
     if(el) el.textContent=txt;
+    try{
+      const btn=document.getElementById("btnActivateTop");
+      if(!btn) return;
+      const acc=currentAccount();
+      const showEarly = !!(acc && acc.status==="trial" && !acc.phone);
+      btn.style.display = showEarly ? "inline-block" : "none";
+    }catch(e){}
+  }
+
+  function triggerEarlyActivation(){
+    const acc=currentAccount();
+    if(!acc) return;
+    // Repair legacy accounts missing expiresAt
+    if(!acc.expiresAt||acc.expiresAt<Date.now()){
+      const base=acc.registeredAt||Date.now();
+      acc.expiresAt=Math.max(base+3*86400000, Date.now()+3600000);
+      saveState(state);
+      try{ fbRef("activation/accounts/"+acc.email.replace(/\./g,",")).update({expiresAt:acc.expiresAt}); }catch(e){}
+    }
+    showOverlay();
+    screenExpired(true);
   }
 
   function resume(){
@@ -16524,7 +16545,7 @@ if(document.readyState==='loading'){
 <!-- ===== AUTO UPDATE NOTIFICATION (small icon in topbar) ===== -->
 <script>
 (function(){
-  const APP_VERSION = "1.2.2";
+  const APP_VERSION = "1.2.3";
   const CHECK_EVERY_MINUTES = 30;
   const LS_ACCEPTED = "daragat_accepted_version";
   const LS_SNOOZE   = "daragat_update_snooze";
