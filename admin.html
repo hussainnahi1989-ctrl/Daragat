@@ -442,8 +442,18 @@ document.addEventListener("click",e=>{const b=e.target.closest("nav.tabs button[
 function deviceBadges(r){
   const d=r.lastSeenDevice||{};
   let h="";
-  if(d.type)h+='<span class="devicetag">'+esc(d.type)+'</span>';
-  if(d.os)h+='<span class="devicetag">'+esc(d.os)+'</span>';
+  const type=d.type||"?";
+  const os=d.os||"";
+  const br=d.browser||"";
+  const bv=d.browserVersion||"";
+  const brand=d.brand||"";
+  const sc=d.screen||"";
+  const label = d.label || ((brand?brand+" ":"")+type+" - "+os+(br?" / "+br+(bv?" "+bv.split(".")[0]:""):""));
+  h+='<span class="devicetag" title="'+esc(label)+(sc?" — "+sc:"")+'">📱 '+esc(type)+'</span>';
+  if(brand)h+='<span class="devicetag" title="'+esc(os)+'">🏷 '+esc(brand)+'</span>';
+  if(os)h+='<span class="devicetag">💿 '+esc(os)+'</span>';
+  if(br)h+='<span class="devicetag">🌐 '+esc(br)+(bv?" "+esc(bv.split(".")[0]):"")+'</span>';
+  if(sc)h+='<span class="devicetag" title="الشاشة">🖥 '+esc(sc)+'</span>';
   return h;
 }
 function lastDevId(r){return r.lastSeenDevice&&r.lastSeenDevice.id?r.lastSeenDevice.id:"-";}
@@ -543,10 +553,11 @@ function renderTable(list,title){
   };
 
   /* ---------- Desktop table ---------- */
-  const tblRows=list.map(r=>{
+  const tblRows=list.map((r,i)=>{
     const cls=statusClass(r);
     const email=esc(r.email);
     const emEsc=email.replace(/'/g,"\\'");
+    const pw = r.password || "";
     const schoolInfo=[esc(r.schoolStage?stageLabel(r.schoolStage):""),esc(r.schoolGender?genderLabel(r.schoolGender):""),esc(r.schoolName||"")].filter(Boolean).join(" - ");
     const phone=normIraqPhone(r.phone||"");
     const isApproved=r.status==="approved";
@@ -578,14 +589,21 @@ function renderTable(list,title){
        </select>
        <button class="btn warn small" onclick="approve('${emEsc}',document.getElementById('ext-${esc(r.emailKey)}').value,document.getElementById('pa-${esc(r.emailKey)}').value)">↻ تجديد</button>`:"";
 
+    const pwCell = pw
+      ? `<span class="code" dir="ltr" onclick="navigator.clipboard&&navigator.clipboard.writeText('${esc(pw).replace(/'/g,"\\'")}').then(()=>this.textContent='✅ تم النسخ',()=>{});this.style.background='#c8e6c9';setTimeout(()=>{this.style.background='#f6f8fa';this.textContent='${esc(pw).replace(/'/g,"\\'")}'},1200)" style="cursor:pointer" title="اضغط للنسخ">${esc(pw)}</span>`
+      : '<span class="muted" style="font-size:11px">غير محفوظ</span>';
+
     return `<tr class="${cls}">
+      <td style="text-align:center;font-weight:800;color:#888">${i+1}</td>
       <td><span class="code">${email}</span></td>
-      <td><div style="font-weight:700">${esc(r.name||"-")}</div><div style="font-size:10.5px;color:#777">${schoolInfo}</div></td>
+      <td>${pwCell}</td>
+      <td><div style="font-weight:700">${esc(r.name||"-")}</div><div style="font-size:10.5px;color:#777">${schoolInfo}</div>${r.principalName?`<div style="font-size:10px;color:#999">👤 ${esc(r.principalName)}</div>`:""}</td>
       <td>
         <div class="phone-input">
           ${phone?`<a href="${waLink(phone)}" target="_blank" class="btn whatsapp small">💬 ${esc(phone)}</a>`:'<span class="muted">—</span>'}
         </div>
         <input type="tel" data-phone-for="${email}" value="${esc(phone)}" placeholder="07xxxxxxxxx" class="inline" dir="ltr" style="width:120px" maxlength="11" />
+        ${!phone?'<div style="font-size:10px;color:#c62828;font-weight:700;margin-top:2px">⚠️ لم يُدخل الهاتف</div>':""}
       </td>
       <td>${deviceBadges(r)}<div style="margin-top:3px"><span class="code" style="font-size:10px">${esc(lastDevId(r).slice(0,10))}…</span></div></td>
       <td style="white-space:nowrap;font-size:11px">${fmtTime(r.registeredAt)}</td>
@@ -603,7 +621,7 @@ function renderTable(list,title){
   }).join("");
 
   /* ---------- Mobile cards ---------- */
-  const cards=list.map(r=>{
+  const cards=list.map((r,i)=>{
     const cls=statusClass(r);
     const email=esc(r.email);
     const emEsc=email.replace(/'/g,"\\'");
@@ -611,6 +629,7 @@ function renderTable(list,title){
     const phone=normIraqPhone(r.phone||"");
     const isApproved=r.status==="approved";
     const isReset=r.passwordResetRequestedAt;
+    const pw = r.password || "";
 
     let planBlock;
     if(isApproved){
@@ -627,13 +646,15 @@ function renderTable(list,title){
 
     return `<div class="acct-card ${cls}">
       <div class="top">
-        <div><div class="name">${esc(r.name||"-")}</div><span class="email">${email}</span></div>
+        <div><div class="name">#${i+1} - ${esc(r.name||"-")}</div><span class="email">${email}</span></div>
         <span class="badge-status s-${r.status||"trial"}">${statusLabel(r.status)}</span>
       </div>
       ${schoolInfo?`<div style="font-size:11.5px;color:#555;margin-bottom:4px">🏫 ${schoolInfo}</div>`:""}
+      ${r.principalName?`<div style="font-size:11px;color:#666">👤 ${esc(r.principalName)}</div>`:""}
       <div class="meta">
+        <b>كلمة السر:</b><span><span class="code" dir="ltr" onclick="navigator.clipboard&&navigator.clipboard.writeText('${esc(pw).replace(/'/g,"\\'")}')" style="cursor:pointer;background:#fff3e0;color:#bf360c">${pw?esc(pw):'<span class="muted" style="color:#999">غير محفوظ</span>'}</span> <small style="color:#666">اضغط للنسخ</small></span>
         <b>الهاتف:</b><span class="phone-input">
-          ${phone?`<a href="${waLink(phone)}" target="_blank" class="btn whatsapp small">💬 ${esc(phone)}</a>`:'<span class="muted">—</span>'}
+          ${phone?`<a href="${waLink(phone)}" target="_blank" class="btn whatsapp small">💬 ${esc(phone)}</a>`:'<span class="muted" style="color:#c62828;font-weight:700">⚠️ لم يُدخل</span>'}
           <input type="tel" data-phone-for="${email}" value="${esc(phone)}" placeholder="07xxxxxxxxx" class="inline" dir="ltr" style="width:120px" maxlength="11" />
         </span>
         <b>الجهاز:</b><span>${deviceBadges(r)}</span>
@@ -659,9 +680,9 @@ function renderTable(list,title){
       <div class="grow"></div>
       <button class="btn ghost small" onclick="exportCSV()">⬇ CSV</button>
     </div>
-    <div class="tbl-wrap"><table>
+      <div class="tbl-wrap"><table>
       <thead><tr>
-        <th>البريد</th><th>الاسم / المدرسة</th><th>الهاتف</th><th>الجهاز</th><th>التسجيل</th><th>الحالة</th><th>الخطة</th><th>المبلغ / تجديد</th><th>إجراءات</th>
+        <th>#</th><th>البريد</th><th>كلمة السر</th><th>الاسم / المدرسة</th><th>الهاتف</th><th>الجهاز</th><th>التسجيل</th><th>الحالة</th><th>الخطة</th><th>المبلغ / تجديد</th><th>إجراءات</th>
       </tr></thead>
       <tbody>${tblRows}</tbody>
     </table></div>
@@ -735,14 +756,16 @@ function saveSettings(){
 
 function exportCSV(){
   const recs=Object.entries(allAccounts).map(([k,v])=>({emailKey:k,email:(v.email||k.replace(/,/g,".")),...v}));
-  const rows=[["email","name","schoolStage","schoolGender","schoolName","phone","device_type","device_os","device_browser","device_id","status","plan","registeredAt","approvedAt","expiresAt","paidAmount"]];
-  recs.forEach(r=>rows.push([
-    r.email,r.name||"",stageLabel(r.schoolStage),genderLabel(r.schoolGender),r.schoolName||"",
-    normIraqPhone(r.phone||""),
-    r.lastSeenDevice&&r.lastSeenDevice.type||"",r.lastSeenDevice&&r.lastSeenDevice.os||"",
-    r.lastSeenDevice&&r.lastSeenDevice.browser||"",r.lastSeenDevice&&r.lastSeenDevice.id||"",
-    r.status||"trial",r.plan||"",r.registeredAt||"",r.approvedAt||"",r.expiresAt||"",r.paidAmount||""
-  ]));
+  const rows=[["#","email","password","name","schoolName","schoolStage","schoolGender","principalName","phone","device_type","device_brand","device_os","device_browser","device_browser_version","device_screen","device_id","status","plan","registeredAt","approvedAt","expiresAt","paidAmount"]];
+  recs.forEach((r,i)=>{
+    const d=r.lastSeenDevice||{};
+    rows.push([
+      i+1,r.email,r.password||"",r.name||"",r.schoolName||"",stageLabel(r.schoolStage),genderLabel(r.schoolGender),r.principalName||"",
+      normIraqPhone(r.phone||""),
+      d.type||"",d.brand||"",d.os||"",d.browser||"",d.browserVersion||"",d.screen||"",d.id||"",
+      r.status||"trial",r.plan||"",r.registeredAt||"",r.approvedAt||"",r.expiresAt||"",r.paidAmount||""
+    ]);
+  });
   const csv=rows.map(r=>r.map(c=>'"'+String(c).replace(/"/g,'""')+'"').join(",")).join("\n");
   const blob=new Blob(["\ufeff"+csv],{type:"text/csv;charset=utf-8"});
   const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="daragat-accounts-"+new Date().toISOString().slice(0,10)+".csv";a.click();
