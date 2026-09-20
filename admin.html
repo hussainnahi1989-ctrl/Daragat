@@ -102,6 +102,7 @@ input.inline,select.inline{width:auto;display:inline-block;padding:4px 8px;font-
 .s-rejected{background:#ffcdd2;color:#b71c1c}
 .s-conflict{background:#bbdefb;color:#0d47a1}
 .s-reset-pw,.s-password_reset{background:#ce93d8;color:#4a148c}
+.s-suspended,.s-disabled,.s-deleted,.s-cancelled{background:#ffcdd2;color:#7f0000}
 .badge-plan{background:#e3f2fd;color:#0d47a1;padding:2px 8px;border-radius:20px;font-size:10.5px;font-weight:800;display:inline-block;margin:1px}
 .code{font-family:monospace;direction:ltr;background:#f6f8fa;padding:2px 6px;border-radius:4px;font-size:11px}
 .keybox{direction:ltr;text-align:center;letter-spacing:3px;font-family:monospace;font-size:22px;font-weight:800;background:#e8f5e9;color:#1b5e20;padding:14px;border-radius:10px;margin:12px 0;word-break:break-all}
@@ -145,6 +146,28 @@ input.inline,select.inline{width:auto;display:inline-block;padding:4px 8px;font-
   .stat{padding:10px}
   .stat .num{font-size:20px}
 }
+
+/* ========== Admin night mode ========== */
+body.admin-dark{background:#101522;color:#e6edf7}
+body.admin-dark .card,body.admin-dark .stat,body.admin-dark .acct-card{background:#182131;color:#e6edf7;border-color:#2c394d}
+body.admin-dark nav.tabs{background:#151d2c;border-color:#2c394d}
+body.admin-dark nav.tabs button{color:#aebbd0}
+body.admin-dark nav.tabs button.active{color:#90caf9;background:#1c2a42;border-bottom-color:#90caf9}
+body.admin-dark th{background:#202d42;color:#d6e2f2;border-color:#34445b}
+body.admin-dark td{border-color:#2a374b}
+body.admin-dark tbody tr:hover{background:#202c40}
+body.admin-dark input,body.admin-dark select,body.admin-dark textarea{background:#111a29;color:#e6edf7;border-color:#415169}
+body.admin-dark input:focus,body.admin-dark select:focus,body.admin-dark textarea:focus{background:#152238;border-color:#90caf9}
+body.admin-dark label{color:#c7d4e6}
+body.admin-dark .muted,body.admin-dark .card-title .note{color:#aab7c9}
+body.admin-dark .acct-card .email,body.admin-dark .code{background:#202d42;color:#e6edf7}
+body.admin-dark .acct-card .meta b{color:#b9c6d8}
+body.admin-dark .modal{background:#182131;color:#e6edf7}
+body.admin-dark .btn.ghost{background:#2b384b;color:#e5edf8}
+body.admin-dark .btn.ghost:hover{background:#35465e}
+body.admin-dark .cfgbox{background:#292149;color:#d9c8ff}
+body.admin-dark .keybox{background:#1b3a2a;color:#b9f6c8}
+body.admin-dark .stat{box-shadow:0 1px 3px #0008}
 </style>
 </head>
 <body>
@@ -193,6 +216,7 @@ input.inline,select.inline{width:auto;display:inline-block;padding:4px 8px;font-
     <button class="hbtn key" onclick="switchTab('keygen')">🔑 مفتاح</button>
     <button class="hbtn pass" onclick="openChangePass()">🔒 تغيير كلمة السر</button>
     <button class="hbtn set" onclick="switchTab('settings')">⚙️</button>
+    <button class="hbtn" id="themeBtn" onclick="toggleAdminTheme()" style="background:#455a64">🌙</button>
     <button class="hbtn logout" onclick="logout()">🚪 خروج</button>
   </header>
   <nav class="tabs">
@@ -257,31 +281,53 @@ function hash32(str){
   return (h>>>0).toString(16).padStart(8,"0");
 }
 function offSig(dev,plan){const b=SECRET+"|"+dev+"|"+plan;const h1=hash32(b),h2=hash32(b+"|chk");return (h1+h2).toUpperCase().match(/.{1,4}/g).join("-");}
-function planDays(p){return{weekly:7,monthly:30,yearly:365,permanent:99999}[p]||0;}
-function planLabel(p){return{weekly:"أسبوعي",monthly:"شهري",yearly:"سنوي",permanent:"دائم"}[p]||p||"-";}
-function statusLabel(s){return{trial:"تجريبي",pending:"ينتظر التفعيل",approved:"مُفعّلة",rejected:"مرفوض",expired:"منتهية",device_transfer_pending:"نقل جهاز",password_reset:"استعادة كلمة سر"}[s]||s||"-";}
+function normalizePlan(p){
+  const v=String(p||"").trim().toLowerCase();
+  if(v==="weekly"||v==="week"||v==="اسبوعي"||v==="أسبوعي")return "weekly";
+  if(v==="monthly"||v==="month"||v==="شهري")return "monthly";
+  if(v==="yearly"||v==="annual"||v==="year"||v==="سنوي")return "yearly";
+  if(v==="permanent"||v==="lifetime"||v==="forever"||v==="دائم")return "permanent";
+  return v||null;
+}
+function planDays(p){return{weekly:7,monthly:30,yearly:365,permanent:99999}[normalizePlan(p)]||0;}
+function planLabel(p){const v=normalizePlan(p);return{weekly:"أسبوعي",monthly:"شهري",yearly:"سنوي",permanent:"دائم"}[v]||p||"-";}
+function statusLabel(s){return{trial:"تجريبي",pending:"ينتظر التفعيل",approved:"مُفعّلة",rejected:"مرفوض",expired:"منتهية",device_transfer_pending:"نقل جهاز",password_reset:"استعادة كلمة سر",suspended:"تم إيقافه",cancelled:"ملغى",deleted:"محذوف"}[s]||s||"-";}
 function fmtDate(ts){if(!ts)return"-";try{return new Date(ts).toLocaleString("ar-IQ",{dateStyle:"short",timeStyle:"short"});}catch(e){return String(ts);}}
 function fmtTime(ts){if(!ts)return"-";try{const d=new Date(ts);const now=Date.now();const diff=now-ts;if(diff<86400000) return d.toLocaleTimeString("ar-IQ",{hour:"2-digit",minute:"2-digit"});return d.toLocaleDateString("ar-IQ");}catch(e){return"-";}}
 function $(id){return document.getElementById(id);}
+const LS_THEME="daragat_admin_theme";
+function applyAdminTheme(){
+  const dark=localStorage.getItem(LS_THEME)==="dark";
+  document.body.classList.toggle("admin-dark",dark);
+  const b=$("themeBtn"); if(b)b.textContent=dark?"☀️":"🌙";
+  if(b)b.title=dark?"الوضع النهاري":"الوضع الليلي";
+}
+function toggleAdminTheme(){
+  localStorage.setItem(LS_THEME,document.body.classList.contains("admin-dark")?"light":"dark");
+  applyAdminTheme();
+}
+applyAdminTheme();
 function stageLabel(st){return {elementary:"ابتدائية",intermediate:"متوسطة",prep:"إعدادية"}[st]||st||"";}
 function genderLabel(g){return {boys:"بنين",girls:"بنات",mixed:"مختلطة"}[g]||"";}
 function esc(s){return String(s==null?"":s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));}
 function emailKey(email){return String(email||"").replace(/\./g,",");}
 function normIraqPhone(p){
   let digits=String(p||"").replace(/[^0-9]/g,"");
-  if(digits.startsWith("964")) digits=digits.slice(3);
-  else if(digits.startsWith("00964")) digits=digits.slice(5);
-  else if(digits.startsWith("+964")) digits=digits.slice(3);
-  if(!digits.startsWith("0")&&digits.length<=9) digits="0"+digits;
+  if(digits.startsWith("00964")) digits=digits.slice(5);
+  else if(digits.startsWith("964")) digits=digits.slice(3);
+  if(!digits.startsWith("0")&&digits.length<=10) digits="0"+digits;
   return digits;
 }
 function waPhone(digits){
   digits=String(digits||"").replace(/[^0-9]/g,"");
-  if(digits.startsWith("964")&&digits.length>=12) return digits;
-  if(digits.startsWith("00964")) return digits.slice(2);
+  if(digits.startsWith("00964")) digits=digits.slice(2);
+  if(digits.startsWith("964")) return digits;
+  // Iraqi mobile numbers are 07xxxxxxxxx: retain all ten digits after the zero.
+  if(digits.startsWith("0")&&digits.length===11) return "964"+digits.slice(1);
   if(digits.startsWith("0")&&digits.length===10) return "964"+digits.slice(1);
+  if(digits.length===10&&digits.startsWith("7")) return "964"+digits;
   if(digits.length===9) return "964"+digits;
-  return "964"+digits.slice(-9);
+  return "";
 }
 
 function loadCfg(){try{return JSON.parse(localStorage.getItem(LS_CFG)||"null")||{};}catch(e){return {};}}
@@ -365,9 +411,11 @@ function listenAccounts(){
 
 function approve(email, plan, amount){
   const k=emailKey(email);
-  const days=planDays(plan);
+  const selected=normalizePlan(plan)||"monthly";
+  const days=planDays(selected);
   db.ref("activation/accounts/"+k).update({
-    status:"approved",plan:plan,
+    status:"approved",accountDisabled:false,disabledReason:null,
+    plan:selected,planCode:selected,durationDays:days,
     approvedAt:firebase.database.ServerValue.TIMESTAMP,
     expiresAt:Date.now()+days*86400000,
     paidAmount:amount||""
@@ -378,11 +426,12 @@ function approveTransfer(email){
   const k=emailKey(email);
   db.ref("activation/accounts/"+k).once("value",snap=>{
     const v=snap.val()||{};
-    const plan=v.plan||"monthly";
+    const plan=normalizePlan(v.plan||v.planCode)||"monthly";
     db.ref("activation/accounts/"+k).update({
-      status:"approved",plan:plan,
+      status:"approved",accountDisabled:false,disabledReason:null,plan:plan,planCode:plan,
+      durationDays:planDays(plan),
       approvedAt:v.approvedAt||firebase.database.ServerValue.TIMESTAMP,
-      expiresAt:v.expiresAt||(Date.now()+30*86400000)
+      expiresAt:v.expiresAt||(Date.now()+planDays(plan)*86400000)
     });
   });
 }
@@ -395,7 +444,7 @@ function resetPassword(email){
     ref.once("value").then(snap=>{
       const v=snap.val()||{};
       const phone=normIraqPhone(v.phone||"");
-      if(phone.length>=10){
+      if(/^07[0-9]{9}$/.test(phone)&&waPhone(phone)){
         window.open("https://wa.me/"+waPhone(phone)+"?text="+msg,"_blank");
       }else{
         prompt("لم يتم العثور على رقم هاتف صحيح — الرمز (أرسله يدوياً):",key);
@@ -405,7 +454,7 @@ function resetPassword(email){
 }
 function rejectTransfer(email){
   if(!confirm("رفض طلب النقل؟"))return;
-  db.ref("activation/accounts/"+emailKey(email)).update({status:"approved"});
+  db.ref("activation/accounts/"+emailKey(email)).update({status:"approved",accountDisabled:false,disabledReason:null});
 }
 function reject(email){
   if(!confirm("تأكيد رفض هذا الطلب؟"))return;
@@ -415,16 +464,28 @@ function clearReset(email){
   if(!confirm("إزالة طلب استعادة كلمة السر لهذا الحساب؟"))return;
   db.ref("activation/accounts/"+emailKey(email)).update({tempResetKey:null,passwordResetRequestedAt:null});
 }
+function stopAccount(email){
+  if(!confirm("⏹ إيقاف الحساب؟\nسيتم إيقاف التطبيق فوراً لدى العميل."))return;
+  db.ref("activation/accounts/"+emailKey(email)).update({
+    status:"suspended",accountDisabled:true,disabledReason:"تم إيقاف الحساب من الإدارة",
+    suspendedAt:firebase.database.ServerValue.TIMESTAMP
+  }).catch(e=>alert("خطأ: "+e.message));
+}
 function del(email){
-  if(!confirm("🗑 حذف الحساب نهائياً؟\nالبريد: "+email+"\nهذا الإجراء لا يمكن التراجع عنه."))return;
-  db.ref("activation/accounts/"+emailKey(email)).remove();
+  if(!confirm("🗑 حذف الحساب نهائياً؟\nسيتم أولاً إرسال حالة إيقاف للتطبيق ثم حذف السجل.\nالبريد: "+email+"\nهذا الإجراء لا يمكن التراجع عنه."))return;
+  const ref=db.ref("activation/accounts/"+emailKey(email));
+  ref.update({
+    status:"suspended",accountDisabled:true,disabledReason:"تم حذف الحساب من الإدارة",
+    deletedAt:firebase.database.ServerValue.TIMESTAMP
+  }).then(()=>setTimeout(()=>ref.remove().catch(()=>{}),700)).catch(e=>alert("خطأ: "+e.message));
 }
 function setPaid(email,amount){db.ref("activation/accounts/"+emailKey(email)).update({paidAmount:amount});}
 function setPhone(email,phone){db.ref("activation/accounts/"+emailKey(email)).update({phone:normIraqPhone(phone)});}
 function waLink(phone){
   const d=normIraqPhone(phone);
-  if(d.length<10) return "#";
-  return "https://wa.me/"+waPhone(d)+"?text="+encodeURIComponent("السلام عليكم، بخصوص تطبيق الاداره المدرسيه");
+  const w=waPhone(d);
+  if(!/^07[0-9]{9}$/.test(d)||!w) return "#";
+  return "https://wa.me/"+w+"?text="+encodeURIComponent("السلام عليكم، بخصوص تطبيق الاداره المدرسيه");
 }
 
 let currentTab="all";
@@ -478,6 +539,7 @@ function renderAll(){
     else if(r.status==="device_transfer_pending") transfers.push(r);
     else if(r.status==="pending") pending.push(r);
     else if(r.passwordResetRequestedAt) resets.push(r);
+    else if(["suspended","disabled","deleted","cancelled"].includes(r.status)){}
     else trial.push(r);
   }
   $("bAll").textContent=all.length;
@@ -549,6 +611,7 @@ function renderTable(list,title){
     if(r.status==="pending")return "pending";
     if(r.status==="device_transfer_pending")return "conflict";
     if(r.status==="rejected")return "rejected";
+    if(["suspended","disabled","deleted","cancelled"].includes(r.status))return "rejected";
     return "trial";
   };
 
@@ -565,8 +628,8 @@ function renderTable(list,title){
 
     let planCell;
     if(isApproved){
-      planCell='<span class="badge-plan">'+planLabel(r.plan)+'</span>';
-      if(r.plan!=="permanent"&&r.expiresAt){
+      planCell='<span class="badge-plan">'+planLabel(r.plan||r.planCode)+'</span>';
+      if(normalizePlan(r.plan||r.planCode)!=="permanent"&&r.expiresAt){
         const exp=new Date(r.expiresAt);
         const days=Math.ceil((exp-Date.now())/86400000);
         const expCls=days<0?"rejected":days<=7?"warn":"approved";
@@ -582,10 +645,12 @@ function renderTable(list,title){
         <button class="btn success small" onclick="approve('${emEsc}',document.getElementById('pl-${esc(r.emailKey)}').value,document.getElementById('pa-${esc(r.emailKey)}').value)">✔ فعّل</button>`;
     }
 
+    const currentPlan=normalizePlan(r.plan||r.planCode)||"monthly";
     const extendCell=isApproved?
       `<select class="inline" id="ext-${esc(r.emailKey)}">
-         <option value="weekly">أسبوع</option><option value="monthly" selected>شهر</option>
-         <option value="yearly">سنة</option><option value="permanent">دائم</option>
+         <option value="weekly" ${currentPlan==="weekly"?"selected":""}>أسبوع</option><option value="monthly" ${currentPlan==="monthly"?"selected":""}>شهر</option>
+         <option value="yearly" ${currentPlan==="yearly"?"selected":""}>سنة</option>
+         <option value="permanent" ${currentPlan==="permanent"?"selected":""}>دائم</option>
        </select>
        <button class="btn warn small" onclick="approve('${emEsc}',document.getElementById('ext-${esc(r.emailKey)}').value,document.getElementById('pa-${esc(r.emailKey)}').value)">↻ تجديد</button>`:"";
 
@@ -615,7 +680,8 @@ function renderTable(list,title){
         ${isReset?`<button class="btn violet small" onclick="resetPassword('${emEsc}')">🔑 إرسال الرمز</button>
           <button class="btn ghost small" onclick="clearReset('${emEsc}')" title="إلغاء الطلب">✕</button>`:
           `<button class="btn violet small" onclick="resetPassword('${emEsc}')">🔑</button>`}
-        <button class="btn danger small" onclick="del('${emEsc}')">🗑</button>
+        ${!["suspended","disabled","deleted","cancelled"].includes(r.status)?`<button class="btn warn small" onclick="stopAccount('${emEsc}')">⏹ إيقاف</button>`:""}
+        <button class="btn danger small" onclick="del('${emEsc}')">🗑 حذف</button>
       </div></td>
     </tr>`;
   }).join("");
@@ -628,12 +694,13 @@ function renderTable(list,title){
     const schoolInfo=[esc(r.schoolStage?stageLabel(r.schoolStage):""),esc(r.schoolGender?genderLabel(r.schoolGender):""),esc(r.schoolName||"")].filter(Boolean).join(" - ");
     const phone=normIraqPhone(r.phone||"");
     const isApproved=r.status==="approved";
+    const currentPlan=normalizePlan(r.plan||r.planCode)||"monthly";
     const isReset=r.passwordResetRequestedAt;
     const pw = r.password || "";
 
     let planBlock;
     if(isApproved){
-      planBlock=`<b>الخطة:</b><span><span class="badge-plan">${planLabel(r.plan)}</span></span>`;
+      planBlock=`<b>الخطة:</b><span><span class="badge-plan">${planLabel(r.plan||r.planCode)}</span></span>`;
     }else{
       planBlock=`<b>التفعيل:</b><span>
         <select class="inline" id="plm-${esc(r.emailKey)}">
@@ -661,7 +728,7 @@ function renderTable(list,title){
         <b>سُجّل:</b><span>${fmtDate(r.registeredAt)}</span>
         ${planBlock}
         <b>المبلغ:</b><span><input type="text" id="pam-${esc(r.emailKey)}" data-paid-for="${email}" value="${esc(r.paidAmount||"")}" placeholder="المبلغ" class="inline" dir="ltr" style="width:90px" /></span>
-        ${isApproved?`<b>تجديد:</b><span><select class="inline" id="extm-${esc(r.emailKey)}"><option value="weekly">أسبوع</option><option value="monthly" selected>شهر</option><option value="yearly">سنة</option><option value="permanent">دائم</option></select>
+        ${isApproved?`<b>تجديد:</b><span><select class="inline" id="extm-${esc(r.emailKey)}"><option value="weekly" ${currentPlan==="weekly"?"selected":""}>أسبوع</option><option value="monthly" ${currentPlan==="monthly"?"selected":""}>شهر</option><option value="yearly" ${currentPlan==="yearly"?"selected":""}>سنة</option><option value="permanent" ${currentPlan==="permanent"?"selected":""}>دائم</option></select>
           <button class="btn warn small" onclick="approve('${emEsc}',document.getElementById('extm-${esc(r.emailKey)}').value,document.getElementById('pam-${esc(r.emailKey)}').value)">↻</button></span>`:""}
       </div>
       <div class="actions">
@@ -669,6 +736,7 @@ function renderTable(list,title){
           `<button class="btn violet small" onclick="resetPassword('${emEsc}')">🔑 استعادة</button>`}
         ${r.status!=="rejected"&&!isReset?`<button class="btn ghost" onclick="reject('${emEsc}')">رفض</button>`:""}
         ${isReset?`<button class="btn ghost small" onclick="clearReset('${emEsc}')">✕ إلغاء الطلب</button>`:""}
+        ${!["suspended","disabled","deleted","cancelled"].includes(r.status)?`<button class="btn warn" onclick="stopAccount('${emEsc}')">⏹ إيقاف</button>`:""}
         <button class="btn danger" onclick="del('${emEsc}')">🗑 حذف</button>
       </div>
     </div>`;

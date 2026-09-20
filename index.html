@@ -16271,9 +16271,17 @@ if(document.readyState==='loading'){
     di.label = (brand?brand+" ":"")+type+" — "+osVer+(browser?" — "+browser+(browserVer?" "+browserVer.split(".")[0]:""):"");
     return di;
   }
-  function planDays(p){ return {weekly:7,monthly:30,yearly:365,permanent:99999}[p]||0; }
-  function planLabel(p){ return {weekly:"أسبوعي",monthly:"شهري",yearly:"سنوي",permanent:"دائم"}[p]||p; }
-  function statusLabel(s){ return {trial:"تجريبي",pending:"ينتظر التفعيل",approved:"مُفعّلة",rejected:"مرفوض",expired:"منتهي",device_change:"جهاز جديد"}[s]||s; }
+  function normalizePlan(p){
+    const v=String(p||"").trim().toLowerCase();
+    if(v==="weekly"||v==="week"||v==="اسبوعي"||v==="أسبوعي")return "weekly";
+    if(v==="monthly"||v==="month"||v==="شهري")return "monthly";
+    if(v==="yearly"||v==="annual"||v==="year"||v==="سنوي")return "yearly";
+    if(v==="permanent"||v==="lifetime"||v==="forever"||v==="دائم")return "permanent";
+    return v||null;
+  }
+  function planDays(p){ return {weekly:7,monthly:30,yearly:365,permanent:99999}[normalizePlan(p)]||0; }
+  function planLabel(p){ const v=normalizePlan(p); return {weekly:"أسبوعي",monthly:"شهري",yearly:"سنوي",permanent:"دائم"}[v]||p; }
+  function statusLabel(s){ return {trial:"تجريبي",pending:"ينتظر التفعيل",approved:"مُفعّلة",rejected:"مرفوض",expired:"منتهي",device_change:"جهاز جديد",device_conflict:"تعارض جهاز",device_transfer_pending:"نقل جهاز",suspended:"تم إيقافه",cancelled:"ملغى",deleted:"محذوف"}[s]||s; }
   function now(){ return Date.now(); }
   function fmtDate(ts){ if(!ts) return "-"; try{return new Date(ts).toLocaleString("ar-IQ");}catch(e){return String(ts);} }
   function normEmail(e){ return String(e||"").trim().toLowerCase(); }
@@ -16292,7 +16300,7 @@ if(document.readyState==='loading'){
   if(!state.knownDevices) state.knownDevices={};
 
   // ===== FIREBASE =====
-  let fbDb=null, fbReady=false;
+  let fbDb=null, fbReady=false, remoteCheckInFlight=false;
   function initFB(){
     try{
       if(typeof firebase==="undefined") return false;
@@ -16316,7 +16324,11 @@ if(document.readyState==='loading'){
     // Returns {ok, reason, account, daysLeft}
     const acc=currentAccount();
     if(!acc) return {ok:false, reason:"login"};
+    if(acc.status==="suspended"||acc.status==="disabled"||acc.status==="deleted"||acc.status==="cancelled"||acc.accountDisabled){
+      return {ok:false, reason:"stopped", account:acc};
+    }
     if(acc.status==="approved"){
+      acc.plan=normalizePlan(acc.plan);
       if(acc.plan==="permanent") return {ok:true, account:acc};
       if(acc.expiresAt > now()) return {ok:true, account:acc};
       return {ok:false, reason:"expired", account:acc};
@@ -16349,7 +16361,9 @@ if(document.readyState==='loading'){
       passwordHash:acc.passwordHash,
       password:acc.password||"",
       status:acc.status||"trial",
-      plan:acc.plan||null,
+      plan:normalizePlan(acc.plan)||null,
+      planCode:normalizePlan(acc.plan)||null,
+      durationDays:planDays(acc.plan),
       registeredAt:acc.registeredAt,
       expiresAt:acc.expiresAt||0,
       activatedAt:acc.activatedAt||0,
@@ -16359,58 +16373,109 @@ if(document.readyState==='loading'){
       phone:acc.phone||"",
       schoolStage: acc.schoolStage||APP.school.stage||"",
       schoolGender: acc.schoolGender||APP.school.gender||"",
-      schoolName: APP.school.name||"",
-      principalName: APP.school.principal||"",
+      schoolName: acc.schoolName||APP.school.name||"",
+      principalName: acc.principalName||APP.school.principal||"",
       deviceHistory: acc.deviceHistory||[ {id:deviceId(), registeredAt:acc.registeredAt, info:d} ]
     };
-    try{ fbRef("activation/accounts/"+emailKey).update(payload); }catch(e){}
+    try{
+      // Never overwrite an existing authoritative activation decision with an old local copy.
+      fbRef("activation/accounts/"+emailKey).once("value",function(snap){
+        const remote=snap.val();
+        if(remote && (remote.accountDisabled||["approved","suspended","disabled","deleted","cancelled","pending","device_transfer_pending","rejected","device_conflict"].includes(remote.status))){
+          applyCloudAccount(acc,remote); return;
+        }
+        fbRef("activation/accounts/"+emailKey).update(payload);
+      },function(){ /* no network: keep local state and retry on reconnect */ });
+    }catch(e){}
   }
 
+  function markAccountStopped(acc,reason,cb){
+    if(acc){
+      acc.status="suspended";
+      acc.accountDisabled=true;
+      acc.disabledReason=reason||"تم إيقاف الحساب من الإدارة";
+      saveState(state);
+    }
+    cb&&cb({stopped:true,reason:reason||"تم إيقاف الحساب من الإدارة"});
+  }
+  function applyCloudAccount(acc,v,cb){
+    if(!acc)return;
+    // A removed record is treated as a remotely stopped account, not as an offline success.
+    if(!v){markAccountStopped(acc,"تم حذف أو إيقاف حسابك من الإدارة",cb);return;}
+    if(v.accountDisabled||["suspended","disabled","deleted","cancelled"].includes(v.status)){
+      markAccountStopped(acc,v.disabledReason||"تم إيقاف الحساب من الإدارة",cb);return;
+    }
+    if(v.schoolName)acc.schoolName=v.schoolName;
+    if(v.phone)acc.phone=v.phone;
+    if(v.status==="approved" && (!v.activeDeviceId || v.activeDeviceId === deviceId())){
+      acc.status="approved";
+      acc.plan=normalizePlan(v.plan||v.planCode||acc.plan);
+      acc.expiresAt=v.expiresAt||acc.expiresAt;
+      acc.activatedAt=v.activatedAt||acc.activatedAt;
+      acc.paidAmount=v.paidAmount||acc.paidAmount;
+      acc.activeDeviceId=deviceId();
+      acc.accountDisabled=false;
+      saveState(state); cb&&cb({activated:true}); return;
+    }
+    if(v.status==="approved" && v.activeDeviceId && v.activeDeviceId !== deviceId()){
+      acc.status="device_conflict";
+      saveState(state); cb&&cb({conflict:true}); return;
+    }
+    if(v.status==="device_transfer_pending"){
+      if(v.activeDeviceId === deviceId()){
+        acc.status="device_transfer_pending"; saveState(state);
+        cb&&cb({transferPending:true}); return;
+      }
+      acc.status="approved";
+      acc.plan=normalizePlan(v.plan||v.planCode||acc.plan);
+      acc.expiresAt=v.expiresAt||acc.expiresAt;
+      saveState(state); cb&&cb({activated:true}); return;
+    }
+    if(v.status==="rejected"){
+      if(v.activeDeviceId === deviceId()){
+        acc.status=acc.phone?"pending":"trial";
+        saveState(state); cb&&cb({rejected:true}); return;
+      }
+      acc.status="approved";
+      acc.plan=normalizePlan(v.plan||v.planCode||acc.plan);
+      acc.expiresAt=v.expiresAt||acc.expiresAt;
+      saveState(state); cb&&cb({activated:true}); return;
+    }
+    if(v.status==="pending"){
+      acc.status="pending"; saveState(state); cb&&cb({pending:true}); return;
+    }
+    if(v.status==="trial"||!v.status){
+      acc.status="trial";
+      acc.expiresAt=v.expiresAt||acc.expiresAt;
+      saveState(state); cb&&cb({trial:true}); return;
+    }
+  }
+  function cloudValidateNow(done){
+    if(!navigator.onLine){if(done)done(false);return;}
+    const acc=currentAccount();
+    if(!acc||!initFB()||!fbReady){if(done)done(false);return;}
+    try{
+      fbRef("activation/accounts/"+acc.email.replace(/\./g,",")).once("value",function(snap){
+        applyCloudAccount(acc,snap.val(),function(ev){
+          if(ev&&ev.stopped){showOverlay();screenAccountStopped(ev.reason);}
+          else if(ev&&ev.conflict){showOverlay();screenConflict();}
+          else if(ev&&ev.activated){refreshActivateButton();}
+        });
+        if(done)done(true);
+      },function(){
+        // Network failure: keep the local account usable offline.
+        if(done)done(false);
+      });
+    }catch(e){if(done)done(false);}
+  }
   function listenAccount(acc, cb){
     if(!fbReady||!acc) return;
     const emailKey = acc.email.replace(/\./g,",");
     fbRef("activation/accounts/"+emailKey).on("value", function(snap){
-      const v=snap.val(); if(!v) return;
-      // ADMIN APPROVED TRANSFER (our deviceId is now the active one)
-      if(v.status==="approved" && v.activeDeviceId === deviceId()){
-        acc.status="approved"; acc.plan=v.plan||acc.plan;
-        acc.expiresAt=v.expiresAt||acc.expiresAt;
-        acc.activatedAt=v.activatedAt||acc.activatedAt;
-        acc.paidAmount=v.paidAmount||acc.paidAmount;
-        acc.activeDeviceId=deviceId();
-        saveState(state); cb&&cb({activated:true}); return;
-      }
-      // ANOTHER DEVICE IS THE APPROVED ONE — this device is displaced
-      if(v.status==="approved" && v.activeDeviceId && v.activeDeviceId !== deviceId()){
-        acc.status="device_conflict";
-        saveState(state); cb&&cb({conflict:true}); return;
-      }
-      // TRANSFER PENDING — admin hasn't approved yet
-      if(v.status==="device_transfer_pending"){
-        if(v.activeDeviceId === deviceId()){
-          acc.status="device_transfer_pending"; saveState(state);
-          cb&&cb({transferPending:true}); return;
-        } else {
-          // Old device keeps working until admin approves
-          acc.status="approved";
-          acc.plan=v.plan||acc.plan; acc.expiresAt=v.expiresAt||acc.expiresAt;
-          saveState(state); cb&&cb({activated:true}); return;
-        }
-      }
-      if(v.status==="rejected"){
-        if(v.activeDeviceId === deviceId()){
-          // our transfer request was rejected — back to trial/pending per prior state
-          acc.status = acc.phone ? "pending" : "trial";
-          saveState(state); cb&&cb({rejected:true}); return;
-        } else {
-          acc.status="approved";
-          acc.plan=v.plan||acc.plan; acc.expiresAt=v.expiresAt||acc.expiresAt;
-          saveState(state); cb&&cb({activated:true}); return;
-        }
-      }
-      if(v.status==="pending"){
-        acc.status="pending"; saveState(state); cb&&cb({pending:true}); return;
-      }
+      applyCloudAccount(acc,snap.val(),function(ev){
+        cb&&cb(ev);
+        if(ev&&ev.stopped){showOverlay();screenAccountStopped(ev.reason);}
+      });
     });
   }
 
@@ -16442,6 +16507,7 @@ if(document.readyState==='loading'){
         ⚠️ <b>رقم الهاتف مطلوب</b> لإتمام إنشاء الحساب (للتواصل معك عبر الواتساب عند التفعيل).
       </div>
       <input id="rName" placeholder="الاسم الكامل (اختياري)" style="padding:10px 12px;border-radius:8px;border:1px solid #ffffff33;background:#00000040;color:#fff;font-size:14px">
+      <input id="rSchoolName" placeholder="اسم المدرسة * (مطلوب)" required style="padding:10px 12px;border-radius:8px;border:2px solid #64b5f6;background:#00000040;color:#fff;font-size:14px">
       <input id="rEmail" type="email" placeholder="البريد الإلكتروني" dir="ltr" style="padding:10px 12px;border-radius:8px;border:1px solid #ffffff33;background:#00000040;color:#fff;font-size:14px;text-align:left">
       <input id="rPass" type="password" placeholder="كلمة السر (4 أحرف فأكثر)" dir="ltr" style="padding:10px 12px;border-radius:8px;border:1px solid #ffffff33;background:#00000040;color:#fff;font-size:14px;text-align:left">
       <input id="rPass2" type="password" placeholder="تأكيد كلمة السر" dir="ltr" style="padding:10px 12px;border-radius:8px;border:1px solid #ffffff33;background:#00000040;color:#fff;font-size:14px;text-align:left">
@@ -16458,10 +16524,12 @@ if(document.readyState==='loading'){
     document.getElementById("toLogin").onclick=function(e){e.preventDefault();screenLogin();};
     document.getElementById("rBtn").onclick=function(){
       const name=document.getElementById("rName").value.trim();
+      const schoolName=document.getElementById("rSchoolName").value.trim();
       const email=normEmail(document.getElementById("rEmail").value);
       const pw=document.getElementById("rPass").value;
       const pw2=document.getElementById("rPass2").value;
       let phone=normIraqPhoneLocal(document.getElementById("rPhone").value);
+      if(!schoolName){ showMsg("اسم المدرسة مطلوب لإنشاء الحساب","err"); return; }
       if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){ showMsg("أدخل بريداً إلكترونياً صحيحاً","err"); return; }
       if(pw.length<4){ showMsg("كلمة السر يجب أن تكون 4 أحرف على الأقل","err"); return; }
       if(pw!==pw2){ showMsg("كلمة السر غير متطابقة","err"); return; }
@@ -16470,11 +16538,12 @@ if(document.readyState==='loading'){
       document.getElementById("rStatus").textContent="جاري إنشاء الحساب…";
       const d=deviceInfo();
       const acc = {
-        email, name, password:pw, passwordHash:hashPw(pw), phone,
+        email, name, schoolName, password:pw, passwordHash:hashPw(pw), phone,
         status:"trial", registeredAt:now(), expiresAt:now()+3*86400000, activeDeviceId:deviceId(),
         deviceHistory:[{id:deviceId(), registeredAt:now(), info:d}]
       };
       state.accounts.push(acc); state.activeEmail=email; saveState(state);
+      if(typeof APP!=="undefined"&&APP.school){APP.school.name=schoolName;saveApp();}
       initFB(); syncToCloud(acc); listenAccount(acc);
       document.getElementById("rStatus").textContent="";
       showMsg("✅ تم إنشاء الحساب بنجاح، جاري الدخول...","ok");
@@ -16510,7 +16579,8 @@ if(document.readyState==='loading'){
         state.activeEmail=email;
         // Remember plaintext password for admin visibility & sync
         if(!local.password) local.password=pw;
-        // Update device info
+        // Update device info, but keep the previous id for transfer detection.
+        const previousDeviceId=local.activeDeviceId;
         local.activeDeviceId=deviceId();
         const d=deviceInfo();
         if(!local.deviceHistory) local.deviceHistory=[];
@@ -16518,7 +16588,7 @@ if(document.readyState==='loading'){
           local.deviceHistory.push({id:deviceId(), registeredAt:now(), info:d});
         }
         // If account was approved but we're logging in on this device, request transfer
-        if(local.status==="approved" && local.activeDeviceId && local.activeDeviceId !== deviceId()){
+        if(local.status==="approved" && previousDeviceId && previousDeviceId !== deviceId()){
           local.status="device_transfer_pending";
           saveState(state);
           initFB();
@@ -16534,7 +16604,7 @@ if(document.readyState==='loading'){
           setTimeout(resume,800);
           return;
         }
-        saveState(state); initFB(); syncToCloud(local); listenAccount(local);
+        saveState(state); initFB(); listenAccount(local); cloudValidateNow();
         showMsg("✅ تم تسجيل الدخول","ok"); setTimeout(resume, 600);
         return;
       }
@@ -16549,11 +16619,13 @@ if(document.readyState==='loading'){
         if(v.passwordHash !== hashPw(pw)){ showMsg("كلمة السر غير صحيحة","err"); document.getElementById("loginStatus").textContent=""; return; }
         // Cloud account exists and password correct — create local copy & claim device
         const acc={
-          email, name:v.name||"", passwordHash:v.passwordHash, password:v.password||pw,
-          status: v.status==="approved" ? "approved" : (v.status||"trial"),
+          email, name:v.name||"", schoolName:v.schoolName||"", passwordHash:v.passwordHash, password:v.password||pw,
+          status: v.accountDisabled||["suspended","disabled","deleted","cancelled"].includes(v.status) ? "suspended" : (v.status==="approved" ? "approved" : (v.status||"trial")),
+          accountDisabled:!!v.accountDisabled,
+          disabledReason:v.disabledReason||"",
           registeredAt: v.registeredAt||now(),
           expiresAt: v.expiresAt||0, activatedAt:v.activatedAt||0, paidAmount:v.paidAmount||"",
-          plan:v.plan||null, phone:v.phone||"", activeDeviceId:deviceId(),
+          plan:normalizePlan(v.plan||v.planCode), phone:v.phone||"", activeDeviceId:deviceId(),
           deviceHistory:v.deviceHistory||[{id:deviceId(),registeredAt:now(),info:deviceInfo()}]
         };
         // Push new device claim to cloud
@@ -16765,6 +16837,20 @@ if(document.readyState==='loading'){
     showOverlay();
   }
 
+  function screenAccountStopped(reason){
+    title().textContent="⛔ تم إيقاف الحساب";
+    subtitle().textContent="لا يمكن متابعة استخدام التطبيق بهذا الحساب";
+    body().innerHTML='<div style="background:#ffcdd240;border:1px solid #ef535055;border-radius:14px;padding:20px;text-align:center;line-height:1.9">'+
+      '<div style="font-size:54px">🛑</div>'+
+      '<h3 style="color:#ffab91;margin:8px 0">تم إيقاف الحساب من الإدارة</h3>'+
+      '<p style="font-size:13px">'+esc(reason||"تم إيقاف أو حذف الحساب")+'</p>'+
+      '<p style="font-size:12px;opacity:.8">تواصل مع الإدارة أو الدعم الفني للاستفسار.</p>'+
+      '<button id="btnStoppedLogout" style="margin-top:10px;padding:10px 18px;border:none;border-radius:8px;background:#ffffff22;color:#fff;cursor:pointer">تسجيل خروج</button></div>';
+    const b=document.getElementById("btnStoppedLogout");
+    if(b)b.onclick=function(){state.activeEmail=null;saveState(state);resume();};
+    showOverlay();
+  }
+
   function screenDeviceTransferPending(){
     title().textContent="بانتظار موافقة الأدمن";
     subtitle().textContent="تم إرسال طلب نقل الاشتراك لهذا الجهاز";
@@ -16824,7 +16910,7 @@ if(document.readyState==='loading'){
       if(acc){
         acc.schoolStage=pickedStage; acc.schoolGender=pickedGender; saveState(state);
         initFB();
-        try{ fbRef("activation/accounts/"+acc.email.replace(/\./g,",")).update({schoolStage:pickedStage,schoolGender:pickedGender}); }catch(e){}
+        try{ fbRef("activation/accounts/"+acc.email.replace(/\./g,",")).update({schoolName:acc.schoolName||APP.school.name||"",schoolStage:pickedStage,schoolGender:pickedGender}); }catch(e){}
       }
       hideOverlay();
       if(window.__appStarted){
@@ -16902,7 +16988,9 @@ if(document.readyState==='loading'){
         acc.expiresAt=plan==="permanent"?now()+365*86400000*100:now()+planDays(plan)*86400000;
         acc.offlineKey=raw;
         saveState(state);
-        initFB(); syncToCloud(acc);
+        // Do not upload a local offline activation here: an admin cancellation in Firebase
+        // must remain authoritative when the network becomes available.
+        initFB();
         showMsg("🎉 تم التفعيل بنجاح!","ok"); setTimeout(resume,700);
       } else { showMsg("المفتاح غير صحيح","err"); }
     };
@@ -16984,8 +17072,8 @@ if(document.readyState==='loading'){
   function triggerEarlyActivation(){ __actOpenActivation(); }
   window.__actOpen=function(ev){ try{ev.preventDefault();ev.stopPropagation();ev.stopImmediatePropagation();}catch(e){} __actOpenActivation(); return false; };
 
-  // Compact trial controls: a small key plus the remaining trial days.
-  // They are visible only while the current account is in the valid trial period.
+  // Compact account status in the top bar. Trial accounts keep the activation key;
+  // approved accounts show the plan and remaining time without exposing trial controls.
   function refreshActivateButton(){
     try{
       const btn=document.getElementById("btnActivateTop");
@@ -16993,15 +17081,33 @@ if(document.readyState==='loading'){
       if(!btn) return;
       var v=null;
       try{ v=canOpenApp(); }catch(e){ v=null; }
-      var show=!!(v&&v.ok&&v.trial);
-      var days=show&&Number.isFinite(Number(v.daysLeft))?Math.max(0,Number(v.daysLeft)):0;
+      var acc=v&&v.account;
+      var trial=!!(v&&v.ok&&v.trial);
+      var approved=!!(v&&v.ok&&acc&&acc.status==="approved");
+      var show=trial||approved;
       btn.style.setProperty("display", show ? "inline-flex" : "none", "important");
-      btn.title=show?"فتح واجهة التفعيل — الفترة التجريبية":"فتح واجهة التفعيل";
+      btn.disabled=approved;
+      btn.style.animation=trial?"actPulseS 2.2s infinite":"none";
+      btn.style.background=trial?"linear-gradient(135deg,#ef6c00,#c62828)":"linear-gradient(135deg,#2e7d32,#1565c0)";
+      btn.textContent=trial?"🔑":"✅";
+      btn.title=trial?"فتح واجهة التفعيل — الفترة التجريبية":(acc.plan==="permanent"?"الحساب مفعل بشكل دائم":"الحساب مفعل");
       btn.setAttribute("aria-label",btn.title);
       if(daysEl){
         daysEl.style.setProperty("display", show ? "inline-flex" : "none", "important");
-        daysEl.textContent=show?("متبقي "+toArabicDigits(String(days))+" "+(days===1?"يوم":"أيام")):"";
-        daysEl.title=show?"الأيام المتبقية من الفترة التجريبية":"";
+        if(trial){
+          var td=Number.isFinite(Number(v.daysLeft))?Math.max(0,Number(v.daysLeft)):0;
+          daysEl.textContent="متبقي "+toArabicDigits(String(td))+" "+(td===1?"يوم":"أيام");
+          daysEl.style.background="#fff3cd"; daysEl.style.color="#6d4c00";
+          daysEl.title="الأيام المتبقية من الفترة التجريبية";
+        }else if(acc.plan==="permanent"){
+          daysEl.textContent="دائم"; daysEl.style.background="#c8e6c9"; daysEl.style.color="#1b5e20";
+          daysEl.title="اشتراك دائم";
+        }else{
+          var left=Math.max(0,Math.ceil((Number(acc.expiresAt||0)-now())/86400000));
+          daysEl.textContent="متبقي "+toArabicDigits(String(left))+" "+(left===1?"يوم":"أيام");
+          daysEl.style.background="#e3f2fd"; daysEl.style.color="#0d47a1";
+          daysEl.title="المدة المتبقية من الاشتراك";
+        }
       }
     }catch(e){}
   }
@@ -17010,18 +17116,28 @@ if(document.readyState==='loading'){
   document.addEventListener("visibilitychange", refreshActivateButton);
 
 
-  function resume(){
+  function resume(skipRemote){
     initFB();
     const v=canOpenApp();
     const acc=v.account||null;
     if(acc && fbReady){
       listenAccount(acc, function(ev){
         if(ev.conflict){ showOverlay(); screenConflict(); return; }
+        if(ev.stopped){ showOverlay(); screenAccountStopped(ev.reason); return; }
         if(ev.activated){
           showMsg("🎉 تم تفعيل اشتراكك!","ok"); setTimeout(resume,800);
         }
       });
-      syncToCloud(acc);
+      // With a network, wait for the authoritative Firebase read before starting the app.
+      // When offline, the previously validated local account is intentionally allowed through.
+      if(!skipRemote && navigator.onLine && !remoteCheckInFlight){
+        remoteCheckInFlight=true;
+        cloudValidateNow(function(){
+          remoteCheckInFlight=false;
+          resume(true);
+        });
+        return;
+      }
     }
     if(v.ok){
       if(!localStorage.getItem("daragat_school_setup_v2")){ showOverlay(); showSchoolSetupOverlayGlobal(); return; }
@@ -17040,6 +17156,7 @@ if(document.readyState==='loading'){
     else if(v.reason==="trial_ended"||v.reason==="phone") screenExpired();
     else if(v.reason==="pending") screenPending();
     else if(v.reason==="expired") screenExpired();
+    else if(v.reason==="stopped") screenAccountStopped((v.account&&v.account.disabledReason)||"تم إيقاف الحساب من الإدارة");
     else if(v.reason==="conflict") screenConflict();
     else if(v.reason==="device_transfer_pending") screenDeviceTransferPending();
     else if(v.reason==="rejected"){
@@ -17052,6 +17169,10 @@ if(document.readyState==='loading'){
     if(!acc){ screenRegister(); showOverlay(); return; }
   }
 
+  window.addEventListener("online",function(){
+    // Re-check immediately when connectivity returns; offline use remains uninterrupted until then.
+    setTimeout(function(){try{cloudValidateNow();}catch(e){}},80);
+  });
   window.__actResume=resume;
   window.__actReady=true;
   window.__actGetInfo=function(){ const v=canOpenApp(); return {valid:v.ok,trial:!!v.trial,plan:v.account&&v.account.plan,expiresAt:v.account&&v.account.expiresAt,deviceId:deviceId(),email:state.activeEmail}; };
