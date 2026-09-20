@@ -4171,6 +4171,39 @@ img,.splash-logo-container img,.card img,.page img{max-width:100%;height:auto}
     .subject-icon-strip{grid-template-columns:1fr;}
     .levels-record-title-main .levels-print-btn{flex-basis:100%;}
   }
+  .gb-decision-bar{
+    display:flex;align-items:center;justify-content:flex-start;gap:9px;flex-wrap:wrap;
+    margin:8px 0 10px;padding:9px 11px;border:1px solid #e0c56a;border-radius:11px;
+    background:linear-gradient(135deg,#fffdf1,#fff7d6);color:#5a1020;font-size:12.5px;font-weight:800;
+  }
+  .gb-decision-bar label{display:inline-flex;align-items:center;gap:7px;white-space:nowrap;}
+  .gb-decision-bar input{width:92px;min-height:36px;padding:6px 8px;border:1px solid #b08d2a;border-radius:8px;background:#fff;font:inherit;text-align:center;}
+  .gb-decision-help{flex:1 1 250px;min-width:180px;color:#6d5a2a;line-height:1.5;}
+  .gb-decision-help b{color:#b71c1c;font-size:14px;}
+  .gb-decision-bar .material-btn{min-height:36px;padding:6px 10px;}
+  .gb-decision-bar .material-btn.danger{background:#c62828;color:#fff;}
+  .decision-cell{position:relative!important;min-width:70px;vertical-align:middle;}
+  .decision-mark{min-height:16px;color:#c62828;font-size:10px;font-weight:900;line-height:1.1;white-space:nowrap;}
+  .decision-values{display:flex;align-items:center;justify-content:center;gap:5px;min-height:24px;}
+  .decision-old{color:#455a64;text-decoration-thickness:2px;text-decoration-color:#c62828;font-weight:900;}
+  .decision-final{color:#1b5e20;font-size:15px;font-weight:900;}
+  .decision-input-cell .grade-input{margin-top:3px;}
+  html[data-ui-skin^="night"] .gb-decision-bar{background:linear-gradient(135deg,#18261d,#253b2b);border-color:#8f7330;color:#f6e6a9;}
+  html[data-ui-skin^="night"] .gb-decision-help{color:#d9c987;}
+  html[data-ui-skin^="night"] .decision-old{color:#dce6e1;}
+  @media (min-width:701px){
+    #topbar{gap:10px!important;padding-inline:14px!important;}
+    #topbar b{max-width:min(30vw,280px);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+    #topbar .topbar-nav{flex:1 1 auto!important;min-width:0!important;gap:8px!important;overflow-x:auto!important;overflow-y:hidden!important;justify-content:flex-start!important;padding-inline:4px!important;}
+    #topbar .topbar-nav>*{flex:0 0 auto!important;position:relative;}
+  }
+  @media (max-width:700px){
+    #topbar .topbar-nav{gap:6px!important;overflow-x:auto!important;overflow-y:hidden!important;justify-content:flex-start!important;}
+    #topbar .topbar-nav>*{flex:0 0 auto!important;position:relative;}
+    .gb-decision-bar{align-items:stretch;flex-direction:column;}
+    .gb-decision-bar label,.gb-decision-bar .material-btn{width:100%;justify-content:center;}
+    .gb-decision-bar input{flex:1;}
+  }
   @media (orientation:landscape) and (max-height:650px){
     #topbar{min-height:42px!important;height:42px!important;}
     body.dashboard-active .dashboard-main{padding-top:52px!important;}
@@ -7292,6 +7325,7 @@ function restoreEntry(entry){
 }
 
 function appGoBack(){
+  // A back action is always an in-app navigation step. It must never close the page.
   if(document.getElementById('dashListOverlay')&&document.getElementById('dashListOverlay').classList.contains('open')){ closeDashNameList(); return true; }
   if(typeof isAccountsFormOpen==='function'&&isAccountsFormOpen()){ closeAccountsForm(); return true; }
   if(typeof isNotesFormOpen==='function'&&isNotesFormOpen()){ closeNotesForm(); return true; }
@@ -7308,13 +7342,22 @@ function appGoBack(){
   const ex = document.getElementById('exitModal');
   if(ex && ex.classList.contains('open')){ closeExitModal(); return true; }
   if(closeToolbarPanels()) return true;
-  if(appStack.length <= 1) return false;
-  appStack.pop();
-  restoreEntry(appStack[appStack.length - 1]);
+  if(appStack.length > 1){
+    appStack.pop();
+    restoreEntry(appStack[appStack.length - 1]);
+    return true;
+  }
+  // At the root, stay inside the dashboard instead of opening an exit dialog.
+  if(currentViewId && currentViewId !== 'view-dashboard'){
+    goDashboard();
+    return true;
+  }
   return true;
 }
 function requestAppBack(){
-  if(!appGoBack()) openExitModal();
+  // The global/menu back button is navigation only; exiting is available only through
+  // an explicit exit action, never as a side effect of pressing Back.
+  appGoBack();
 }
 function openExitModal(){
   const el = document.getElementById('exitModal');
@@ -7336,10 +7379,8 @@ function confirmAppExit(){
 }
 window.addEventListener('popstate', function(){
   if(allowAppExit) return;
-  if(!appGoBack()){
-    try{ history.pushState({app:1, guard:1}, ''); }catch(e){}
-    openExitModal();
-  }
+  appGoBack();
+  try{ history.pushState({app:1, guard:1}, ''); }catch(e){}
 });
 
 
@@ -7857,7 +7898,7 @@ function renderGradesView(isOnboarding){
   el.className = 'view wide';
   el.innerHTML =
     '<div class="module-shell grades-management-shell">' +
-      '<div class="module-head"><div class="module-title"><span class="mi">🏫</span><div><h2>'+studentsSectionTitle()+'</h2><p>المصدر الرئيسي لأسماء '+studentsSectionTitle()+' في سجل المواد والبطاقات وكشوف النتائج</p></div></div><button class="material-btn secondary" onclick="goDashboard()">رجوع للوحة التحكم</button></div>' +
+      '<div class="module-head"><div class="module-title"><span class="mi">🏫</span><div><h2>'+studentsSectionTitle()+'</h2><p>المصدر الرئيسي لأسماء '+studentsSectionTitle()+' في سجل المواد والبطاقات وكشوف النتائج</p></div></div><button class="material-btn secondary" onclick="appGoBack()">رجوع خطوة</button></div>' +
       '<button type="button" class="grades-config-toggle" onclick="toggleGradesConfigPanel()"><span>⚙️</span><div><strong>إعداد الصفوف والشعب</strong><small>تفعيل الصفوف وإضافة الشعب أو حذفها</small></div><b id="gradesConfigArrow">⌄</b></button>' +
       '<div id="gradesConfigPanel" class="panel wide management-config-panel" style="display:'+(isOnboarding?'block':'none')+'">' +
         '<h2>إعداد الصفوف والشعب</h2>' +
@@ -9424,7 +9465,7 @@ function renderDashboard(){
       '<button onclick="toggleUiTheme()"><span class="dni ui-theme-icon">🌙</span><span class="ui-theme-toggle-text">الوضع الليلي</span></button>'+
       '<button onclick="closeDashboardSidebar();authLogout()"><span class="dni">🚪</span>تسجيل خروج</button>'+
       '<button onclick="toggleUiTheme()"><span class="dni ui-theme-icon">🌙</span><span class="ui-theme-toggle-text">الوضع الليلي</span></button>'+
-      '<button class="ds-exit" onclick="requestAppBack()"><span class="dni">↩</span>رجوع / خروج</button>'+
+      '<button class="ds-exit" onclick="requestAppBack()"><span class="dni">↩</span>رجوع خطوة</button>'+
     '</nav></aside><main class="dashboard-main"><header class="dashboard-top"><div><h1>كشوفات المدرسة</h1><p>نظرة شاملة على أعداد الطلاب ونتائج آخر امتحان مسجل</p></div><div class="dashboard-date">'+escapeHtml(dateText)+'</div></header>'+
     '<section class="stats-kpis">'+
       '<div class="stat-kpi" onclick="openDashNameList(\'total\')" style="cursor:pointer"><div><strong>'+toArabicDigits(String(stats.total))+'</strong><span>إجمالي طلاب المدرسة</span></div></div>'+
@@ -9475,7 +9516,7 @@ function backupCollectStore(){
 }
 function renderBackupModule(){
   const el=document.getElementById('view-backup');if(!el)return;
-  el.innerHTML='<div class="module-shell"><div class="module-head"><div class="module-title"><span class="mi">💾</span><div><h2>النسخ الاحتياطي</h2><p>حفظ واسترجاع بيانات المنظومة وملفات الطلاب</p></div></div><button class="material-btn secondary" onclick="goDashboard()">رجوع للوحة التحكم</button></div>'+
+  el.innerHTML='<div class="module-shell"><div class="module-head"><div class="module-title"><span class="mi">💾</span><div><h2>النسخ الاحتياطي</h2><p>حفظ واسترجاع بيانات المنظومة وملفات الطلاب</p></div></div><button class="material-btn secondary" onclick="appGoBack()">رجوع خطوة</button></div>'+
     '<div class="asg-form">'+
       '<div class="asg-form-sec"><h4>نسخة المنظومة كاملة</h4><p class="empty-hint">تشمل الطلاب والدرجات والقيود والملاك والحسابات والإعدادات المحفوظة على هذا الجهاز.</p><div style="display:flex;flex-wrap:wrap;gap:10px">'+
         '<button class="material-btn" onclick="backupExportJson()">⬇️ حفظ نسخة احتياطية في الملفات</button>'+
@@ -9626,6 +9667,10 @@ function gbSectionsForGrade(label){
   const grade = (APP.grades || []).find(function(g){ return g.label === label; });
   return grade ? (grade.sections || []) : [];
 }
+function gbSectionById(grade,sectionId){
+  const wanted=String(sectionId==null?'':sectionId);
+  return gbSectionsForGrade(grade).find(function(section){return String(section.id)===wanted;})||null;
+}
 function gbSubjects(grade){
   try{ return grade ? subjectsForGrade(grade) : getSubjects('elementary'); }
   catch(e){ return DEFAULT_SUBJECT_SETS.elementary.items.slice(); }
@@ -9726,7 +9771,7 @@ function renderGradebookView(){
     const students=sections.reduce(function(n,sec){return n+(sec.students||[]).length;},0);
     cards+='<button class="grade-select-card" onclick="openGradebookGrade(\''+grade+'\')"><span class="gsc-icon">'+(i<4?'📘':'📗')+'</span><strong>الصف '+grade+'</strong><small>'+String(sections.length)+' شعبة — '+String(students)+' طالب</small></button>';
   });
-  el.innerHTML='<div class="module-shell"><div class="module-head"><div class="module-title"><span class="mi">📊</span><div><h2>سجل المواد والدرجات</h2><p>'+escapeHtml(gradebookStageTitle())+' — اختر الصف لفتح مواده وسجلات شعبه المستقلة</p></div></div><button class="material-btn secondary" onclick="goDashboard()">رجوع للوحة التحكم</button></div><div class="grade-select-grid">'+cards+'</div></div>';
+  el.innerHTML='<div class="module-shell"><div class="module-head"><div class="module-title"><span class="mi">📊</span><div><h2>سجل المواد والدرجات</h2><p>'+escapeHtml(gradebookStageTitle())+' — اختر الصف لفتح مواده وسجلات شعبه المستقلة</p></div></div><button class="material-btn secondary" onclick="appGoBack()">رجوع خطوة</button></div><div class="grade-select-grid">'+cards+'</div></div>';
 }
 function subjectMaterialIcon(name){
   name=String(name||'');
@@ -9772,6 +9817,72 @@ function gradebookSectionChanged(){
     if(host) host.innerHTML='<div class="empty-module">اضغط على أيقونة المادة لعرض جدول درجات طلاب هذه الشعبة.</div>';
   }
 }
+function gradebookDecisionNumber(value){
+  const n=Number(toWesternDigits(value==null?'':String(value)).replace(/[^0-9.]/g,''));
+  return Number.isFinite(n)&&n>0?Math.min(1000,n):0;
+}
+function formatDecisionPoints(value){
+  const n=Number(value)||0;
+  return Number.isInteger(n)?String(n):String(Number(n.toFixed(2)));
+}
+function gradebookDecisionAllocations(grade,section,record){
+  const allocations={};
+  if(!section||!record)return allocations;
+  let remaining=gradebookDecisionNumber(record.decisionPoints);
+  if(remaining<=0)return allocations;
+  const upper=usesSixthGradeLayout(grade), candidates=[];
+  (section.students||[]).forEach(function(st,index){
+    const row=record.rows&&record.rows[st.id];if(!row)return;
+    if(upper)gbCompute56(row,record);
+    const raw=gradebookNumeric(upper?row.finalGrade:row.finalExam);
+    if(raw!=null&&raw<50){
+      candidates.push({id:st.id,raw:raw,need:50-raw,index:index});
+    }
+  });
+  // Spend only enough points to complete a raise to 50; nearest-to-50 first.
+  candidates.sort(function(a,b){return a.need-b.need||a.index-b.index;});
+  candidates.forEach(function(item){
+    if(remaining+1e-9>=item.need){
+      allocations[item.id]={raw:item.raw,applied:item.need,effective:50};
+      remaining-=item.need;
+    }
+  });
+  Object.keys(allocations).forEach(function(id){allocations[id].remainingAfter=Math.max(0,remaining);});
+  allocations.__remaining=remaining;
+  return allocations;
+}
+function gradebookDecisionCellHtml(raw,allocation,extraClass){
+  const has=!!(allocation&&allocation.applied>0);
+  const cls=(extraClass||'')+(has?' decision-applied':'');
+  if(!has)return '<td class="'+cls+' calc-cell" data-calc="finalGrade" data-decision-cell="1">'+showGrade(raw)+'</td>';
+  return '<td class="'+cls+' calc-cell decision-cell" data-calc="finalGrade" data-decision-cell="1"><div class="decision-mark">قرار +'+toArabicDigits(formatDecisionPoints(allocation.applied))+'</div><div class="decision-values"><del class="decision-old">'+showGrade(raw)+'</del><b class="decision-final">'+toArabicDigits('50')+'</b></div></td>';
+}
+function gradebookDecisionInput(stId,field,value,allocation){
+  const has=!!(allocation&&allocation.applied>0);
+  const input=gbInput(stId,field,value);
+  if(!has)return input;
+  return input.replace('<td>','<td class="decision-cell decision-input-cell" data-decision-cell="1"><div class="decision-mark">قرار +'+toArabicDigits(formatDecisionPoints(allocation.applied))+'</div><div class="decision-values"><del class="decision-old">'+showGrade(value)+'</del><b class="decision-final">'+toArabicDigits('50')+'</b></div>');
+}
+function updateGradebookDecisionPoints(value){
+  const grade=(document.getElementById('gbGrade')||{}).value||'',sectionId=(document.getElementById('gbSection')||{}).value||'',subject=(document.getElementById('gbSubject')||{}).value||'';
+  if(!grade||!sectionId||!subject)return;
+  const record=gbRecord(grade,sectionId,subject,true);record.decisionPoints=gradebookDecisionNumber(value);record.updatedAt=Date.now();saveGradebook(GRADEBOOK);renderGradebookTable();
+}
+function clearGradebookDecision(){updateGradebookDecisionPoints(0);}
+function refreshGradebookDecisionDisplay(){
+  const grade=(document.getElementById('gbGrade')||{}).value||'',sectionId=(document.getElementById('gbSection')||{}).value||'',subject=(document.getElementById('gbSubject')||{}).value||'';
+  const section=gbSectionsForGrade(grade).find(function(s){return String(s.id)===String(sectionId);});
+  const record=gbRecord(grade,sectionId,subject,false);if(!section||!record)return;
+  const allocations=gradebookDecisionAllocations(grade,section,record);
+  document.querySelectorAll('#gbTableHost tr[data-student]').forEach(function(tr){
+    const id=tr.getAttribute('data-student'),cell=tr.querySelector('[data-decision-cell]');if(!cell)return;
+    const a=allocations[id], old=cell.querySelector('.decision-old'), mark=cell.querySelector('.decision-mark'), final=cell.querySelector('.decision-final');
+    cell.classList.toggle('decision-applied',!!a);
+    if(mark)mark.textContent=a?'قرار +'+toArabicDigits(formatDecisionPoints(a.applied)):'';
+    if(old)old.textContent=a?showGrade(a.raw):'';
+    if(final)final.textContent=a?toArabicDigits('50'):'';
+  });
+}
 function keepTableHScroll(root){
   const scope=root&&root.querySelectorAll?root:document;
   const boxes=scope.querySelectorAll('.table-scroll,.levels-table-scroll');
@@ -9789,20 +9900,24 @@ function renderGradebookTable(){
   const grade=document.getElementById('gbGrade').value, sectionId=document.getElementById('gbSection').value, subject=document.getElementById('gbSubject').value;
   const host=document.getElementById('gbTableHost'); if(!host) return;
   if(!grade||!sectionId||!subject){ host.innerHTML='<div class="empty-module">اختر الصف والشعبة والمادة لعرض سجل الدرجات.</div>'; return; }
-  const section=gbSectionsForGrade(grade).find(function(s){return s.id===sectionId;});
+  const section=gbSectionById(grade,sectionId);
   if(!section){ host.innerHTML='<div class="empty-module">تعذّر العثور على الشعبة.</div>'; return; }
   const record=gbRecord(grade,sectionId,subject,true);
   (section.students||[]).forEach(function(st){ if(!record.rows[st.id]) record.rows[st.id]={}; });
   const upper=usesSixthGradeLayout(grade);
+  const decisionAllocations=gradebookDecisionAllocations(grade,section,record);
   let head, rows='';
   if(upper){
     head='<tr><th rowspan="2">ت</th><th rowspan="2" class="student-head">اسم الطالب</th><th colspan="3" class="group">الفصل الأول</th><th rowspan="2">معدل الفصل الأول</th><th rowspan="2">امتحان نصف السنة</th><th colspan="2" class="group">الفصل الثاني</th><th rowspan="2">معدل الفصل الثاني</th><th rowspan="2">السعي السنوي</th><th rowspan="2">امتحان نهاية السنة</th><th rowspan="2">الدرجة النهائية</th></tr><tr><th>تشرين الثاني</th><th>كانون الأول</th><th>كانون الثاني</th><th>آذار</th><th>نيسان</th></tr>';
-    (section.students||[]).forEach(function(st,i){ const r=record.rows[st.id]; gbCompute56(r,record); rows+='<tr data-student="'+st.id+'"><td>'+(i+1)+'</td><td class="student-col">'+wrapStudentNameHtml(st.name)+'</td>'+gbInput(st.id,'oct',r.oct)+gbInput(st.id,'nov',r.nov)+gbInput(st.id,'dec',r.dec)+'<td class="calc-cell" data-calc="term1">'+showGrade(r.term1)+'</td>'+gbInput(st.id,'mid',r.mid)+gbInput(st.id,'feb',r.feb)+gbInput(st.id,'apr',r.apr)+'<td class="calc-cell" data-calc="term2">'+showGrade(r.term2)+'</td><td class="calc-cell" data-calc="coursework">'+showGrade(r.coursework)+'</td>'+gbInput(st.id,'finalExam',r.finalExam)+'<td class="calc-cell" data-calc="finalGrade">'+showGrade(r.finalGrade)+'</td></tr>'; });
+    (section.students||[]).forEach(function(st,i){ const r=record.rows[st.id]; gbCompute56(r,record); rows+='<tr data-student="'+st.id+'"><td>'+(i+1)+'</td><td class="student-col">'+wrapStudentNameHtml(st.name)+'</td>'+gbInput(st.id,'oct',r.oct)+gbInput(st.id,'nov',r.nov)+gbInput(st.id,'dec',r.dec)+'<td class="calc-cell" data-calc="term1">'+showGrade(r.term1)+'</td>'+gbInput(st.id,'mid',r.mid)+gbInput(st.id,'feb',r.feb)+gbInput(st.id,'apr',r.apr)+'<td class="calc-cell" data-calc="term2">'+showGrade(r.term2)+'</td><td class="calc-cell" data-calc="coursework">'+showGrade(r.coursework)+'</td>'+gbInput(st.id,'finalExam',r.finalExam)+gradebookDecisionCellHtml(r.finalGrade,decisionAllocations[st.id])+'</tr>'; });
   }else{
     head='<tr><th rowspan="2">ت</th><th rowspan="2" class="student-head">اسم الطالب</th><th colspan="2" class="group">امتحان نصف السنة</th><th colspan="2" class="group">امتحان نهاية السنة</th><th rowspan="2">الملاحظات</th></tr><tr><th>الدرجة</th><th>كتابةً</th><th>الدرجة</th><th>كتابةً</th></tr>';
-    (section.students||[]).forEach(function(st,i){ const r=record.rows[st.id]; rows+='<tr data-student="'+st.id+'"><td>'+(i+1)+'</td><td class="student-col">'+wrapStudentNameHtml(st.name)+'</td>'+gbInput(st.id,'mid',r.mid)+'<td class="written-cell" data-written="mid">'+escapeHtml(gradeWords(r.mid))+'</td>'+gbInput(st.id,'finalExam',r.finalExam)+'<td class="written-cell" data-written="finalExam">'+escapeHtml(gradeWords(r.finalExam))+'</td><td><input class="remark-input" value="'+escapeHtml(r.remarks||'')+'" oninput="gbUpdate(\''+st.id+'\',\'remarks\',this.value)"></td></tr>'; });
+    (section.students||[]).forEach(function(st,i){ const r=record.rows[st.id]; rows+='<tr data-student="'+st.id+'"><td>'+(i+1)+'</td><td class="student-col">'+wrapStudentNameHtml(st.name)+'</td>'+gbInput(st.id,'mid',r.mid)+'<td class="written-cell" data-written="mid">'+escapeHtml(gradeWords(r.mid))+'</td>'+gradebookDecisionInput(st.id,'finalExam',r.finalExam,decisionAllocations[st.id])+'<td class="written-cell" data-written="finalExam">'+escapeHtml(gradeWords(r.finalExam))+'</td><td><input class="remark-input" value="'+escapeHtml(r.remarks||'')+'" oninput="gbUpdate(\''+st.id+'\',\'remarks\',this.value)"></td></tr>'; });
   }
-  host.innerHTML='<div class="surface-bar"><strong>الصف '+escapeHtml(grade)+' — '+escapeHtml(section.label)+' — '+escapeHtml(subject)+'</strong>'+(upper?'<label style="margin-right:auto;display:flex;align-items:center;gap:6px;font-size:13px;font-weight:800;cursor:pointer"><input type="checkbox" id="gbTerm1BestTwo"'+(record.term1BestTwo?' checked':'')+' onchange="gbSetTerm1BestTwo(this.checked)"> أعلى درجتين لمعدل الفصل الأول</label>':'')+'<span id="gbSaved" class="save-state">تم الحفظ ✓</span></div><div class="table-scroll"><table class="gradebook-table"><thead>'+head+'</thead><tbody>'+rows+'</tbody><tfoot id="gbTableFoot"></tfoot></table></div><div id="gbSectionPassCard" class="gb-section-pass-card"></div>';
+  const decisionPoints=gradebookDecisionNumber(record.decisionPoints);
+  const decisionRemaining=decisionAllocations.__remaining==null?decisionPoints:decisionAllocations.__remaining;
+  const decisionBar='<div class="gb-decision-bar"><label>درجة القرار <input id="gbDecisionPoints" type="number" min="0" max="1000" step="0.5" value="'+escapeHtml(String(decisionPoints))+'" onchange="updateGradebookDecisionPoints(this.value)"></label><span class="gb-decision-help">تعمل على الدرجة النهائية الأقل من ٥٠ فقط، والأقرب إلى ٥٠ أولاً. المتبقي: <b id="gbDecisionRemaining">'+toArabicDigits(formatDecisionPoints(decisionRemaining))+'</b></span><button type="button" class="material-btn secondary" onclick="updateGradebookDecisionPoints(document.getElementById(\'gbDecisionPoints\').value)">تطبيق القرار</button><button type="button" class="material-btn danger" onclick="clearGradebookDecision()">مسح القرار</button></div>';
+  host.innerHTML='<div class="surface-bar"><strong>الصف '+escapeHtml(grade)+' — '+escapeHtml(section.label)+' — '+escapeHtml(subject)+'</strong>'+(upper?'<label style="margin-right:auto;display:flex;align-items:center;gap:6px;font-size:13px;font-weight:800;cursor:pointer"><input type="checkbox" id="gbTerm1BestTwo"'+(record.term1BestTwo?' checked':'')+' onchange="gbSetTerm1BestTwo(this.checked)"> أعلى درجتين لمعدل الفصل الأول</label>':'')+'<span id="gbSaved" class="save-state">تم الحفظ ✓</span></div>'+decisionBar+'<div class="table-scroll"><table class="gradebook-table"><thead>'+head+'</thead><tbody>'+rows+'</tbody><tfoot id="gbTableFoot"></tfoot></table></div><div id="gbSectionPassCard" class="gb-section-pass-card"></div>';
   const tIn=document.getElementById('gbTeacherName'); if(tIn) tIn.value=record.teacherName||currentGradebookTeacherName()||'';
   updateGradebookSummary();
   markGradebookFailCells();
@@ -9820,7 +9935,7 @@ function updateGradebookSummary(){
   const foot=document.getElementById('gbTableFoot'), card=document.getElementById('gbSectionPassCard');
   if(!gradeEl||!secEl||!subEl||!foot) return;
   const grade=gradeEl.value, sectionId=secEl.value, subject=subEl.value;
-  const section=gbSectionsForGrade(grade).find(function(s){return s.id===sectionId;});
+  const section=gbSectionById(grade,sectionId);
   const record=gbRecord(grade,sectionId,subject,false);
   if(!section||!record){foot.innerHTML=''; if(card) card.innerHTML=''; return;}
   const upper=usesSixthGradeLayout(grade);
@@ -9866,7 +9981,7 @@ function updateGradebookSummary(){
 
 
 function computeSectionSubjectRates(grade,sectionId){
-  const section=gbSectionsForGrade(grade).find(function(s){return s.id===sectionId;});
+  const section=gbSectionById(grade,sectionId);
   const subjects=gbSubjects(grade);
   const students=(section&&section.students||[]).filter(function(st){return String(st.name||'').trim();});
   const total=students.length, mark=resultPassMark(grade), upper=usesSixthGradeLayout(grade);
@@ -9976,6 +10091,7 @@ function gbUpdate(studentId,field,value){
   }
   updateGradebookSummary();
   markGradebookFailCells();
+  refreshGradebookDecisionDisplay();
   clearTimeout(gbSaveTimer); gbSaveTimer=setTimeout(function(){ saveGradebook(GRADEBOOK); const s=document.getElementById('gbSaved'); if(s){s.classList.add('show');setTimeout(function(){s.classList.remove('show');},1200);} },180);
 }
 function gradebookIsElementary(){ return currentStage()==='elementary'; }
@@ -10138,11 +10254,11 @@ function printGradebookTable(orientation){
   const bodyRows=table.tBodies.length?Array.from(table.tBodies[0].rows):[];
   const rowHtmls=bodyRows.map(function(row){return row.outerHTML;});
   const sid=(document.getElementById('gbSection')||{}).value;
-  const secObj=gbSectionsForGrade(grade).find(function(s){return s.id===sid;});
+  const secObj=gbSectionById(grade,sid);
   const guide=(secObj&&secObj.guide)||gradeGuideName(grade)||APP.school.guide||'—';
   const role=typeof gradebookTeacherRole==='function'?gradebookTeacherRole():'المعلم';
   const title=typeof gradebookSheetTitle==='function'?gradebookSheetTitle():'سجل الدرجات';
-  const extra='.gradebook-print-table tr.gb-gap-row td{height:2.2mm!important;padding:0!important;border:0!important;background:transparent!important}.gradebook-print-table .gb-sum-row td,.gradebook-print-table .gb-pct-row td{padding:.7mm .3mm!important;border-top:.45mm solid #c9a227}.gradebook-print-table .gb-sum-label{text-align:right!important;font-weight:900;font-size:12px!important;width:38mm}.gradebook-print-table td.student-col,.gradebook-print-table td.student-col span{text-align:right;font-weight:900;white-space:normal;line-height:1.2;width:38mm;font-size:14px!important}.gradebook-print-table th{font-size:9px!important;padding:.7mm .3mm!important}.gradebook-print-table td{padding:.7mm .3mm!important;font-size:11px!important}.gradebook-print-table tbody td{height:auto}.gradebook-print-table .calc-cell{background:#e8f5e9!important;color:#004d40;font-weight:900}.gb-fail,.gb-fail input{color:#c62828!important;font-weight:900!important}.gb-sum-row td{background:#e8f5e9!important;font-weight:900}.gb-pct-row td{background:#fff8e1!important;font-weight:900}.gb-sum-label{text-align:right!important}.gb-print-pass{margin:3mm auto 0;width:62mm;padding:2.2mm;text-align:center;border:.45mm solid #2e7d32;border-radius:2.5mm;background:#e8f5e9}.gb-print-pass b{display:block;font-size:10px;color:#1b5e20}.gb-print-pass strong{display:block;font-size:16px;color:#0d4f1c;font-weight:900}';
+  const extra='.gradebook-print-table tr.gb-gap-row td{height:2.2mm!important;padding:0!important;border:0!important;background:transparent!important}.gradebook-print-table .gb-sum-row td,.gradebook-print-table .gb-pct-row td{padding:.7mm .3mm!important;border-top:.45mm solid #c9a227}.gradebook-print-table .gb-sum-label{text-align:right!important;font-weight:900;font-size:12px!important;width:38mm}.gradebook-print-table td.student-col,.gradebook-print-table td.student-col span{text-align:right;font-weight:900;white-space:normal;line-height:1.2;width:38mm;font-size:14px!important}.gradebook-print-table th{font-size:9px!important;padding:.7mm .3mm!important}.gradebook-print-table td{padding:.7mm .3mm!important;font-size:11px!important}.gradebook-print-table tbody td{height:auto}.gradebook-print-table .calc-cell{background:#e8f5e9!important;color:#004d40;font-weight:900}.gb-fail,.gb-fail input{color:#c62828!important;font-weight:900!important}.gb-sum-row td{background:#e8f5e9!important;font-weight:900}.gb-pct-row td{background:#fff8e1!important;font-weight:900}.gb-sum-label{text-align:right!important}.gb-print-pass{margin:3mm auto 0;width:62mm;padding:2.2mm;text-align:center;border:.45mm solid #2e7d32;border-radius:2.5mm;background:#e8f5e9}.gb-print-pass b{display:block;font-size:10px;color:#1b5e20}.gb-print-pass strong{display:block;font-size:16px;color:#0d4f1c;font-weight:900}.decision-cell .decision-mark{color:#c62828;font-size:9px;font-weight:900}.decision-cell .decision-old{text-decoration:line-through;text-decoration-color:#c62828;text-decoration-thickness:1.5px}.decision-cell .decision-final{color:#1b5e20;font-weight:900}';
   const css=schoolSheetPrintCss(innerW,innerH,landscape,'.exam-list-table')+extra;
   const sum=updateGradebookSummary()||{};
   const colN=(bodyRows[0]&&bodyRows[0].cells)?bodyRows[0].cells.length:(usesSixthGradeLayout(grade)?13:7);
@@ -10430,7 +10546,7 @@ function ensurePropertyDefaults(){if(PROPERTIES_STATE.demoV1||PROPERTIES_STATE.i
 function openPropertiesModule(){renderPropertiesView();navigateTo('view-properties',{});}
 function propertySummaries(){const items=PROPERTIES_STATE.items;return {total:items.length,good:items.filter(function(x){return x.status==='سليم';}).length,bad:items.filter(function(x){return x.status==='تالف';}).length,notWorking:items.filter(function(x){return x.working==='لا';}).length};}
 function propertySelect(id,field,value,options,cls){return '<select class="property-select '+(cls||'')+'" onchange="updateProperty(\''+id+'\',\''+field+'\',this.value)">'+options.map(function(v){return '<option'+(v===value?' selected':'')+'>'+v+'</option>';}).join('')+'</select>';}
-function renderPropertiesView(){const s=propertySummaries(),rows=PROPERTIES_STATE.items.map(function(item,i){return '<tr><td>'+(i+1)+'</td><td contenteditable="true" oninput="updateProperty(\''+item.id+'\',\'item\',this.textContent)">'+escapeHtml(item.item||'')+'</td><td contenteditable="true" oninput="updateProperty(\''+item.id+'\',\'place\',this.textContent)">'+escapeHtml(item.place||'')+'</td><td>'+propertySelect(item.id,'status',item.status||'سليم',['سليم','تالف'],item.status==='تالف'?'property-damaged':'property-good')+'</td><td contenteditable="true" dir="ltr" oninput="updateProperty(\''+item.id+'\',\'ip\',this.textContent)">'+escapeHtml(item.ip||'')+'</td><td>'+propertySelect(item.id,'working',item.working||'نعم',['نعم','لا'],item.working==='لا'?'property-no':'property-yes')+'</td><td><button class="student-tool-btn delete" onclick="deleteProperty(\''+item.id+'\')">✕</button></td></tr>';}).join('');document.getElementById('view-properties').innerHTML='<div class="module-shell"><div class="module-head"><div class="module-title"><span class="mi">🏫</span><div><h2>الممتلكات</h2><p>سجل المواد والأجهزة وحالتها ومكانها</p></div></div><button class="material-btn secondary" onclick="goDashboard()">رجوع للوحة التحكم</button></div><div class="properties-summary"><div class="summary-card"><strong>'+s.total+'</strong><span>عدد المواد</span></div><div class="summary-card good"><strong>'+s.good+'</strong><span>المواد السليمة</span></div><div class="summary-card bad"><strong>'+s.bad+'</strong><span>المواد التالفة</span></div><div class="summary-card warn"><strong>'+s.notWorking+'</strong><span>المواد التي لا يعمل بها</span></div></div><div class="staff-toolbar"><button class="material-btn secondary" onclick="printProperties()">🖨️ طباعة القائمة</button><button class="material-btn" onclick="addProperty()">＋ إضافة مادة</button></div><div class="attendance-table-wrap"><table class="properties-table"><thead><tr><th>ت</th><th>المادة</th><th>المكان</th><th>الحالة</th><th>رقم IP</th><th>يعمل به</th><th>حذف</th></tr></thead><tbody>'+rows+'</tbody></table></div></div>';}
+function renderPropertiesView(){const s=propertySummaries(),rows=PROPERTIES_STATE.items.map(function(item,i){return '<tr><td>'+(i+1)+'</td><td contenteditable="true" oninput="updateProperty(\''+item.id+'\',\'item\',this.textContent)">'+escapeHtml(item.item||'')+'</td><td contenteditable="true" oninput="updateProperty(\''+item.id+'\',\'place\',this.textContent)">'+escapeHtml(item.place||'')+'</td><td>'+propertySelect(item.id,'status',item.status||'سليم',['سليم','تالف'],item.status==='تالف'?'property-damaged':'property-good')+'</td><td contenteditable="true" dir="ltr" oninput="updateProperty(\''+item.id+'\',\'ip\',this.textContent)">'+escapeHtml(item.ip||'')+'</td><td>'+propertySelect(item.id,'working',item.working||'نعم',['نعم','لا'],item.working==='لا'?'property-no':'property-yes')+'</td><td><button class="student-tool-btn delete" onclick="deleteProperty(\''+item.id+'\')">✕</button></td></tr>';}).join('');document.getElementById('view-properties').innerHTML='<div class="module-shell"><div class="module-head"><div class="module-title"><span class="mi">🏫</span><div><h2>الممتلكات</h2><p>سجل المواد والأجهزة وحالتها ومكانها</p></div></div><button class="material-btn secondary" onclick="appGoBack()">رجوع خطوة</button></div><div class="properties-summary"><div class="summary-card"><strong>'+s.total+'</strong><span>عدد المواد</span></div><div class="summary-card good"><strong>'+s.good+'</strong><span>المواد السليمة</span></div><div class="summary-card bad"><strong>'+s.bad+'</strong><span>المواد التالفة</span></div><div class="summary-card warn"><strong>'+s.notWorking+'</strong><span>المواد التي لا يعمل بها</span></div></div><div class="staff-toolbar"><button class="material-btn secondary" onclick="printProperties()">🖨️ طباعة القائمة</button><button class="material-btn" onclick="addProperty()">＋ إضافة مادة</button></div><div class="attendance-table-wrap"><table class="properties-table"><thead><tr><th>ت</th><th>المادة</th><th>المكان</th><th>الحالة</th><th>رقم IP</th><th>يعمل به</th><th>حذف</th></tr></thead><tbody>'+rows+'</tbody></table></div></div>';}
 function addProperty(){PROPERTIES_STATE.items.push({id:'prop_'+Date.now(),item:'مادة جديدة',place:'',status:'سليم',ip:'',working:'نعم'});savePropertiesState();renderPropertiesView();}
 function updateProperty(id,field,value){const item=PROPERTIES_STATE.items.find(function(x){return x.id===id;});if(!item)return;item[field]=String(value||'').trim();savePropertiesState();if(field==='status'||field==='working')renderPropertiesView();}
 function deleteProperty(id){if(!confirm('حذف هذه المادة؟'))return;PROPERTIES_STATE.items=PROPERTIES_STATE.items.filter(function(x){return x.id!==id;});savePropertiesState();renderPropertiesView();}
@@ -10722,7 +10838,7 @@ function renderTimetableView(){
     ? '<button class="material-btn secondary" onclick="openTeacherHome()">رجوع لمهام المعلم</button>'
     : (role==='student'
       ? '<button class="material-btn secondary" onclick="renderStudentHome();navigateTo(\'view-student\',{page:\'home\'})">رجوع لموادي</button>'
-      : '<button class="material-btn secondary" onclick="goDashboard()">رجوع للوحة التحكم</button>');
+      : '<button class="material-btn secondary" onclick="appGoBack()">رجوع خطوة</button>');
   let pack={title:'',rows:ttNormalize(TIMETABLE_STATE.rows||[])};
   if(role==='student') pack=ttStudentRows();
   const empty=!pack.rows||!pack.rows.length||!pack.rows.some(function(r){return r.some(function(c){return String(c||'').trim();});});
@@ -10800,7 +10916,7 @@ function renderParentsView(tabKey){
   const cur=tabs.find(function(x){return x.key===PARENTS_TAB;})||tabs[0];
   const back=(typeof authRole==='function'&&authRole()==='teacher')
     ? '<button class="material-btn secondary" onclick="openTeacherHome()">رجوع لمهام المعلم</button>'
-    : '<button class="material-btn secondary" onclick="goDashboard()">رجوع للوحة التحكم</button>';
+    : '<button class="material-btn secondary" onclick="appGoBack()">رجوع خطوة</button>';
   const tabHtml=tabs.length?tabs.map(function(tb){
     return '<button type="button" class="parents-tab'+(cur&&tb.key===cur.key?' active':'')+'" onclick="parentsPickTab(\''+encodeURIComponent(tb.key)+'\')">'+escapeHtml(tb.label)+'</button>';
   }).join(''):'<span class="empty-hint">لا توجد شعب بعد.</span>';
@@ -10825,7 +10941,7 @@ function renderParentsView(tabKey){
 }
 function openCareModule(){renderCareHome();navigateTo('view-care',{page:'home'});}
 function restoreCareView(meta){if(meta.page==='orphans')renderOrphansView();else if(meta.page==='chronic')renderChronicView();else renderCareHome();}
-function renderCareHome(){const careBack=(typeof authRole==='function'&&authRole()==='teacher')?'<button class="material-btn secondary" onclick="openTeacherHome()">رجوع لمهام المعلم</button>':'<button class="material-btn secondary" onclick="goDashboard()">رجوع للوحة التحكم</button>';document.getElementById('view-care').innerHTML='<div class="module-shell"><div class="module-head"><div class="module-title"><span class="mi">🤍</span><div><h2>الرعاية والأيتام</h2><p>متابعة الأيتام وحالات الأمراض المزمنة</p></div></div>'+careBack+'</div><div class="care-home-grid"><button class="care-module-card orphans" onclick="openOrphansView()"><span>🫶</span><h3>الأيتام</h3><p>تسجيل ومتابعة بيانات الأيتام وأولياء أمورهم.</p></button><button class="care-module-card chronic" onclick="openChronicView()"><span>🩺</span><h3>المرض المزمن</h3><p>تسجيل الطلاب المصابين بأمراض مزمنة وملاحظاتهم.</p></button></div></div>';}
+function renderCareHome(){const careBack=(typeof authRole==='function'&&authRole()==='teacher')?'<button class="material-btn secondary" onclick="openTeacherHome()">رجوع لمهام المعلم</button>':'<button class="material-btn secondary" onclick="appGoBack()">رجوع خطوة</button>';document.getElementById('view-care').innerHTML='<div class="module-shell"><div class="module-head"><div class="module-title"><span class="mi">🤍</span><div><h2>الرعاية والأيتام</h2><p>متابعة الأيتام وحالات الأمراض المزمنة</p></div></div>'+careBack+'</div><div class="care-home-grid"><button class="care-module-card orphans" onclick="openOrphansView()"><span>🫶</span><h3>الأيتام</h3><p>تسجيل ومتابعة بيانات الأيتام وأولياء أمورهم.</p></button><button class="care-module-card chronic" onclick="openChronicView()"><span>🩺</span><h3>المرض المزمن</h3><p>تسجيل الطلاب المصابين بأمراض مزمنة وملاحظاتهم.</p></button></div></div>';}
 function allStudentSelectOptions(){let html='<option value="">اختر الطالب</option>';visibleGradeGroups().forEach(function(group){group.labels.forEach(function(label){const grade=APP.grades.find(function(g){return g.label===label;});if(!grade)return;(grade.sections||[]).forEach(function(sec){(sec.students||[]).forEach(function(st){html+='<option value="'+st.id+'">'+escapeHtml(st.name)+' — '+escapeHtml(label)+' / '+escapeHtml(sec.label)+'</option>';});});});});return html;}
 function locateStudentById(id){for(const grade of (APP.grades||[])){for(const sec of (grade.sections||[])){const st=(sec.students||[]).find(function(x){return x.id===id;});if(st)return {student:st,grade:grade.label,section:sec.label};}}return null;}
 function openCareForm(type){
@@ -10845,7 +10961,7 @@ function careGradeChanged(){
   studentSelect.innerHTML='<option value="">اختر الشعبة أولاً</option>';
 }
 function careSectionChanged(){
-  const grade=document.getElementById('careGrade').value,sectionId=document.getElementById('careSection').value,section=gbSectionsForGrade(grade).find(function(sec){return sec.id===sectionId;}),studentSelect=document.getElementById('careStudent');
+  const grade=document.getElementById('careGrade').value,sectionId=document.getElementById('careSection').value,section=gbSectionById(grade,sectionId),studentSelect=document.getElementById('careStudent');
   studentSelect.innerHTML='<option value="">اختر الطالب</option>'+((section&&section.students)||[]).map(function(st){return '<option value="'+st.id+'">'+escapeHtml(st.name)+'</option>';}).join('');
 }
 function closeCareForm(){document.getElementById('careFormOverlay').classList.remove('open');}
@@ -10866,7 +10982,7 @@ function saveAttendanceState(){try{localStorage.setItem(ATTENDANCE_STORAGE_KEY,J
 let ATTENDANCE_STATE=loadAttendanceState();if(!Array.isArray(ATTENDANCE_STATE.records))ATTENDANCE_STATE.records=[];if(!ATTENDANCE_STATE.days)ATTENDANCE_STATE.days={};
 function openAttendanceModule(){renderAttendanceHome();navigateTo('view-attendance',{page:'home'});}
 function restoreAttendanceView(meta){if(typeof authRole==='function'&&authRole()==='teacher'){renderAttendanceRegister();teacherPatchAttendanceUi();return;}if(meta.page==='stats')renderAttendanceStats();else if(meta.page==='register')renderAttendanceRegister();else if(meta.page==='records')renderAttendanceRecords();else if(meta.page==='previous')renderPreviousDayAttendance();else renderAttendanceHome();}
-function renderAttendanceHome(){document.getElementById('view-attendance').innerHTML='<div class="module-shell"><div class="module-head"><div class="module-title"><span class="mi">📋</span><div><h2>الغياب</h2><p>تسجيل الغياب والإجازات ومراجعة السجلات والإحصاءات</p></div></div><button class="material-btn secondary" onclick="goDashboard()">رجوع للوحة التحكم</button></div><div class="attendance-home-grid"><button class="attendance-module-card stats" onclick="openAttendanceStats()"><span>📊</span><h3>إحصائيات الغياب والحضور</h3><p>إحصاءات اليوم والسنة الدراسية وأيام الدوام والعطل.</p></button><button class="attendance-module-card register" onclick="openAttendanceRegister()"><span>✅</span><h3>تسجيل غياب</h3><p>اختيار الصف والشعبة وتحديد حالة كل طالب ثم حفظ القائمة.</p></button><button class="attendance-module-card records" onclick="openAttendanceRecords()"><span>📚</span><h3>سجلات الغياب</h3><p>عرض وطباعة وتصدير سجلات الغياب والإجازات.</p></button><button class="attendance-module-card previous" onclick="openPreviousDayAttendance()"><span>⏮️</span><h3>سجل اليوم السابق</h3><p>قائمة موحدة لغياب وإجازات اليوم السابق لجميع الصفوف والشعب.</p></button></div></div>';}
+function renderAttendanceHome(){document.getElementById('view-attendance').innerHTML='<div class="module-shell"><div class="module-head"><div class="module-title"><span class="mi">📋</span><div><h2>الغياب</h2><p>تسجيل الغياب والإجازات ومراجعة السجلات والإحصاءات</p></div></div><button class="material-btn secondary" onclick="appGoBack()">رجوع خطوة</button></div><div class="attendance-home-grid"><button class="attendance-module-card stats" onclick="openAttendanceStats()"><span>📊</span><h3>إحصائيات الغياب والحضور</h3><p>إحصاءات اليوم والسنة الدراسية وأيام الدوام والعطل.</p></button><button class="attendance-module-card register" onclick="openAttendanceRegister()"><span>✅</span><h3>تسجيل غياب</h3><p>اختيار الصف والشعبة وتحديد حالة كل طالب ثم حفظ القائمة.</p></button><button class="attendance-module-card records" onclick="openAttendanceRecords()"><span>📚</span><h3>سجلات الغياب</h3><p>عرض وطباعة وتصدير سجلات الغياب والإجازات.</p></button><button class="attendance-module-card previous" onclick="openPreviousDayAttendance()"><span>⏮️</span><h3>سجل اليوم السابق</h3><p>قائمة موحدة لغياب وإجازات اليوم السابق لجميع الصفوف والشعب.</p></button></div></div>';}
 function attendanceSchoolRange(){const now=new Date(),year=now.getMonth()>=8?now.getFullYear():now.getFullYear()-1;return {start:new Date(year,8,1,12),end:new Date(year+1,4,31,12)};}
 function attendanceFirstWorkDate(){
   const s=APP.school&&APP.school.attendanceStartDate;
@@ -10976,7 +11092,7 @@ function openStaffSearchInfo(id){
 
 function openStaffModule(){renderStaffHome();navigateTo('view-staff',{page:'home'});}
 function restoreStaffView(meta){if(meta.page==='info')renderStaffInfo();else if(meta.page==='employees')renderStaffEmployees();else if(meta.page==='documents')renderStaffDocumentsList();else if(meta.page==='documentDetail')renderStaffDocumentDetail(meta.staffId);else if(meta.page==='records')renderStaffRecordsList();else if(meta.page==='recordDetail')renderStaffRecordDetail(meta.staffId,meta.tab||'increments');else renderStaffHome();}
-function renderStaffHome(){const el=document.getElementById('view-staff');el.innerHTML='<div class="module-shell"><div class="module-head"><div class="module-title"><span class="mi">👥</span><div><h2>الملاك</h2><p>إدارة معلومات الملاك ومستمسكاتهم وعلاواتهم وترفيعاتهم</p></div></div><button class="material-btn secondary" onclick="goDashboard()">رجوع للوحة التحكم</button></div><div style="display:flex;gap:8px;flex-wrap:wrap;margin:0 0 12px">'+staffToolbarHtml()+'</div><div class="staff-search-box"><input id="staffSearchInput" type="search" placeholder="ابحث عن معلم أو مدرس أو موظف بالاسم أو الرقم الوظيفي..." oninput="renderStaffSearchResults(this.value)"><div id="staffSearchResults" class="staff-search-results"></div></div><div class="staff-home-grid"><button class="staff-module-card info" onclick="openStaffInfo()"><span>🧑‍🏫</span><h3>'+staffInfoTitle()+'</h3><p>المعلمون والمدرسون فقط — بيانات الخدمة والعمر والحالة الوظيفية.</p></button><button class="staff-module-card employees" onclick="openStaffEmployees()"><span>🧑‍💼</span><h3>الموظفين</h3><p>الحرفيون والحراس الليليون والحارس الأمني وعمال النظافة ومن في حكمهم.</p></button><button class="staff-module-card docs" onclick="openStaffDocuments()"><span>🪪</span><h3>مستمسكات الملاك</h3><p>مستمسكات الموظف والزوجة والأولاد مع الطباعة الفردية والمجمعة.</p></button><button class="staff-module-card raise" onclick="openStaffRecords()"><span>📑</span><h3>العلاوات والترفيعات</h3><p>تواريخ العلاوات والترفيعات وصفحات الكتب الرسمية.</p></button><button class="staff-module-card" style="background:linear-gradient(135deg,#00695c,#26a69a)" onclick="openStaffAttendance()"><span>📋</span><h3>حضور الملاك</h3><p>تسجيل حضور وانصراف المعلمين والموظفين يومياً.</p></button></div></div>';}
+function renderStaffHome(){const el=document.getElementById('view-staff');el.innerHTML='<div class="module-shell"><div class="module-head"><div class="module-title"><span class="mi">👥</span><div><h2>الملاك</h2><p>إدارة معلومات الملاك ومستمسكاتهم وعلاواتهم وترفيعاتهم</p></div></div><button class="material-btn secondary" onclick="appGoBack()">رجوع خطوة</button></div><div style="display:flex;gap:8px;flex-wrap:wrap;margin:0 0 12px">'+staffToolbarHtml()+'</div><div class="staff-search-box"><input id="staffSearchInput" type="search" placeholder="ابحث عن معلم أو مدرس أو موظف بالاسم أو الرقم الوظيفي..." oninput="renderStaffSearchResults(this.value)"><div id="staffSearchResults" class="staff-search-results"></div></div><div class="staff-home-grid"><button class="staff-module-card info" onclick="openStaffInfo()"><span>🧑‍🏫</span><h3>'+staffInfoTitle()+'</h3><p>المعلمون والمدرسون فقط — بيانات الخدمة والعمر والحالة الوظيفية.</p></button><button class="staff-module-card employees" onclick="openStaffEmployees()"><span>🧑‍💼</span><h3>الموظفين</h3><p>الحرفيون والحراس الليليون والحارس الأمني وعمال النظافة ومن في حكمهم.</p></button><button class="staff-module-card docs" onclick="openStaffDocuments()"><span>🪪</span><h3>مستمسكات الملاك</h3><p>مستمسكات الموظف والزوجة والأولاد مع الطباعة الفردية والمجمعة.</p></button><button class="staff-module-card raise" onclick="openStaffRecords()"><span>📑</span><h3>العلاوات والترفيعات</h3><p>تواريخ العلاوات والترفيعات وصفحات الكتب الرسمية.</p></button><button class="staff-module-card" style="background:linear-gradient(135deg,#00695c,#26a69a)" onclick="openStaffAttendance()"><span>📋</span><h3>حضور الملاك</h3><p>تسجيل حضور وانصراف المعلمين والموظفين يومياً.</p></button></div></div>';}
 let staffTableMode='info';
 function openStaffInfo(){renderStaffInfo();navigateTo('view-staff',{page:'info'});}
 function staffTableRows(hideSpec){return staffListForMode(!!hideSpec).map(function(emp,i){const age=ymdDiff(emp.birthDate),service=ymdDiff(emp.startDate);return '<tr><td>'+(i+1)+'</td><td class="name">'+escapeHtml(emp.name||'')+'</td><td>'+escapeHtml(emp.title||'')+'</td><td>'+escapeHtml(emp.jobTitle||'')+'</td><td>'+escapeHtml(emp.employeeNo||'')+'</td><td>'+escapeHtml(emp.birthDate||'')+'</td><td>'+escapeHtml(emp.motherName||'')+'</td><td>'+escapeHtml(emp.appointmentDate||'')+'</td><td>'+escapeHtml(emp.startDate||'')+'</td><td>'+escapeHtml(emp.adminOrderDate||'')+'</td>'+(hideSpec?'':'<td>'+escapeHtml(emp.specialization||'')+'</td>')+'<td>'+formatYmd(age)+'</td><td>'+formatYmd(service)+'</td><td>'+remainingService(emp.birthDate)+'</td><td>'+escapeHtml(emp.phone||'')+'</td><td>'+escapeHtml(emp.nationalId||'')+'</td><td>'+escapeHtml(emp.schoolStartDate||'')+'</td><td>'+escapeHtml(emp.status||'')+'</td><td><div class="staff-actions"><button class="staff-action edit" onclick="openStaffForm(\''+emp.id+'\')">تعديل</button><button class="staff-action delete" onclick="deleteStaff(\''+emp.id+'\')">حذف</button></div></td></tr>';}).join('');}
@@ -11453,7 +11569,7 @@ function openLevelsModule(){renderLevelsHome();navigateTo('view-levels',{});}
 function renderLevelsHome(){
   const el=document.getElementById('view-levels');if(!el)return;let cards='';
   gradebookGradeLabels().forEach(function(grade){const sections=gbSectionsForGrade(grade),students=sections.reduce(function(total,sec){return total+(sec.students||[]).length;},0);cards+='<button class="grade-select-card" onclick="openLevelsGrade(\''+grade+'\')"><strong>الصف '+escapeHtml(grade)+'</strong><small>'+sections.length+' شعبة — '+students+' طالب</small></button>';});
-  el.innerHTML='<div class="module-shell"><div class="module-head"><div class="module-title"><span class="mi">📈</span><div><h2>المستويات</h2><p>'+escapeHtml(gradebookStageTitle())+' — اختر الصف لفتح سجلات المستويات لكل مادة وشعبة</p></div></div><button class="material-btn secondary" onclick="goDashboard()">رجوع للوحة التحكم</button></div><div class="grade-select-grid">'+cards+'</div></div>';
+  el.innerHTML='<div class="module-shell"><div class="module-head"><div class="module-title"><span class="mi">📈</span><div><h2>المستويات</h2><p>'+escapeHtml(gradebookStageTitle())+' — اختر الصف لفتح سجلات المستويات لكل مادة وشعبة</p></div></div><button class="material-btn secondary" onclick="appGoBack()">رجوع خطوة</button></div><div class="grade-select-grid">'+cards+'</div></div>';
 }
 function openLevelsGrade(grade){renderLevelsGrade(grade);navigateTo('view-levels',{grade:grade});}
 function renderLevelsGrade(grade){
@@ -11561,7 +11677,7 @@ if(!Array.isArray(EXAMS_STATE.savedQuestions))EXAMS_STATE.savedQuestions=[];
 function openExamsModule(){renderExamsHome();navigateTo('view-exams',{page:'home'});}
 function renderExamsHome(){
   const el=document.getElementById('view-exams');if(!el)return;
-  el.innerHTML='<div class="module-shell"><div class="module-head"><div class="module-title"><span class="mi">📝</span><div><h2>الامتحانات</h2><p>إدارة تنظيم الامتحانات والقاعات والجلوس</p></div></div><button class="material-btn secondary" onclick="goDashboard()">رجوع للوحة التحكم</button></div><div class="exams-home-grid"><button class="exam-module-card" onclick="openSeatingPlanner()"><span class="emc-icon">🪑</span><h3>خارطة الجلوس</h3><p>توزيع التلاميذ على القاعات والمقاعد والقطاعات مع دعم المقاعد المزدوجة.</p></button><button class="exam-module-card monthly-card" onclick="openMonthlyExamSchedule()"><span class="emc-icon">📅</span><h3>إنشاء جدول الامتحانات</h3><p>إنشاء جدول الأيام والتواريخ واختيار مادة كل صف من قوائم منسدلة.</p></button><button class="exam-module-card cards-card" onclick="openExamCardsFromExams()"><span class="emc-icon">🪪</span><h3>إصدار بطاقات الامتحان</h3><p>إنشاء وطباعة بطاقات الطلاب بصورة فردية أو لجميع طلاب الشعبة.</p></button><button class="exam-module-card lists-card" onclick="openExamLists()"><span class="emc-icon">📋</span><h3>قوائم الامتحانات</h3><p>إنشاء قوائم الطلاب المشمولين بالامتحان حسب الصف والشعبة.</p></button><button class="exam-module-card questions-card" onclick="openQuestionBuilder()"><span class="emc-icon">📝</span><h3>إنشاء أسئلة</h3><p>تكوين ورقة أسئلة A4 مؤطرة مع الترويسة والملاحظات والأسئلة.</p></button></div></div>';
+  el.innerHTML='<div class="module-shell"><div class="module-head"><div class="module-title"><span class="mi">📝</span><div><h2>الامتحانات</h2><p>إدارة تنظيم الامتحانات والقاعات والجلوس</p></div></div><button class="material-btn secondary" onclick="appGoBack()">رجوع خطوة</button></div><div class="exams-home-grid"><button class="exam-module-card" onclick="openSeatingPlanner()"><span class="emc-icon">🪑</span><h3>خارطة الجلوس</h3><p>توزيع التلاميذ على القاعات والمقاعد والقطاعات مع دعم المقاعد المزدوجة.</p></button><button class="exam-module-card monthly-card" onclick="openMonthlyExamSchedule()"><span class="emc-icon">📅</span><h3>إنشاء جدول الامتحانات</h3><p>إنشاء جدول الأيام والتواريخ واختيار مادة كل صف من قوائم منسدلة.</p></button><button class="exam-module-card cards-card" onclick="openExamCardsFromExams()"><span class="emc-icon">🪪</span><h3>إصدار بطاقات الامتحان</h3><p>إنشاء وطباعة بطاقات الطلاب بصورة فردية أو لجميع طلاب الشعبة.</p></button><button class="exam-module-card lists-card" onclick="openExamLists()"><span class="emc-icon">📋</span><h3>قوائم الامتحانات</h3><p>إنشاء قوائم الطلاب المشمولين بالامتحان حسب الصف والشعبة.</p></button><button class="exam-module-card questions-card" onclick="openQuestionBuilder()"><span class="emc-icon">📝</span><h3>إنشاء أسئلة</h3><p>تكوين ورقة أسئلة A4 مؤطرة مع الترويسة والملاحظات والأسئلة.</p></button></div></div>';
 }
 function openQuestionBuilder(){renderQuestionHome();navigateTo('view-exams',{page:'questionHome'});}
 function renderQuestionHome(){document.getElementById('view-exams').innerHTML='<div class="module-shell"><div class="module-head"><div class="module-title"><span class="mi">📝</span><div><h2>إنشاء أسئلة</h2><p>إنشاء ورقة جديدة أو فتح الأسئلة المحفوظة</p></div></div><button class="material-btn secondary" onclick="appGoBack()">رجوع إلى الامتحانات</button></div><div class="exams-home-grid"><button class="exam-module-card questions-card" onclick="openQuestionCreator()"><span class="emc-icon">✍️</span><h3>إنشاء أسئلة</h3><p>إعداد ورقة أسئلة جديدة وحفظها أو طباعتها.</p></button><button class="exam-module-card lists-card" onclick="openSavedQuestions()"><span class="emc-icon">💾</span><h3>الأسئلة المحفوظة</h3><p>فتح وطباعة وتعديل أوراق الأسئلة المحفوظة.</p></button></div></div>';}
@@ -12393,7 +12509,7 @@ function restoreRecordsView(meta){
 function renderRecordsHome(){
   const el=document.getElementById('view-records');if(!el)return;
   const st=recordsStats();
-  el.innerHTML='<div class="module-shell"><div class="module-head"><div class="module-title"><span class="mi">📑</span><div><h2>القيود</h2><p>كشوفات القيود وإدارة أرقام القيد ووثائق الدرجات — منفصل عن باقي السجلات</p></div></div><button class="material-btn secondary" onclick="goDashboard()">رجوع للوحة التحكم</button></div><div class="records-home-grid"><button class="records-module-card reports" onclick="openRecordsReports()"><span class="ico">📊</span><h3>كشوفات القيود</h3><p>إحصاءات القيود المخزّنة والمتضاربة والأسماء المكررة والوثائق، مع توزيع الحروف الأبجدية.</p><small style="display:block;margin-top:10px;opacity:.85">'+st.total+' قيد مخزّن</small></button><button class="records-module-card list" onclick="openRecordsList()"><span class="ico">🗂️</span><h3>القيود</h3><p>جدول القيود: التسلسل، تسلسل الحروف، اسم الطالب، رقم القيد، والإجراءات.</p></button></div></div>';
+  el.innerHTML='<div class="module-shell"><div class="module-head"><div class="module-title"><span class="mi">📑</span><div><h2>القيود</h2><p>كشوفات القيود وإدارة أرقام القيد ووثائق الدرجات — منفصل عن باقي السجلات</p></div></div><button class="material-btn secondary" onclick="appGoBack()">رجوع خطوة</button></div><div class="records-home-grid"><button class="records-module-card reports" onclick="openRecordsReports()"><span class="ico">📊</span><h3>كشوفات القيود</h3><p>إحصاءات القيود المخزّنة والمتضاربة والأسماء المكررة والوثائق، مع توزيع الحروف الأبجدية.</p><small style="display:block;margin-top:10px;opacity:.85">'+st.total+' قيد مخزّن</small></button><button class="records-module-card list" onclick="openRecordsList()"><span class="ico">🗂️</span><h3>القيود</h3><p>جدول القيود: التسلسل، تسلسل الحروف، اسم الطالب، رقم القيد، والإجراءات.</p></button></div></div>';
 }
 function openRecordsReports(letter){RECORDS_ANALYSIS_KIND='';RECORDS_FILTER_LETTER=letter||'';renderRecordsReports(RECORDS_FILTER_LETTER);navigateTo('view-records',{page:'reports',letter:RECORDS_FILTER_LETTER});}
 function openRecordsList(letter){RECORDS_ANALYSIS_KIND='';RECORDS_FILTER_LETTER=letter||'';renderRecordsList(RECORDS_FILTER_LETTER);navigateTo('view-records',{page:'list',letter:RECORDS_FILTER_LETTER});}
@@ -12782,7 +12898,7 @@ function renderNotesHome(){
     const kind=n.image?'نص وصورة':'نصية';
     return '<button class="note-title-card" onclick="openNoteView(\''+n.id+'\')"><strong>'+escapeHtml(n.title||'بدون عنوان')+'</strong><small>'+kind+(n.updatedAt?' — '+escapeHtml(notesDate(n.updatedAt)):'')+'</small></button>';
   }).join(''):'<div class="empty-hint">لا توجد ملاحظات بعد. اضغط «ملاحظة جديدة».</div>';
-  el.innerHTML='<div class="module-shell"><div class="module-head"><div class="module-title"><span class="mi">📝</span><div><h2>الملاحظات</h2><p>احفظ ملاحظة نصية أو ملاحظة بنص وصورة، ثم افتحها من قائمة العناوين</p></div></div><div style="display:flex;gap:8px;flex-wrap:wrap"><button class="material-btn" onclick="openNotesForm(\'\')">＋ ملاحظة جديدة</button><button class="material-btn secondary" onclick="goDashboard()">رجوع للوحة التحكم</button></div></div><div class="notes-list">'+cards+'</div></div>';
+  el.innerHTML='<div class="module-shell"><div class="module-head"><div class="module-title"><span class="mi">📝</span><div><h2>الملاحظات</h2><p>احفظ ملاحظة نصية أو ملاحظة بنص وصورة، ثم افتحها من قائمة العناوين</p></div></div><div style="display:flex;gap:8px;flex-wrap:wrap"><button class="material-btn" onclick="openNotesForm(\'\')">＋ ملاحظة جديدة</button><button class="material-btn secondary" onclick="appGoBack()">رجوع خطوة</button></div></div><div class="notes-list">'+cards+'</div></div>';
 }
 function openNoteView(id){renderNoteView(id);navigateTo('view-notes',{page:'view',id:id});}
 function renderNoteView(id){
@@ -12897,7 +13013,7 @@ function renderAccountsHome(){
   const t=accTotals(ACCOUNTS_STATE.teachers),s=accTotals(ACCOUNTS_STATE.students);
   const cash=ACCOUNTS_STATE.students.filter(function(r){return r.payType!=='installment';}).length;
   const inst=ACCOUNTS_STATE.students.filter(function(r){return r.payType==='installment';}).length;
-  el.innerHTML='<div class="module-shell"><div class="module-head"><div class="module-title"><span class="mi">💰</span><div><h2>الحسابات</h2><p>كشوفات ذكية — نقدي أو أقساط للطلاب</p></div></div><button class="material-btn secondary" onclick="goDashboard()">رجوع للوحة التحكم</button></div><div class="acc-home-grid">'+
+  el.innerHTML='<div class="module-shell"><div class="module-head"><div class="module-title"><span class="mi">💰</span><div><h2>الحسابات</h2><p>كشوفات ذكية — نقدي أو أقساط للطلاب</p></div></div><button class="material-btn secondary" onclick="appGoBack()">رجوع خطوة</button></div><div class="acc-home-grid">'+
     '<button class="acc-home-card reports" onclick="openAccountsReports()"><span>📊</span><h3>كشوفات الحسابات</h3><p>تحصيل، متبقي، نقدي مقابل أقساط، ونسبة السداد.</p><small style="display:block;margin-top:8px;opacity:.85">المتبقي: '+accMoney(t.remain+s.remain)+'</small></button>'+
     '<button class="acc-home-card teachers" onclick="openTeacherAccounts()"><span>👨‍🏫</span><h3>حسابات المعلمين والمدرسين</h3><p>مستحقات ودفعات ورصيد متبقٍ.</p><small style="display:block;margin-top:8px;opacity:.85">'+t.count+' حساب</small></button>'+
     '<button class="acc-home-card students" onclick="openStudentAccounts()"><span>🎓</span><h3>حسابات الطلاب</h3><p>نظام نقدي أو أقساط مع تتبّع كل قسط.</p><small style="display:block;margin-top:8px;opacity:.85">نقدي '+cash+' — أقساط '+inst+'</small></button></div></div>';
@@ -13078,7 +13194,7 @@ function restoreSchoolLogsView(meta){
 function renderSlogHome(){
   const el=document.getElementById('view-schoollogs');if(!el)return;
   const items=[['mail','📨','سجل الصادرة والواردة','وارد وصادر الإدارة مع التاريخ والموضوع.'],['booksDist','📚','توزيع الكتب','أسماء الطلاب ومواد الصف مع تعديل الأعمدة.'],['questions','📝','سجل استلام الأسئلة','المواد تلقائياً حسب الصف مع التوقيعات.'],['booksRecv','📦','سجل استلام الكتب','استلام الكتب حسب المواد مع الملاحظات.'],['docsOut','📤','سجل الوثائق الصادرة','أرقام الوثائق والجهة الصادر إليها.'],['docsIn','📥','سجل الوثائق الواردة','الوثائق الواردة ورقم القيد والجهة.'],['warnings','⚠️','سجل إنذارات الطلاب','الغياب والإنذارات بثلاثة صفوف لكل طالب.'],['orders','📜','الأوامر المدرسية','إنشاء أوامر اللجان وحفظها للطباعة.']];
-  el.innerHTML='<div class="module-shell"><div class="module-head"><div class="module-title"><span class="mi">📁</span><div><h2>سجلات المدرسة</h2><p>سجلات إدارية للطباعة مع استيراد الأسماء والمواد تلقائياً</p></div></div><button class="material-btn secondary" onclick="goDashboard()">رجوع للوحة التحكم</button></div><div class="slog-home">'+items.map(function(it){return '<button class="slog-card" onclick="openSlogPage(\''+it[0]+'\')"><h3>'+it[1]+' '+it[2]+'</h3><p>'+it[3]+'</p></button>';}).join('')+'</div></div>';
+  el.innerHTML='<div class="module-shell"><div class="module-head"><div class="module-title"><span class="mi">📁</span><div><h2>سجلات المدرسة</h2><p>سجلات إدارية للطباعة مع استيراد الأسماء والمواد تلقائياً</p></div></div><button class="material-btn secondary" onclick="appGoBack()">رجوع خطوة</button></div><div class="slog-home">'+items.map(function(it){return '<button class="slog-card" onclick="openSlogPage(\''+it[0]+'\')"><h3>'+it[1]+' '+it[2]+'</h3><p>'+it[3]+'</p></button>';}).join('')+'</div></div>';
 }
 function openSlogPage(page){
   if(page==='orders'){openSchoolOrdersModule();return;}
@@ -13338,7 +13454,7 @@ function renderSlogHome(){
   const customHtml=customs.map(function(b){
     return '<button class="staff-module-card info" onclick="openSlogCustom(\''+b.id+'\')"><span>'+escapeHtml(b.icon||'📒')+'</span><h3>'+escapeHtml(b.name)+'</h3><p>'+escapeHtml(b.desc||'سجل محفوظ باسم مخصص')+' — '+toArabicDigits(String((b.rows||[]).length))+' صف / '+toArabicDigits(String((b.columns||[]).length))+' عمود</p></button>';
   }).join('');
-  el.innerHTML='<div class="module-shell"><div class="module-head"><div class="module-title"><span class="mi">📁</span><div><h2>سجلات المدرسة</h2><p>سجلات إدارية جاهزة، أو أنشئ سجلاً جديداً باسم تختاره</p></div></div><div style="display:flex;gap:8px;flex-wrap:wrap"><button class="material-btn" onclick="slogNewCustom()">＋ إنشاء سجل جديد</button><button class="material-btn secondary" onclick="goDashboard()">رجوع للوحة التحكم</button></div></div><div class="staff-home-grid">'+items.map(function(it){return '<button class="staff-module-card info" onclick="'+it[4]+'();navigateTo(\'view-schoollogs\',{page:\''+it[0]+'\'})"><span>'+it[1]+'</span><h3>'+it[2]+'</h3><p>'+it[3]+'</p></button>';}).join('')+customHtml+'</div></div>';
+  el.innerHTML='<div class="module-shell"><div class="module-head"><div class="module-title"><span class="mi">📁</span><div><h2>سجلات المدرسة</h2><p>سجلات إدارية جاهزة، أو أنشئ سجلاً جديداً باسم تختاره</p></div></div><div style="display:flex;gap:8px;flex-wrap:wrap"><button class="material-btn" onclick="slogNewCustom()">＋ إنشاء سجل جديد</button><button class="material-btn secondary" onclick="appGoBack()">رجوع خطوة</button></div></div><div class="staff-home-grid">'+items.map(function(it){return '<button class="staff-module-card info" onclick="'+it[4]+'();navigateTo(\'view-schoollogs\',{page:\''+it[0]+'\'})"><span>'+it[1]+'</span><h3>'+it[2]+'</h3><p>'+it[3]+'</p></button>';}).join('')+customHtml+'</div></div>';
 }
 function printSlogCustom(id,orientation){
   const b=slogCustomGet(id);
@@ -13460,7 +13576,7 @@ function restoreBarcodeView(meta){
 function renderBarcodeHome(){
   barcodeStopScan();
   const el=document.getElementById('view-barcode');if(!el)return;
-  el.innerHTML='<div class="module-shell"><div class="module-head"><div class="module-title"><span class="mi">📷</span><div><h2>باركود</h2><p>امسح رمز بطاقة النتيجة لعرض كشف الطالب مباشرة</p></div></div><button class="material-btn secondary" onclick="goDashboard()">رجوع للوحة التحكم</button></div><div class="staff-home-grid">'+
+  el.innerHTML='<div class="module-shell"><div class="module-head"><div class="module-title"><span class="mi">📷</span><div><h2>باركود</h2><p>امسح رمز بطاقة النتيجة لعرض كشف الطالب مباشرة</p></div></div><button class="material-btn secondary" onclick="appGoBack()">رجوع خطوة</button></div><div class="staff-home-grid">'+
     '<button class="staff-module-card info" onclick="openBarcodeResultsScan()"><span>🧾</span><h3>كشف النتائج</h3><p>فتح الكاميرا وقراءة باركود النتيجة. عند التطابق تظهر نتيجة الطالب من كشف النتائج.</p></button>'+
   '</div></div>';
 }
@@ -13975,7 +14091,7 @@ function renderAuthTasksHome(){
   if(typeof authSyncAllStudentAccounts==='function')authSyncAllStudentAccounts();
   const nT=AUTH_STATE.accounts.filter(function(a){return a.role==='teacher';}).length;
   const nS=AUTH_STATE.accounts.filter(function(a){return a.role==='student';}).length;
-  el.innerHTML='<div class="module-shell"><div class="module-head"><div class="module-title"><span class="mi">📌</span><div><h2>المهام</h2><p>توزيع مهام المعلمين وإدارة حسابات الدخول</p></div></div><button class="material-btn secondary" onclick="goDashboard()">رجوع للوحة التحكم</button></div>'+
+  el.innerHTML='<div class="module-shell"><div class="module-head"><div class="module-title"><span class="mi">📌</span><div><h2>المهام</h2><p>توزيع مهام المعلمين وإدارة حسابات الدخول</p></div></div><button class="material-btn secondary" onclick="appGoBack()">رجوع خطوة</button></div>'+
     '<div class="barcode-result-card" style="margin:0 0 16px"><h3>رابط صفحة فيسبوك</h3><p style="color:#546e7a;font-size:13px;margin:4px 0 10px">يظهر زر «صفحة فيسبوك» أعلى واجهة المعلم والطالب في المكان المحدد.</p>'+
     '<div class="mat-field"><input id="taskFacebook" type="url" dir="ltr" placeholder="https://facebook.com/yourpage" value="'+escapeHtml((APP.school&&APP.school.facebookUrl)||'')+'"></div>'+
     '<button type="button" class="material-btn" onclick="saveTaskFacebook()">حفظ رابط فيسبوك</button></div>'+
@@ -14171,7 +14287,7 @@ function printAuthRoster(title, heads, rows){
 }
 function printAuthStudentSectionBy(grade,sectionId){
   if(!grade||!sectionId){alert('اختر الصف والشعبة.');return;}
-  const sec=gbSectionsForGrade(grade).find(function(s){return s.id===sectionId;});
+  const sec=gbSectionById(grade,sectionId);
   if(!sec){alert('الشعبة غير موجودة.');return;}
   const rows=(sec.students||[]).filter(function(st){return st&&st.id;}).map(function(st,i){
     const acc=authEnsureStudentAccount(st,grade,sec.id);
@@ -14418,7 +14534,7 @@ function authAddAssign(){
   }
   if(!sectionId){alert('اختر الشعبة.');return;}
   if(!subject && !wantSheets && !wantCare){alert('اختر المادة أو مهمة كشوف النتائج.');return;}
-  const sec=gbSectionsForGrade(grade).find(function(s){return s.id===sectionId;});
+  const sec=gbSectionById(grade,sectionId);
   if(!t.assignments)t.assignments=[];
   t.assignments.push({
     id:authUid(),grade:grade,sectionId:sectionId,sectionLabel:sec?sec.label:'',subject:subject||'مرشد الصف',sheetScope:wantSheets?'section':'',
@@ -15175,7 +15291,7 @@ function renderMailHome(){
   if(inspect&&real.role!=='admin'){MAIL_VIEW_AS=null;}
   const me=inspect||real;
   const inspecting=!!inspect;
-  const back=me.role==='admin'?'<button class="material-btn secondary" onclick="goDashboard()">رجوع</button>':'<button class="material-btn secondary" onclick="openTeacherHome()">رجوع</button>';
+  const back=me.role==='admin'?'<button class="material-btn secondary" onclick="appGoBack()">رجوع</button>':'<button class="material-btn secondary" onclick="openTeacherHome()">رجوع</button>';
   if(typeof MAIL_PEER==='undefined') window.MAIL_PEER='all';
   if(typeof MAIL_PANE==='undefined') window.MAIL_PANE='list';
   const peer=MAIL_PEER||'all';
@@ -17372,7 +17488,7 @@ function renderBackupView(){
     '<div style="background:#fff3e0;border-radius:10px;padding:10px;font-size:12px;color:#795548;line-height:1.8;margin-top:12px">'+
       '⚠️ <b>تنبيهات:</b> استعادة نسخة احتياطية ستحل محل البيانات الحالية. تأكد من حفظ نسخة من البيانات الحالية أولاً. ملف النسخة الاحتياطية مشفّر كنص JSON ولا يحتوي على تفعيل الاشتراك السحابي.'+
     '</div>'+
-    '<div style="margin-top:14px"><button class="material-btn secondary" onclick="goDashboard()">رجوع للوحة التحكم</button></div></div>';
+    '<div style="margin-top:14px"><button class="material-btn secondary" onclick="appGoBack()">رجوع خطوة</button></div></div>';
 }
 function backupSetStatus(msg,ok){
   const el=document.getElementById('backupStatus'); if(!el)return;
@@ -17562,7 +17678,7 @@ function renderSettingsTabbed(isOnboarding){
     '</div>'+
     '<div class="panel-actions">'+
       (isOnboarding?'<button onclick="saveSettingsAndNext()">التالي ←</button>':'<button onclick="saveSettingsOnly()">💾 حفظ</button>')+
-      '<button class="material-btn secondary" onclick="goDashboard()" style="margin-right:8px">رجوع</button>'+
+      '<button class="material-btn secondary" onclick="appGoBack()" style="margin-right:8px">رجوع خطوة</button>'+
     '</div>'+
     '</div>';
   // Bind events
