@@ -7181,10 +7181,12 @@ function updateTopbarSchoolLogo(){
 }
 function showView(id){
   closeGlobalNav();
+  // Resolve role restrictions before changing visibility so every module gets
+  // one deterministic target view instead of briefly rendering a hidden one.
+  id=typeof authClampView==='function'?authClampView(id):id;
   document.querySelectorAll('.view').forEach(v=> v.style.display = 'none');
   const el = document.getElementById(id);
   if(el) el.style.display = 'block';
-  id=typeof authClampView==='function'?authClampView(id):id;
   document.body.classList.toggle('dashboard-active', id === 'view-dashboard');
   document.body.classList.toggle('menu-cards', !!(APP.school&&APP.school.mainMenu==='cards'));
   document.body.classList.toggle('menu-capsules', !!(APP.school&&APP.school.mainMenu==='capsules'));
