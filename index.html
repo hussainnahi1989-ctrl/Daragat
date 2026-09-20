@@ -4128,6 +4128,56 @@ img,.splash-logo-container img,.card img,.page img{max-width:100%;height:auto}
 /* Fix splash screen scaling */
 #splashScreen{padding:16px;box-sizing:border-box}
 .splash-card{max-width:min(460px,92vw);padding:28px 20px}
+
+/* Final fluid pass: screen only; print styles and print templates remain untouched. */
+@media screen{
+  html,body,#pages,#topStack,.dashboard-layout,.dashboard-main,.view,.view.wide,.module-shell{
+    min-width:0;max-width:100%;
+  }
+  .module-shell,.dashboard-main,.view,.view.wide{overflow-wrap:anywhere;}
+  .module-head,.module-title,.module-title>div,.gradebook-work-head,.gradebook-work-row,
+  .levels-record-title,.levels-record-title-main,.toolbar,.students-header,.attendance-filter{
+    min-width:0;max-width:100%;
+  }
+  .gradebook-work-row{
+    display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));align-items:end;
+  }
+  .subject-icon-strip{
+    display:grid;grid-template-columns:repeat(auto-fit,minmax(92px,1fr));gap:8px;
+    max-width:100%;
+  }
+  .subject-icon-btn{min-width:0;min-height:48px;white-space:normal;overflow-wrap:anywhere;}
+  .levels-record-title,.levels-record-title-main{flex-wrap:wrap;}
+  .levels-record-title>span{min-width:0;overflow-wrap:anywhere;}
+  .levels-table-scroll,.table-scroll,.attendance-table-wrap,.staff-table-wrap{
+    max-width:100%;overflow-x:auto;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior-inline:contain;
+  }
+  .levels-table{max-width:none;}
+  .levels-table td.student-name{overflow-wrap:anywhere;}
+  .mat-field,.mat-field input,.mat-field select,.mat-field textarea{min-width:0;max-width:100%;}
+  .material-btn,.panel-actions button,.module-head button{max-width:100%;white-space:normal;overflow-wrap:anywhere;}
+  @media (max-width:700px){
+    .dashboard-main{padding-inline:8px!important;}
+    .module-shell{padding-inline:0!important;}
+    .gradebook-work-row{grid-template-columns:1fr;}
+    .subject-icon-strip{grid-template-columns:repeat(2,minmax(0,1fr));}
+    .levels-record-title{align-items:flex-start;}
+    .levels-record-title-main{width:100%;}
+    .levels-record-title-main .levels-print-btn{flex:1 1 120px;}
+    .levels-table-scroll{max-height:68vh;}
+    .level-select{min-width:76px;font-size:14px;min-height:40px;}
+  }
+  @media (max-width:380px){
+    .subject-icon-strip{grid-template-columns:1fr;}
+    .levels-record-title-main .levels-print-btn{flex-basis:100%;}
+  }
+  @media (orientation:landscape) and (max-height:650px){
+    #topbar{min-height:42px!important;height:42px!important;}
+    body.dashboard-active .dashboard-main{padding-top:52px!important;}
+    .dashboard-sidebar{top:42px!important;}
+    .module-head{padding-block:6px;}
+  }
+}
 </style>
 <style id="dynamicPageSize">@page{ size:148.5mm 210mm; margin:0; }</style>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
@@ -11393,8 +11443,12 @@ const LEVELS_STORAGE_KEY='schoolResultsLevels_v1';
 function loadLevelsState(){try{return JSON.parse(localStorage.getItem(LEVELS_STORAGE_KEY)||'{}')||{};}catch(e){return {};}}
 function saveLevelsState(){try{localStorage.setItem(LEVELS_STORAGE_KEY,JSON.stringify(LEVELS_STATE));}catch(e){} if(typeof wifiOnSave==='function')wifiOnSave('levels');}
 let LEVELS_STATE=loadLevelsState();if(!LEVELS_STATE.records)LEVELS_STATE.records={};
-function levelsRecordKey(grade,sectionId,subject){return [grade,sectionId,subject].map(encodeURIComponent).join('|');}
-function getLevelsRecord(grade,sectionId,subject,create){const key=levelsRecordKey(grade,sectionId,subject);if(!LEVELS_STATE.records[key]&&create)LEVELS_STATE.records[key]={grade:grade,sectionId:sectionId,subject:subject,rows:{}};return LEVELS_STATE.records[key]||null;}
+function levelsRecordKey(grade,sectionId,subject){return [String(grade||''),String(sectionId||''),String(subject||'')].map(encodeURIComponent).join('|');}
+function levelsSectionById(grade,sectionId){
+  const wanted=String(sectionId==null?'':sectionId);
+  return gbSectionsForGrade(grade).find(function(sec){return String(sec.id)===(wanted);})||null;
+}
+function getLevelsRecord(grade,sectionId,subject,create){const key=levelsRecordKey(grade,sectionId,subject);if(!LEVELS_STATE.records[key]&&create)LEVELS_STATE.records[key]={grade:grade,sectionId:String(sectionId||''),subject:subject,rows:{}};return LEVELS_STATE.records[key]||null;}
 function openLevelsModule(){renderLevelsHome();navigateTo('view-levels',{});}
 function renderLevelsHome(){
   const el=document.getElementById('view-levels');if(!el)return;let cards='';
@@ -11404,12 +11458,31 @@ function renderLevelsHome(){
 function openLevelsGrade(grade){renderLevelsGrade(grade);navigateTo('view-levels',{grade:grade});}
 function renderLevelsGrade(grade){
   const el=document.getElementById('view-levels');if(!el)return;const sections=gbSectionsForGrade(grade),subjects=gbSubjects(grade);
-  const sectionOptions=sections.map(function(sec){return '<option value="'+sec.id+'">شعبة '+escapeHtml(sec.label)+'</option>';}).join('');
+  const sectionOptions=sections.map(function(sec){return '<option value="'+escapeHtml(String(sec.id))+'">شعبة '+escapeHtml(sec.label)+'</option>';}).join('');
   const subjectButtons=subjects.map(function(subject){return '<button type="button" class="subject-icon-btn" data-subject="'+escapeHtml(subject)+'" onclick="selectLevelsSubject(this)"><span class="sib-icon">'+subjectMaterialIcon(subject)+'</span><span class="sib-name">'+escapeHtml(subject)+'</span></button>';}).join('');
   el.innerHTML='<div class="module-shell"><div class="module-head"><div class="module-title"><span class="mi">📈</span><div><h2>مستويات الصف '+escapeHtml(grade)+'</h2><p>لكل شعبة ومادة سجل أسبوعي وشهري مستقل</p></div></div><button class="material-btn secondary" onclick="appGoBack()">رجوع إلى الصفوف</button></div><input type="hidden" id="levelsGrade" value="'+escapeHtml(grade)+'"><input type="hidden" id="levelsSubject" value=""><section class="gradebook-work-head"><div class="gradebook-work-row"><div class="mat-field"><label>اختر الشعبة</label><select id="levelsSection" onchange="levelsSectionChanged()"><option value="">اختر الشعبة</option>'+sectionOptions+'</select></div><div class="mat-field"><label>اسم معلم المادة</label><input id="levelsTeacherName" type="text" placeholder="اكتب اسم معلم المادة" oninput="updateLevelsTeacherName(this.value)"></div><div class="levels-legend"><b class="excellent">ممتاز</b><b class="good">جيد</b><b class="average">متوسط</b><b class="weak">ضعيف</b></div></div><div class="subject-icon-strip">'+subjectButtons+'</div></section><div id="levelsTablesHost" class="levels-empty">اختر الشعبة ثم اضغط على المادة لعرض سجلات المستويات.</div></div>';
 }
-function selectLevelsSubject(button){document.querySelectorAll('#view-levels .subject-icon-btn').forEach(function(btn){btn.classList.remove('active');});button.classList.add('active');document.getElementById('levelsSubject').value=button.dataset.subject||'';renderLevelsTables();}
-function levelsSectionChanged(){if((document.getElementById('levelsSubject')||{}).value)renderLevelsTables();else document.getElementById('levelsTablesHost').innerHTML='اضغط على المادة لعرض سجلات المستويات.';}
+function levelsCurrentSelection(){
+  return {
+    grade:String((document.getElementById('levelsGrade')||{}).value||''),
+    sectionId:String((document.getElementById('levelsSection')||{}).value||''),
+    subject:String((document.getElementById('levelsSubject')||{}).value||'').trim()
+  };
+}
+function showLevelsSelectionHint(text){const host=document.getElementById('levelsTablesHost');if(host){host.className='levels-empty';host.innerHTML=text||'اختر الشعبة والمادة لعرض السجل.';}}
+function selectLevelsSubject(button){
+  document.querySelectorAll('#view-levels .subject-icon-btn').forEach(function(btn){btn.classList.remove('active');});
+  button.classList.add('active');
+  const subject=String(button.getAttribute('data-subject')||button.dataset.subject||'').trim();
+  const subjectInput=document.getElementById('levelsSubject');if(subjectInput)subjectInput.value=subject;
+  const selection=levelsCurrentSelection();
+  if(selection.sectionId&&selection.subject)renderLevelsTables();else showLevelsSelectionHint('اختر الشعبة لعرض سجل المادة.');
+}
+function levelsSectionChanged(){
+  const selection=levelsCurrentSelection();
+  if(selection.sectionId&&selection.subject)renderLevelsTables();
+  else showLevelsSelectionHint(selection.sectionId?'اضغط على المادة لعرض سجلات المستويات.':'اختر الشعبة ثم اضغط على المادة لعرض السجل.');
+}
 function updateLevelsTeacherName(value){
   const grade=(document.getElementById('levelsGrade')||{}).value||'',sectionId=(document.getElementById('levelsSection')||{}).value||'',subject=(document.getElementById('levelsSubject')||{}).value||'';
   if(!grade||!sectionId||!subject)return;
@@ -11427,7 +11500,7 @@ function updateLevelCell(select){
 function renderLevelsTables(){
   const grade=document.getElementById('levelsGrade').value,sectionId=document.getElementById('levelsSection').value,subject=document.getElementById('levelsSubject').value,host=document.getElementById('levelsTablesHost');
   if(!grade||!sectionId||!subject){host.className='levels-empty';host.innerHTML='اختر الشعبة والمادة.';return;}
-  const section=gbSectionsForGrade(grade).find(function(sec){return sec.id===sectionId;});if(!section){host.className='levels-empty';host.innerHTML='تعذر العثور على الشعبة.';return;}
+  const section=levelsSectionById(grade,sectionId);if(!section){host.className='levels-empty';host.innerHTML='تعذر العثور على الشعبة.';return;}
   const record=getLevelsRecord(grade,sectionId,subject,true);const teacherInput=document.getElementById('levelsTeacherName');if(teacherInput)teacherInput.value=record.teacherName||'';let weeklyRows='',monthlyRows='';
   (section.students||[]).forEach(function(student,index){const row=ensureLevelStudentRow(record,student.id);let weeklyCells='';['oct','nov','dec'].forEach(function(field){for(let i=0;i<4;i++)weeklyCells+='<td>'+levelSelect(student.id,'weekly',field,i,row.weekly[field][i])+'</td>';});weeklyCells+='<td>'+levelSelect(student.id,'weekly','mid',null,row.weekly.mid)+'</td>';['feb','apr'].forEach(function(field){for(let i=0;i<4;i++)weeklyCells+='<td>'+levelSelect(student.id,'weekly',field,i,row.weekly[field][i])+'</td>';});weeklyCells+='<td>'+levelSelect(student.id,'weekly','final',null,row.weekly.final)+'</td>';weeklyRows+='<tr><td>'+(index+1)+'</td><td class="student-name">'+wrapStudentNameHtml(student.name)+'</td>'+weeklyCells+'</tr>';
     monthlyRows+='<tr><td>'+(index+1)+'</td><td class="student-name">'+wrapStudentNameHtml(student.name)+'</td>'+['oct','nov','dec','mid','feb','apr','final'].map(function(field){return '<td>'+levelSelect(student.id,'monthly',field,null,row.monthly[field]||'')+'</td>';}).join('')+'</tr>';});
@@ -11446,7 +11519,7 @@ function printLevelsTable(kind,orientation){
   const grade=(document.getElementById('levelsGrade')||{}).value||'';
   const sectionId=(document.getElementById('levelsSection')||{}).value||'';
   const subject=(document.getElementById('levelsSubject')||{}).value||'';
-  const section=gbSectionsForGrade(grade).find(function(sec){return sec.id===sectionId;});
+  const section=levelsSectionById(grade,sectionId);
   const title=kind==='weekly'?'سجل المستويات الأسبوعي':'المستويات الشهرية';
   const landscape=orientation==='landscape'||(orientation!=='portrait'&&kind==='weekly');
   const pageW=landscape?'297mm':'210mm', pageH=landscape?'210mm':'297mm';
