@@ -5417,7 +5417,8 @@ if (typeof module !== 'undefined' && module.exports) { module.exports = QRCodeLi
     <button type="button" id="btnNotif" class="top-search-btn" onclick="openNotifPanel();event.stopPropagation();" title="الإشعارات">🔔<i id="notifDot" class="notif-red-dot" hidden></i></button>
     <a id="btnFacebook" class="logout-top-btn portal-fb-top" href="#" target="_blank" rel="noopener noreferrer" hidden>فيسبوك</a>
     
-    <button type="button" id="btnActivateTop" onclick="window.__actOpen && window.__actOpen(event);return false;" title="تفعيل الاشتراك" style="display:none;padding:1px 7px;border-radius:8px;background:linear-gradient(135deg,#ef6c00,#c62828);color:#fff;font-size:9px;border:1px solid #ffd54f66;font-weight:800;cursor:pointer;font-family:inherit;line-height:1.5;white-space:nowrap;flex-shrink:0;animation:actPulseS 2.2s infinite;align-self:center">🔑<span style="margin-inline-start:2px">تفعيل</span></button>
+    <button type="button" id="btnActivateTop" onclick="window.__actOpen && window.__actOpen(event);return false;" title="فتح واجهة التفعيل" aria-label="فتح واجهة التفعيل" style="display:none;padding:2px 6px;border-radius:8px;background:linear-gradient(135deg,#ef6c00,#c62828);color:#fff;font-size:12px;border:1px solid #ffd54f66;font-weight:900;cursor:pointer;font-family:inherit;line-height:1.2;white-space:nowrap;flex-shrink:0;animation:actPulseS 2.2s infinite;align-self:center">🔑</button>
+    <span id="trialDaysTop" aria-live="polite" style="display:none;padding:2px 6px;border-radius:7px;background:#fff3cd;color:#6d4c00;font-size:10px;font-weight:900;white-space:nowrap;flex-shrink:0;align-self:center"></span>
     <button type="button" id="btnGlobalMenu" onclick="openGlobalNav()">☰ القائمة</button>
   </nav>
 </div>
@@ -5437,6 +5438,7 @@ if (typeof module !== 'undefined' && module.exports) { module.exports = QRCodeLi
   <nav class="gnd-links">
     <button type="button" data-nav="dashboard" onclick="closeGlobalNav();goDashboard()"><span>▦</span>كشوفات المدرسة</button>
     <button type="button" data-nav="grades" onclick="closeGlobalNav();openGradesEditor()"><span>🏫</span>الطلاب</button>
+    <button type="button" data-nav="exemptions" onclick="closeGlobalNav();openExemptionsModule()"><span>🎓</span>طلاب الإعفاء</button>
     <button type="button" data-nav="gradebook" onclick="closeGlobalNav();openGradebook()"><span>📊</span>سجل الدرجات</button>
     <button type="button" data-nav="levels" onclick="closeGlobalNav();openLevelsModule()"><span>📈</span>سجل المستويات</button>
     <button type="button" data-nav="exams" onclick="closeGlobalNav();openExamsModule()"><span>📝</span>الامتحانات</button>
@@ -5521,6 +5523,7 @@ if (typeof module !== 'undefined' && module.exports) { module.exports = QRCodeLi
 <div class="view wide" id="view-student"></div>
 <div class="view wide" id="view-dashboard"></div>
 <div class="view wide" id="view-gradebook"></div>
+<div class="view wide" id="view-exemptions"></div>
 <div class="view wide" id="view-gradebook-detail"></div>
 <div class="view wide" id="view-gradebook-cards"></div>
 <div class="view wide" id="view-levels"></div>
@@ -6799,7 +6802,9 @@ function currentUiSkin(){
     if(old==='dark')return 'night-ember';
     if(old==='light')return 'day-ivory';
   }catch(e){}
-  return (window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches)?'night-ember':'day-ivory';
+  // Default for a new installation: the requested dark-night forest skin.
+  // Explicitly saved user choices above are always preserved.
+  return 'night-pine';
 }
 function currentUiTheme(){ return (UI_SKINS[currentUiSkin()]||{mode:'light'}).mode==='dark'?'dark':'light'; }
 function updateUiThemeControls(){
@@ -6815,7 +6820,7 @@ function updateUiThemeControls(){
   });
 }
 function applyUiSkin(skin){
-  if(!UI_SKINS[skin])skin='day-ivory';
+  if(!UI_SKINS[skin])skin='night-pine';
   const mode=UI_SKINS[skin].mode;
   document.documentElement.setAttribute('data-ui-skin',skin);
   document.body.classList.toggle('theme-dark',mode==='dark');
@@ -6889,6 +6894,7 @@ function navSectionForView(viewId){
   if(viewId==='view-dashboard') return 'dashboard';
   if(viewId==='view-grades') return 'grades';
   if(viewId==='view-gradebook'||viewId==='view-gradebook-detail'||viewId==='view-gradebook-cards') return 'gradebook';
+  if(viewId==='view-exemptions') return 'exemptions';
   if(viewId==='view-levels') return 'levels';
   if(viewId==='view-staff') return 'staff';
   if(viewId==='view-attendance') return 'attendance';
@@ -7167,6 +7173,8 @@ function restoreEntry(entry){
     renderDashboard();
   } else if(entry.id === 'view-gradebook'){
     renderGradebookView();
+  } else if(entry.id === 'view-exemptions'){
+    renderExemptionsView();
   } else if(entry.id === 'view-gradebook-detail'){
     renderGradebookGrade((entry.meta && entry.meta.grade) || gradebookGradeLabels()[0]);
   } else if(entry.id === 'view-gradebook-cards'){
@@ -7333,8 +7341,9 @@ window.__realInitApp = (typeof initApp==='function') ? initApp : null;
 function initApp(){
   // ==== Activation gate: do NOT run the app until the license system (screenRegister/screenLogin) has approved ====
   if(!window.__actReady){
-    // Activation script hasn't finished booting yet; wait briefly then retry
-    setTimeout(initApp, 50);
+    // The activation script is loaded immediately after the app shell. Let it own the first boot
+    // instead of running a 50ms polling loop that can slow down the opening screen.
+    window.__activationBootPending=true;
     return;
   }
   if(window.__actGetInfo && !window.__actGetInfo().valid){
@@ -8195,6 +8204,153 @@ function classifyStudentResult(scores,grade){
 function studentOfficialResult(grade,sectionId,studentId){
   return classifyStudentResult(studentFinalScoreList(grade,sectionId,studentId),grade);
 }
+
+// ================= Students Exemption module =================
+// Exemptions are derived from the final recorded subject grades. Only the two
+// thresholds are stored, so changing a grade or threshold immediately refreshes
+// the lists without duplicating student data.
+const EXEMPTIONS_STORAGE_KEY='schoolResultsExemptions_v1';
+function loadExemptionsState(){
+  try{return JSON.parse(localStorage.getItem(EXEMPTIONS_STORAGE_KEY)||'{}')||{};}catch(e){return {};}
+}
+function exemptionNumber(value,fallback){
+  const n=Number(toWesternDigits(String(value==null?'':value)).replace(/[^0-9.\-]/g,''));
+  return Number.isFinite(n)?n:fallback;
+}
+function exemptionClamp(value,fallback){return Math.max(0,Math.min(100,exemptionNumber(value,fallback)));}
+let EXEMPTIONS_STATE=loadExemptionsState();
+if(!Number.isFinite(Number(EXEMPTIONS_STATE.individualThreshold)))EXEMPTIONS_STATE.individualThreshold=90;
+if(!Number.isFinite(Number(EXEMPTIONS_STATE.collectiveThreshold)))EXEMPTIONS_STATE.collectiveThreshold=75;
+if(EXEMPTIONS_STATE.mode!=='collective')EXEMPTIONS_STATE.mode='individual';
+function saveExemptionsState(){
+  try{localStorage.setItem(EXEMPTIONS_STORAGE_KEY,JSON.stringify(EXEMPTIONS_STATE));}catch(e){}
+  try{if(typeof wifiOnSave==='function')wifiOnSave('exemptions');}catch(e){}
+}
+function exemptionThreshold(kind){
+  return exemptionClamp(kind==='collective'?EXEMPTIONS_STATE.collectiveThreshold:EXEMPTIONS_STATE.individualThreshold,kind==='collective'?75:90);
+}
+function exemptionScoreNumber(value){
+  if(value==null||String(value).trim()==='')return null;
+  const n=Number(toWesternDigits(String(value)).replace(/[^0-9.\-]/g,''));
+  return Number.isFinite(n)?n:null;
+}
+function exemptionSubjectScore(grade,sectionId,studentId,subject){
+  const record=typeof gbRecord==='function'?gbRecord(grade,sectionId,subject,false):null;
+  const row=record&&record.rows?record.rows[studentId]:null;
+  if(!row)return null;
+  let value='';
+  if(usesSixthGradeLayout(grade)){
+    if(typeof gbCompute56==='function')gbCompute56(row,record);
+    value=row.finalGrade;
+  }else value=row.finalExam;
+  const n=exemptionScoreNumber(value);
+  if(n==null)return null;
+  const full=typeof resultFullMark==='function'?resultFullMark(grade):100;
+  return {score:n,full:full,percent:full?((n/full)*100):0,display:showGrade(n)+' / '+showGrade(full)};
+}
+function exemptionQualified(score,kind,grade){
+  return !!score && score.percent >= exemptionThreshold(kind);
+}
+function isStudentCollectivelyExempt(grade,sectionId,studentId){
+  const subjects=(typeof gbSubjects==='function'?gbSubjects(grade):[]).filter(function(s){return String(s||'').trim();});
+  if(!subjects.length)return false;
+  return subjects.every(function(subject){return exemptionQualified(exemptionSubjectScore(grade,sectionId,studentId,subject),'collective',grade);});
+}
+function studentHasAnyIndividualExemption(grade,sectionId,studentId){
+  const subjects=(typeof gbSubjects==='function'?gbSubjects(grade):[]).filter(function(s){return String(s||'').trim();});
+  return subjects.some(function(subject){return exemptionQualified(exemptionSubjectScore(grade,sectionId,studentId,subject),'individual',grade);});
+}
+function studentHasSubjectIndividualExemption(grade,sectionId,studentId,subject){
+  if(subject==='القائمة الموحدة')return studentHasAnyIndividualExemption(grade,sectionId,studentId);
+  return exemptionQualified(exemptionSubjectScore(grade,sectionId,studentId,subject),'individual',grade);
+}
+function isExemptionFinalRound(type){
+  const t=String(type||'');
+  return /نهاية السنة|الدور الثاني|الإكمال|الاكمال/.test(t);
+}
+function shouldExcludeStudentFromExamList(grade,sectionId,studentId,subject,type){
+  if(!isExemptionFinalRound(type))return false;
+  return isStudentCollectivelyExempt(grade,sectionId,studentId)||studentHasSubjectIndividualExemption(grade,sectionId,studentId,subject);
+}
+function exemptionReport(){
+  const individual=[],collective=[];
+  const grades=typeof gradebookGradeLabels==='function'?gradebookGradeLabels():[];
+  grades.forEach(function(grade){
+    gbSectionsForGrade(grade).forEach(function(section){
+      (section.students||[]).filter(function(st){return String(st.name||'').trim();}).forEach(function(student){
+        const subjects=(typeof gbSubjects==='function'?gbSubjects(grade):[]).filter(function(s){return String(s||'').trim();});
+        subjects.forEach(function(subject){
+          const score=exemptionSubjectScore(grade,section.id,student.id,subject);
+          if(exemptionQualified(score,'individual',grade))individual.push({grade:grade,section:section,student:student,subject:subject,score:score});
+        });
+        if(subjects.length&&isStudentCollectivelyExempt(grade,section.id,student.id)){
+          subjects.forEach(function(subject){
+            const score=exemptionSubjectScore(grade,section.id,student.id,subject);
+            if(score)collective.push({grade:grade,section:section,student:student,subject:subject,score:score});
+          });
+        }
+      });
+    });
+  });
+  return {individual:individual,collective:collective};
+}
+function exemptionUniqueStudents(rows){
+  const seen={};
+  rows.forEach(function(row){seen[row.grade+'|'+row.section.id+'|'+row.student.id]=1;});
+  return Object.keys(seen).length;
+}
+function exemptionSectionKey(row){return row.grade+'|'+row.section.id;}
+function exemptionGroups(rows){
+  const groups=[];const by={};
+  rows.forEach(function(row){const key=exemptionSectionKey(row);if(!by[key]){by[key]={grade:row.grade,section:row.section,rows:[]};groups.push(by[key]);}by[key].rows.push(row);});
+  return groups;
+}
+function exemptionRowsHtml(rows){
+  if(!rows.length)return '<tr><td colspan="4" class="exm-empty-cell">لا توجد أسماء ضمن هذا النوع حسب الدرجة المحددة.</td></tr>';
+  return rows.map(function(row,index){
+    return '<tr><td>'+toArabicDigits(String(index+1))+'</td><td class="exm-name">'+escapeHtml(row.student.name)+'</td><td>'+escapeHtml(row.subject)+'</td><td class="exm-score">'+escapeHtml(row.score.display)+'</td></tr>';
+  }).join('');
+}
+function exemptionTablesHtml(rows,kind){
+  const groups=exemptionGroups(rows);
+  if(!groups.length)return '<div class="exm-empty">لا توجد نتائج مطابقة حالياً. أدخل الدرجات النهائية ثم عد إلى هذا القسم.</div>';
+  return groups.map(function(group){
+    const unique=exemptionUniqueStudents(group.rows);
+    return '<section class="exm-section-block"><div class="exm-section-head"><div><strong>الصف '+escapeHtml(group.grade)+' — شعبة '+escapeHtml(group.section.label)+'</strong><small>'+toArabicDigits(String(group.rows.length))+' مادة مستوفية</small></div><span>'+toArabicDigits(String(unique))+' طالب '+(kind==='individual'?'إعفاء فردي':'إعفاء جماعي')+'</span></div><div class="exm-table-wrap"><table class="exm-table"><thead><tr><th>ت</th><th>اسم الطالب</th><th>المادة</th><th>الدرجة</th></tr></thead><tbody>'+exemptionRowsHtml(group.rows)+'</tbody></table></div></section>';
+  }).join('');
+}
+function renderExemptionContent(){
+  const host=document.getElementById('exmContent');if(!host)return;
+  const report=exemptionReport();
+  const indCount=exemptionUniqueStudents(report.individual),colCount=exemptionUniqueStudents(report.collective),total=exemptionUniqueStudents(report.individual.concat(report.collective));
+  const sectionKeys={};
+  // Show every existing section in the summary, including sections with zero exemptions.
+  (typeof gradebookGradeLabels==='function'?gradebookGradeLabels():[]).forEach(function(grade){
+    gbSectionsForGrade(grade).forEach(function(section){sectionKeys[grade+'|'+section.id]={grade:grade,section:section,individual:0,collective:0};});
+  });
+  report.individual.concat(report.collective).forEach(function(row){const key=exemptionSectionKey(row);if(!sectionKeys[key])sectionKeys[key]={grade:row.grade,section:row.section,individual:0,collective:0};});
+  exemptionGroups(report.individual).forEach(function(group){const key=group.grade+'|'+group.section.id;sectionKeys[key].individual=exemptionUniqueStudents(group.rows);});
+  exemptionGroups(report.collective).forEach(function(group){const key=group.grade+'|'+group.section.id;sectionKeys[key].collective=exemptionUniqueStudents(group.rows);});
+  const sectionSummary=Object.keys(sectionKeys).map(function(key){const x=sectionKeys[key];return '<span class="exm-chip"><b>الصف '+escapeHtml(x.grade)+' / '+escapeHtml(x.section.label)+'</b><i>فردي: '+toArabicDigits(String(x.individual))+'</i><i>جماعي: '+toArabicDigits(String(x.collective))+'</i></span>';}).join('');
+  const mode=EXEMPTIONS_STATE.mode;
+  const rows=mode==='collective'?report.collective:report.individual;
+  const threshold=exemptionThreshold(mode);
+  host.innerHTML='<div class="exm-summary"><div class="exm-stat total"><strong>'+toArabicDigits(String(total))+'</strong><span>إجمالي طلاب الإعفاء</span></div><div class="exm-stat individual"><strong>'+toArabicDigits(String(indCount))+'</strong><span>إعفاء فردي</span></div><div class="exm-stat collective"><strong>'+toArabicDigits(String(colCount))+'</strong><span>إعفاء جماعي</span></div><div class="exm-stat subjects"><strong>'+toArabicDigits(String(rows.length))+'</strong><span>مواد مستوفية — '+(mode==='individual'?'درجة '+toArabicDigits(String(threshold))+' فما فوق':'كل المواد '+toArabicDigits(String(threshold))+'% فما فوق')+'</span></div></div><div class="exm-section-summary"><strong>ملخص الشعب</strong><div class="exm-chip-list">'+(sectionSummary||'<span class="exm-muted">لا توجد إعفاءات مسجلة بعد.</span>')+'</div></div><div class="exm-list-title"><span>'+(mode==='individual'?'قائمة الإعفاء الفردي':'قائمة الإعفاء الجماعي')+'</span><small>'+(mode==='individual'?'كل مادة حقق فيها الطالب حد الإعفاء الفردي.':'الطالب مستوفٍ لحد الإعفاء الجماعي في جميع مواد الصف.')+'</small></div>'+exemptionTablesHtml(rows,mode);
+}
+function renderExemptionsView(){
+  const el=document.getElementById('view-exemptions');if(!el)return;
+  const ind=exemptionThreshold('individual'),col=exemptionThreshold('collective'),mode=EXEMPTIONS_STATE.mode;
+  el.innerHTML='<style>.exm-shell{padding:2px 0 30px}.exm-hero{background:linear-gradient(135deg,#0b2a1b,#1b5e20 52%,#8a6d1d);color:#fff;border-radius:18px;padding:22px 20px;margin-bottom:14px;box-shadow:0 9px 24px rgba(15,66,35,.22)}.exm-hero h2{margin:0 0 6px;font-size:22px}.exm-hero p{margin:0;color:#e3f5df;font-size:13px;line-height:1.8}.exm-controls{background:var(--skin-card,#fff);border:1px solid var(--skin-border,#e5e7eb);border-radius:16px;padding:14px;box-shadow:0 4px 16px var(--skin-shadow,rgba(0,0,0,.1));margin-bottom:14px}.exm-mode-row{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:12px}.exm-mode{border:1px solid #b7cdbd;background:#eef7ef;color:#245d32;padding:11px 16px;border-radius:12px;cursor:pointer;font:inherit;font-weight:900;display:flex;gap:8px;align-items:center}.exm-mode.active{background:linear-gradient(135deg,#1b5e20,#43a047);color:#fff;border-color:#1b5e20;box-shadow:0 4px 12px rgba(27,94,32,.24)}.exm-thresholds{display:grid;grid-template-columns:repeat(2,minmax(220px,1fr));gap:10px}.exm-threshold{display:flex;align-items:center;gap:10px;background:rgba(129,199,132,.12);border:1px solid rgba(46,125,50,.2);border-radius:12px;padding:10px}.exm-threshold label{font-weight:900;font-size:13px;flex:1}.exm-threshold small{display:block;color:#708070;font-weight:500;margin-top:3px}.exm-threshold input{width:78px;border:2px solid #81c784;border-radius:9px;padding:8px;text-align:center;font-size:18px;font-weight:900;background:var(--skin-surface,#fff);color:var(--skin-heading,#263238)}.exm-summary{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin:14px 0}.exm-stat{background:var(--skin-card,#fff);border:1px solid var(--skin-border,#e5e7eb);border-radius:14px;padding:13px;text-align:center;box-shadow:0 3px 12px var(--skin-shadow,rgba(0,0,0,.08))}.exm-stat strong{display:block;font-size:25px;color:#1b5e20}.exm-stat span{display:block;color:var(--skin-muted,#607d68);font-size:11.5px;margin-top:4px}.exm-stat.individual strong{color:#1565c0}.exm-stat.collective strong{color:#7b1fa2}.exm-stat.subjects strong{color:#ef6c00}.exm-section-summary{background:var(--skin-card,#fff);border-radius:14px;padding:13px;border:1px solid var(--skin-border,#e5e7eb);margin-bottom:16px}.exm-section-summary>strong{display:block;color:var(--skin-heading,#1b5e20);margin-bottom:8px}.exm-chip-list{display:flex;gap:8px;flex-wrap:wrap}.exm-chip{display:inline-flex;align-items:center;gap:8px;flex-wrap:wrap;background:rgba(129,199,132,.14);border:1px solid rgba(46,125,50,.2);border-radius:10px;padding:7px 9px;font-size:11px;color:var(--skin-heading,#263238)}.exm-chip i{font-style:normal;color:#386a41}.exm-muted,.exm-empty{display:block;color:var(--skin-muted,#78909c);padding:14px;text-align:center}.exm-list-title{display:flex;align-items:end;justify-content:space-between;gap:10px;margin:16px 0 9px;color:var(--skin-heading,#263238);font-size:18px;font-weight:900}.exm-list-title small{font-size:11px;font-weight:500;color:var(--skin-muted,#78909c)}.exm-section-block{background:var(--skin-card,#fff);border:1px solid var(--skin-border,#e5e7eb);border-radius:15px;margin:12px 0;overflow:hidden;box-shadow:0 4px 14px var(--skin-shadow,rgba(0,0,0,.08))}.exm-section-head{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;background:linear-gradient(100deg,rgba(27,94,32,.96),rgba(56,118,62,.88));color:#fff;padding:12px 14px}.exm-section-head strong{display:block;font-size:14px}.exm-section-head small{display:block;color:#d9f5d7;font-size:11px;margin-top:3px}.exm-section-head>span{background:#ffffff20;border:1px solid #ffffff40;border-radius:20px;padding:6px 10px;font-size:11px;font-weight:900}.exm-table-wrap{overflow-x:auto}.exm-table{width:100%;border-collapse:collapse;min-width:560px;color:var(--skin-heading,#263238);font-size:13px}.exm-table th,.exm-table td{border:1px solid var(--skin-border,#dfe7df);padding:10px 8px;text-align:center}.exm-table th{background:rgba(129,199,132,.2);color:var(--skin-heading,#1b5e20);font-weight:900}.exm-table td{background:var(--skin-surface,#fff)}.exm-table tbody tr:nth-child(even) td{background:rgba(129,199,132,.07)}.exm-table .exm-name{text-align:right;font-weight:900;min-width:190px}.exm-score{font-weight:900;color:#ef6c00;direction:ltr}.exm-empty-cell{padding:22px!important;color:var(--skin-muted,#78909c)!important}.exm-shell html[data-ui-skin^="night"] .exm-table td{color:#effff0}@media(max-width:760px){.exm-summary{grid-template-columns:repeat(2,minmax(0,1fr))}.exm-thresholds{grid-template-columns:1fr}.exm-list-title{display:block}.exm-list-title small{display:block;margin-top:5px}}@media(max-width:430px){.exm-summary{gap:7px}.exm-stat{padding:10px 5px}.exm-stat strong{font-size:21px}.exm-mode{flex:1;justify-content:center;padding:10px 8px;font-size:12px}}</style><div class="exm-shell"><div class="exm-hero"><h2>🎓 طلاب الإعفاء</h2><p>حساب الإعفاءات من الدرجات النهائية لكل مادة مع فصل كل صف وشعبة ومتابعة أثر الإعفاء على قوائم الامتحانات.<br><small style="color:#d9f5d7">تُحوَّل النسبة تلقائياً للصفوف ذات الدرجة من ١٠؛ فـ ٩٠٪ تعادل ٩ من ١٠ و٧٥٪ تعادل ٧٫٥ من ١٠.</small></p></div><div class="exm-controls"><div class="exm-mode-row"><button type="button" class="exm-mode '+(mode==='individual'?'active':'')+'" onclick="exemptionModeChanged(\'individual\')">🎯 الإعفاء الفردي</button><button type="button" class="exm-mode '+(mode==='collective'?'active':'')+'" onclick="exemptionModeChanged(\'collective\')">🏅 الإعفاء الجماعي</button></div><div class="exm-thresholds"><div class="exm-threshold"><label>درجة الإعفاء الفردي<small>كل مادة بهذه الدرجة فما فوق — الافتراضي ٩٠</small></label><input id="exmIndividualThreshold" type="number" min="0" max="100" step="1" value="'+ind+'" onchange="updateExemptionThreshold(\'individual\',this.value)"></div><div class="exm-threshold"><label>درجة الإعفاء الجماعي<small>كل المواد بهذه الدرجة فما فوق — الافتراضي ٧٥</small></label><input id="exmCollectiveThreshold" type="number" min="0" max="100" step="1" value="'+col+'" onchange="updateExemptionThreshold(\'collective\',this.value)"></div></div></div><div id="exmContent"></div></div>';
+  renderExemptionContent();
+}
+function exemptionModeChanged(mode){EXEMPTIONS_STATE.mode=mode==='collective'?'collective':'individual';saveExemptionsState();renderExemptionsView();}
+function updateExemptionThreshold(kind,value){
+  if(kind==='collective')EXEMPTIONS_STATE.collectiveThreshold=exemptionClamp(value,75);
+  else EXEMPTIONS_STATE.individualThreshold=exemptionClamp(value,90);
+  saveExemptionsState();renderExemptionsView();
+}
+function openExemptionsModule(){renderExemptionsView();navigateTo('view-exemptions',{});}
+
 function calculateStudentAge(birthDate){
   if(typeof ymdDiff==='function'){
     const d=ymdDiff(birthDate);
@@ -9108,6 +9264,7 @@ function dashMenuItems(){
   var items = [
     ['▦','كشوفات المدرسة','أعداد الطلاب والنتائج والدوام','reports','linear-gradient(135deg,#6d1028,#c9a227)'],
     ['🏫','الطلاب','الصفوف والشعب والأسماء','openGradesEditor()','linear-gradient(135deg,#1565c0,#42a5f5)'],
+    ['🎓','طلاب الإعفاء','الإعفاء الفردي والجماعي','openExemptionsModule()','linear-gradient(135deg,#1b5e20,#8a6d1d)'],
     ['📊','سجل المواد والدرجات','درجات الشعب والمواد','openGradebook()','linear-gradient(135deg,#2e7d32,#66bb6a)'],
     ['📈','المستويات','السجل الأسبوعي والشهري','openLevelsModule()','linear-gradient(135deg,#00838f,#26c6da)'],
     ['👥','الملاك','المعلمون والموظفون','openStaffModule()','linear-gradient(135deg,#6a1b9a,#ab47bc)'],
@@ -9147,12 +9304,12 @@ function renderDashboardLauncher(){
 function renderCapsuleMenu(el){
   const items=dashMenuItems();
   const groups=[
-    {title:'📊 التقارير والكشوفات',indices:[0,19,18]},
-    {title:'🎓 الطلاب والتعليم',indices:[1,2,3,20]},
-    {title:'👥 الموارد البشرية',indices:[4,15]},
-    {title:'🏫 الإدارة اليومية',indices:[5,6,7,8,9,10,11]},
-    {title:'💰 المالية والتواصل',indices:[12,16,17]},
-    {title:'⚙️ النظام والأدوات',indices:[13,14,21,22,23]}
+    {title:'📊 التقارير والكشوفات',indices:[0,20,19]},
+    {title:'🎓 الطلاب والتعليم',indices:[1,2,3,4,18]},
+    {title:'👥 الموارد البشرية',indices:[5,16]},
+    {title:'🏫 الإدارة اليومية',indices:[6,7,8,9,10,11,14]},
+    {title:'💰 المالية والتواصل',indices:[12,13,17]},
+    {title:'⚙️ النظام والأدوات',indices:[15]}
   ];
   let html='<div class="dash-capsules-wrap"><div class="dash-capsules-head"><h1>'+escapeHtml((APP.school&&APP.school.name)||'القائمة الرئيسية')+'</h1><p>اختر القسم للبدء</p></div>';
   groups.forEach(function(gr){
@@ -9193,6 +9350,7 @@ function renderDashboard(){
     '<aside id="dashboardSidebar" class="dashboard-sidebar"><div class="ds-brand"><div class="ds-logo">'+dashboardSidebarLogo()+'</div><div><strong>'+escapeHtml(APP.school.name||'ادارة المدرسه والامتحانات')+'</strong><small>'+escapeHtml(gradebookStageTitle())+'</small></div></div><div class="ds-label">القائمة الرئيسية</div><nav class="ds-nav">'+
       '<button class="active" onclick="closeDashboardSidebar();goDashboard()"><span class="dni">▦</span>كشوفات المدرسة</button>'+
       '<button onclick="closeDashboardSidebar();openGradesEditor()"><span class="dni">🏫</span>الطلاب</button>'+
+      '<button onclick="closeDashboardSidebar();openExemptionsModule()"><span class="dni">🎓</span>طلاب الإعفاء</button>'+
       '<button onclick="closeDashboardSidebar();openGradebook()"><span class="dni">📊</span>سجل الدرجات</button>'+
       '<button onclick="closeDashboardSidebar();openLevelsModule()"><span class="dni">📈</span>سجل المستويات</button>'+
       '<button onclick="closeDashboardSidebar();openExamsModule()"><span class="dni">📝</span>الامتحانات</button>'+
@@ -11496,8 +11654,14 @@ function generateExamList(){
   const section=gbSectionsForGrade(grade).find(function(sec){return sec.id===sid;});
   if(!grade||!section||!subject){alert('اختر الصف والشعبة والمادة.');return;}
   const filterKind=(document.getElementById('examListFilter')||{}).value||'all';
+  const typeForExemptions=(document.getElementById('examListType')||{}).value||'';
   EXAMS_STATE.examListFilter=filterKind;
   let listStudents=(section.students||[]).filter(function(st){return String(st.name||'').trim();});
+  // Exempt students are omitted only from final-year and second-round lists.
+  // Individual exemption applies to the selected subject; collective exemption applies to all subjects.
+  if(isExemptionFinalRound(typeForExemptions)){
+    listStudents=listStudents.filter(function(st){return !shouldExcludeStudentFromExamList(grade,section.id,st.id,subject,typeForExemptions);});
+  }
   if(filterKind==='complete'||filterKind==='failed'){
     listStudents=listStudents.filter(function(st){
       const k=typeof studentOfficialResult==='function'?studentOfficialResult(grade,section.id,st.id).key:'';
@@ -11956,6 +12120,10 @@ function examParticipants(config){
     entries=entries.filter(function(entry){return !!allowedPrimary[entry.gradeLabel];});
   }
   if(config.participants==='failed')entries=entries.filter(studentIsCurrentlyFailing);
+  // A collective exemption removes the student from final-year and second-round seating lists.
+  if(config.examType==='final'||config.examType==='second'){
+    entries=entries.filter(function(entry){return !isStudentCollectivelyExempt(entry.gradeLabel,entry.sectionId,entry.student.id);});
+  }
   return entries.map(function(entry){
     const full=entry.student||{};
     const short=typeof examThreeName==='function'?examThreeName(full.name):full.name;
@@ -16745,13 +16913,8 @@ if(document.readyState==='loading'){
   function setStatusLabel(txt){
     const el=document.getElementById("actStatusLabel");
     if(el) el.textContent=txt;
-    try{
-      const btn=document.getElementById("btnActivateTop");
-      if(!btn) return;
-      const acc=currentAccount();
-      const showEarly = !!(acc && acc.status==="trial" && !acc.phone);
-      btn.style.setProperty("display", showEarly ? "inline-block" : "none", "important");
-    }catch(e){}
+    // Keep the compact trial controls in the top bar synchronized without changing navigation.
+    try{ refreshActivateButton(); }catch(e){}
   }
 
   function __actOpenActivation(){
@@ -16821,23 +16984,25 @@ if(document.readyState==='loading'){
   function triggerEarlyActivation(){ __actOpenActivation(); }
   window.__actOpen=function(ev){ try{ev.preventDefault();ev.stopPropagation();ev.stopImmediatePropagation();}catch(e){} __actOpenActivation(); return false; };
 
-  // Ensure activate button visibility is re-checked whenever the DOM/app state may have changed
+  // Compact trial controls: a small key plus the remaining trial days.
+  // They are visible only while the current account is in the valid trial period.
   function refreshActivateButton(){
     try{
       const btn=document.getElementById("btnActivateTop");
+      const daysEl=document.getElementById("trialDaysTop");
       if(!btn) return;
-      var raw=null; try{raw=JSON.parse(localStorage.getItem("daragat_license_v2")||"null");}catch(e){raw=null;}
-      var show=false;
-      if(raw&&raw.accounts&&raw.activeEmail){
-        for(var j=0;j<raw.accounts.length;j++){
-          var a=raw.accounts[j];
-          if(a.email===raw.activeEmail){
-            if((a.status==="trial"||(!a.status&&a.registeredAt))&&!a.phone){show=true;}
-            break;
-          }
-        }
+      var v=null;
+      try{ v=canOpenApp(); }catch(e){ v=null; }
+      var show=!!(v&&v.ok&&v.trial);
+      var days=show&&Number.isFinite(Number(v.daysLeft))?Math.max(0,Number(v.daysLeft)):0;
+      btn.style.setProperty("display", show ? "inline-flex" : "none", "important");
+      btn.title=show?"فتح واجهة التفعيل — الفترة التجريبية":"فتح واجهة التفعيل";
+      btn.setAttribute("aria-label",btn.title);
+      if(daysEl){
+        daysEl.style.setProperty("display", show ? "inline-flex" : "none", "important");
+        daysEl.textContent=show?("متبقي "+toArabicDigits(String(days))+" "+(days===1?"يوم":"أيام")):"";
+        daysEl.title=show?"الأيام المتبقية من الفترة التجريبية":"";
       }
-      btn.style.setProperty("display", show ? "inline-block" : "none", "important");
     }catch(e){}
   }
   setInterval(refreshActivateButton, 1500);
@@ -16902,7 +17067,7 @@ if(document.readyState==='loading'){
 <!-- ===== AUTO UPDATE NOTIFICATION (small icon in topbar) ===== -->
 <script>
 (function(){
-  const APP_VERSION = "1.4.3";
+  const APP_VERSION = "1.5.0";
   const CHECK_EVERY_MINUTES = 30;
   const LS_ACCEPTED = "daragat_accepted_version";
   const LS_SNOOZE   = "daragat_update_snooze";

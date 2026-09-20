@@ -1,4 +1,4 @@
-const CACHE = "daragat-v1.4.3";
+const CACHE = "daragat-v1.5.0";
 self.addEventListener("install", e => {
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(["./", "./index.html", "./admin.html", "./manifest.json", "./icon-192.png", "./icon-512.png"])));
   self.skipWaiting();
