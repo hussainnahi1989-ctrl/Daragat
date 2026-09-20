@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=5, user-scalable=yes">
 <meta name="theme-color" content="#7a0e2e">
-<title>الاداره المدرسيه</title>
+<title>ادارة المدرسه والامتحانات</title>
 <style id="mainStyles">
   :root{
     --red-dark:#7a0e2e;
@@ -5378,7 +5378,7 @@ if (typeof module !== 'undefined' && module.exports) { module.exports = QRCodeLi
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="الاداره المدرسيه">
+<meta name="apple-mobile-web-app-title" content="ادارة المدرسه والامتحانات">
 <link rel="apple-touch-icon" href="icon-192.png">
 <meta name="theme-color" content="#571127">
 <script>if('serviceWorker' in navigator){window.addEventListener('load',function(){navigator.serviceWorker.register('sw.js').catch(function(){});});}</script>
@@ -5408,7 +5408,7 @@ if (typeof module !== 'undefined' && module.exports) { module.exports = QRCodeLi
 <div id="topStack">
 <div id="topbar">
   <button type="button" id="btnMainMenu" class="top-main-menu-btn" onclick="openMainMenuFromTop()" title="القائمة الرئيسية" aria-label="القائمة الرئيسية">▦<i id="hwDot"></i></button>
-  <b id="topBrand" onclick="openMainMenuFromTop()">الاداره المدرسيه</b>
+  <b id="topBrand" onclick="openMainMenuFromTop()">ادارة المدرسه والامتحانات</b>
   <nav class="topbar-nav" aria-label="التنقل">
     <a class="apps-mini-link" href="https://t.me/hu_sain123" target="_blank" rel="noopener noreferrer" title="تطبيقاتي">تطبيقاتي</a>
     <button type="button" class="top-search-btn" onclick="openStudentSearch()" title="بحث عن طالب" aria-label="بحث عن طالب">🔍</button>
@@ -5437,24 +5437,25 @@ if (typeof module !== 'undefined' && module.exports) { module.exports = QRCodeLi
   <nav class="gnd-links">
     <button type="button" data-nav="dashboard" onclick="closeGlobalNav();goDashboard()"><span>▦</span>كشوفات المدرسة</button>
     <button type="button" data-nav="grades" onclick="closeGlobalNav();openGradesEditor()"><span>🏫</span>الطلاب</button>
-    <button type="button" data-nav="gradebook" onclick="closeGlobalNav();openGradebook()"><span>📊</span>سجل المواد والدرجات</button>
-    <button type="button" data-nav="levels" onclick="closeGlobalNav();openLevelsModule()"><span>📈</span>المستويات</button>
+    <button type="button" data-nav="gradebook" onclick="closeGlobalNav();openGradebook()"><span>📊</span>سجل الدرجات</button>
+    <button type="button" data-nav="levels" onclick="closeGlobalNav();openLevelsModule()"><span>📈</span>سجل المستويات</button>
+    <button type="button" data-nav="exams" onclick="closeGlobalNav();openExamsModule()"><span>📝</span>الامتحانات</button>
+    <button type="button" data-nav="schoollogs" onclick="closeGlobalNav();openSchoolLogsModule()"><span>📁</span>سجلات المدرسة</button>
     <button type="button" data-nav="staff" onclick="closeGlobalNav();openStaffModule()"><span>👥</span>الملاك</button>
+    <button type="button" data-nav="results" onclick="closeGlobalNav();openResultsSectionsFromDashboard()"><span>🖨️</span>كشوف النتائج</button>
+    <button type="button" data-nav="subjects" onclick="closeGlobalNav();openSubjectsEditor()"><span>📚</span>المواد الدراسية</button>
     <button type="button" data-nav="attendance" onclick="closeGlobalNav();openAttendanceModule()"><span>📋</span>الغياب</button>
+    <button type="button" data-nav="timetable" onclick="closeGlobalNav();openTimetableModule()"><span>🗓️</span>جدول الحصص</button>
     <button type="button" data-nav="properties" onclick="closeGlobalNav();openPropertiesModule()"><span>🏫</span>الممتلكات</button>
     <button type="button" data-nav="care" onclick="closeGlobalNav();openCareModule()"><span>🤍</span>الرعاية والأيتام</button>
     <button type="button" data-nav="parents" onclick="closeGlobalNav();openParentsModule()"><span>👨‍👩‍👧</span>أولياء الأمور</button>
-    <button type="button" data-nav="timetable" onclick="closeGlobalNav();openTimetableModule()"><span>🗓️</span>جدول الحصص</button>
     <button type="button" data-nav="records" onclick="closeGlobalNav();openRecordsModule()"><span>📑</span>القيود</button>
     <button type="button" data-nav="notes" onclick="closeGlobalNav();openNotesModule()"><span>📝</span>الملاحظات</button>
     <button type="button" data-nav="accounts" onclick="closeGlobalNav();openAccountsModule()"><span>💰</span>الحسابات</button>
-    <button type="button" data-nav="schoollogs" onclick="closeGlobalNav();openSchoolLogsModule()"><span>📁</span>سجلات المدرسة</button>
     <button type="button" data-nav="barcode" onclick="closeGlobalNav();openBarcodeModule()"><span>📷</span>باركود</button>
-
-    <button type="button" data-nav="exams" onclick="closeGlobalNav();openExamsModule()"><span>📝</span>الامتحانات</button>
-    <button type="button" data-nav="results" onclick="closeGlobalNav();openResultsSectionsFromDashboard()"><span>🖨️</span>كشوف النتائج</button>
-    <button type="button" data-nav="subjects" onclick="closeGlobalNav();openSubjectsEditor()"><span>📚</span>المواد الدراسية</button>
-    <button type="button" data-nav="settings" onclick="closeGlobalNav();openSettings()"><span>⚙️</span>إعدادات المدرسة</button>
+    <button type="button" data-nav="about" onclick="closeGlobalNav();openAboutModule()"><span>ℹ️</span>حول التطبيق</button>
+    <button type="button" data-nav="backup" onclick="closeGlobalNav();openBackupModule()"><span>💾</span>النسخة الاحتياطية</button>
+    <button type="button" data-nav="settings" onclick="closeGlobalNav();openSettings()"><span>⚙️</span>الإعدادات</button>
     <button type="button" onclick="toggleUiTheme()"><span class="ui-theme-icon">🌙</span><span class="ui-theme-toggle-text" style="width:auto;height:auto;background:none">الوضع الليلي</span></button>
     <button type="button" onclick="closeGlobalNav();authLogout()"><span>🚪</span>تسجيل خروج</button>
   </nav>
@@ -5486,7 +5487,7 @@ if (typeof module !== 'undefined' && module.exports) { module.exports = QRCodeLi
 <div id="recordsGradesOverlay" class="rec-overlay" onclick="if(event.target===this)closeRecordsGradesForm()"><div class="rec-modal"><div class="srm-head"><h2>إدخال وثيقة الدرجات يدوياً</h2><button type="button" onclick="closeRecordsGradesForm()">✕</button></div><div id="recordsGradesBody"></div></div></div>
 <div id="notesFormOverlay" class="rec-overlay" onclick="if(event.target===this)closeNotesForm()"><div class="rec-modal"><div class="srm-head"><h2 id="notesFormTitle">ملاحظة</h2><button type="button" onclick="closeNotesForm()">✕</button></div><div id="notesFormBody"></div></div></div>
 <div id="accountsFormOverlay" class="rec-overlay" onclick="if(event.target===this)closeAccountsForm()"><div class="rec-modal"><div class="srm-head"><h2 id="accountsFormTitle">حساب</h2><button type="button" onclick="closeAccountsForm()">✕</button></div><div id="accountsFormBody"></div></div></div>
-<div id="dashListOverlay" class="rec-overlay" onclick="if(event.target===this)closeDashNameList()"><div class="rec-modal"><div class="srm-head"><h2 id="dashListTitle">القائمة</h2><div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><span id="dashPrintThemeHost"></span><button type="button" class="material-btn secondary" onclick="printDashNameList(\'portrait\')">🖨️ عمودي</button><button type="button" class="material-btn secondary" onclick="printDashNameList(\'landscape\')">🖨️ أفقي</button><button type="button" onclick="closeDashNameList()">✕</button></div></div><div id="dashListBody"></div></div></div>
+<div id="dashListOverlay" class="rec-overlay" onclick="if(event.target===this)closeDashNameList()"><div class="rec-modal"><div class="srm-head"><h2 id="dashListTitle">القائمة</h2><div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><span id="dashPrintThemeHost"></span><button type="button" class="material-btn secondary" onclick="printDashNameList(\'portrait\')">🖨️ طباعة عمودي</button><button type="button" class="material-btn secondary" onclick="printDashNameList(\'landscape\')">🖨️ طباعة أفقي</button><button type="button" onclick="closeDashNameList()">✕</button></div></div><div id="dashListBody"></div></div></div>
 
 
 <div id="themeOverlay" class="theme-overlay" onclick="if(event.target===this) closeThemePicker()">
@@ -5531,6 +5532,7 @@ if (typeof module !== 'undefined' && module.exports) { module.exports = QRCodeLi
 <div class="view wide" id="view-timetable"></div>
 <div class="view wide" id="view-privmail"></div>
 <div class="view wide" id="view-records"></div>
+<div class="view wide" id="view-about"></div>
 <div class="view wide" id="view-backup"></div>
 <div class="view wide" id="view-notes"></div>
 <div class="view wide" id="view-accounts"></div>
@@ -6901,6 +6903,8 @@ function navSectionForView(viewId){
   if(viewId==='view-exam-cards'||viewId==='view-exams') return 'exams';
   if(viewId==='view-home'||viewId==='view-students'||viewId==='view-output') return 'results';
   if(viewId==='view-subjects') return 'subjects';
+  if(viewId==='view-about') return 'about';
+  if(viewId==='view-backup') return 'backup';
   if(viewId==='view-settings'||viewId==='view-stage') return 'settings';
   return '';
 }
@@ -7281,6 +7285,50 @@ window.addEventListener('popstate', function(){
 });
 
 
+window.__schoolSetupOverlayLauncher = null;
+function showSchoolSetupOverlayGlobal(){
+    var _t=window.__actTitle,_s=window.__actSubtitle,_b=window.__actBody,_show=window.__actShowOverlay;
+    if(!_t||!_s||!_b||!_show){setTimeout(showSchoolSetupOverlayGlobal,50);return;}
+    _t().textContent="إعداد المدرسة";
+    _s().textContent="اختر المرحلة ونوع المدرسة للبدء";
+    _b().innerHTML='<div style="display:grid;gap:14px">'
+      +'<div style="background:#ffffff15;padding:14px;border-radius:10px">'
+      +'<label style="font-size:13px;opacity:.95;display:block;margin-bottom:8px;font-weight:700">🎓 المرحلة الدراسية:</label>'
+      +'<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px">'
+      +'<button data-stage="elementary" class="sbtn">ابتدائية</button>'
+      +'<button data-stage="intermediate" class="sbtn">متوسطة</button>'
+      +'<button data-stage="prep" class="sbtn">إعدادية / ثانوية</button>'
+      +'</div></div>'
+      +'<div style="background:#ffffff15;padding:14px;border-radius:10px">'
+      +'<label style="font-size:13px;opacity:.95;display:block;margin-bottom:8px;font-weight:700">👥 نوع المدرسة:</label>'
+      +'<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px">'
+      +'<button data-gender="boys" class="gbtn">بنين</button>'
+      +'<button data-gender="girls" class="gbtn">بنات</button>'
+      +'<button data-gender="mixed" class="gbtn">مختلطة</button>'
+      +'</div></div>'
+      +'<div id="setupErr" style="color:#ff8a80;font-size:13px;text-align:center;min-height:18px"></div>'
+      +'<button id="setupStart" style="padding:14px;border:none;border-radius:10px;background:#1976d2;color:#fff;font-weight:800;font-size:16px;cursor:pointer;opacity:.5" disabled>🚀 ابدأ استخدام التطبيق</button>'
+      +'</div>';
+    // wire up — reuse existing wiring logic from the original showSchoolSetupOverlay
+    var stage="",gender="";
+    var start=document.getElementById("setupStart");
+    var err=document.getElementById("setupErr");
+    function check(){start.disabled=!(stage&&gender);start.style.opacity=start.disabled?".5":"1";}
+    document.querySelectorAll(".sbtn").forEach(function(b){b.onclick=function(){document.querySelectorAll(".sbtn").forEach(x=>x.classList.remove("active"));b.classList.add("active");stage=b.dataset.stage;check();};});
+    document.querySelectorAll(".gbtn").forEach(function(b){b.onclick=function(){document.querySelectorAll(".gbtn").forEach(x=>x.classList.remove("active"));b.classList.add("active");gender=b.dataset.gender;check();};});
+    start.onclick=function(){
+      if(!stage||!gender){err.textContent="الرجاء اختيار المرحلة ونوع المدرسة";return;}
+      if(!APP.school)APP.school={};
+      APP.school.stage=stage;
+      APP.school.gender=gender;
+      var dn=({elementary:"مدرسة ابتدائية",intermediate:"متوسطة",prep:"إعدادية"}[stage]||"مدرسة");
+      if(!APP.school.name)APP.school.name="ادارة المدرسه والامتحانات";
+      localStorage.setItem("daragat_school_setup_v2","1");
+      var _hide=window.__actHideOverlay; if(_hide)_hide();
+      try{window.__schoolSetupAfterDone&&window.__schoolSetupAfterDone();}catch(e){location.reload();}
+    };
+    _show();
+}
 window.__realInitApp = (typeof initApp==='function') ? initApp : null;
 function initApp(){
   if(window.__actGetInfo && !window.__actGetInfo().valid){
@@ -7297,14 +7345,14 @@ function initApp(){
   authSetSession(_adm);
   if(!APP.school) APP.school = {};
   if(!APP.school.stage) APP.school.stage = '';
-  if(!APP.school.name) APP.school.name = 'الاداره المدرسيه';
+  if(!APP.school.name) APP.school.name = 'ادارة المدرسه والامتحانات';
   if(!APP.school.principal) APP.school.principal = 'مدير المدرسة';
   saveApp();
   if(authRole()==='teacher'){ renderTeacherHome(); navigateTo('view-teacher',{page:'home'}, true); return; }
   if(authRole()==='student'){ renderStudentHome(); navigateTo('view-student',{page:'home'}, true); return; }
   if(!localStorage.getItem("daragat_school_setup_v2")){
-    showSchoolSetupOverlay();
-    return;
+    window.__schoolSetupAfterDone=function(){initAppAfterCloud();};
+    showSchoolSetupOverlayGlobal(); return;
   }
   renderDashboard();
   navigateTo('view-dashboard', {}, true);
@@ -9130,29 +9178,31 @@ function renderDashboard(){
   let dateText='';try{dateText=new Date().toLocaleDateString('ar-IQ',{weekday:'long',year:'numeric',month:'long',day:'numeric'});}catch(e){}
   const cardsMode=APP.school.mainMenu==='cards'||APP.school.mainMenu==='capsules';
   el.innerHTML='<div class="dashboard-layout">'+(cardsMode?'<button type="button" class="material-btn secondary" style="margin:8px 0 12px" onclick="window.DASH_SHOW_REPORTS=false;renderDashboardLauncher()">↩ القائمة الرئيسية</button>':'<button type="button" class="mobile-menu-btn" onclick="toggleDashboardSidebar()">☰</button>')+'<div id="dashboardBackdrop" class="dashboard-backdrop" onclick="closeDashboardSidebar()"></div>'+
-    '<aside id="dashboardSidebar" class="dashboard-sidebar"><div class="ds-brand"><div class="ds-logo">'+dashboardSidebarLogo()+'</div><div><strong>'+escapeHtml(APP.school.name||'نظام النتائج المدرسية')+'</strong><small>'+escapeHtml(gradebookStageTitle())+'</small></div></div><div class="ds-label">القائمة الرئيسية</div><nav class="ds-nav">'+
-      '<button class="active" onclick="closeDashboardSidebar()"><span class="dni">▦</span>كشوفات المدرسة</button>'+
-      '<button onclick="openGradesEditor()"><span class="dni">🏫</span>الطلاب</button>'+
-      '<button onclick="openGradebook()"><span class="dni">📊</span>سجل المواد والدرجات</button>'+
-      '<button onclick="openLevelsModule()"><span class="dni">📈</span>المستويات</button>'+
-      '<button onclick="openStaffModule()"><span class="dni">👥</span>الملاك</button>'+
-      '<button onclick="openAttendanceModule()"><span class="dni">📋</span>الغياب</button>'+
-      '<button onclick="openPropertiesModule()"><span class="dni">🏫</span>الممتلكات</button>'+
-      '<button onclick="openCareModule()"><span class="dni">🤍</span>الرعاية والأيتام</button>'+
-      '<button onclick="openParentsModule()"><span class="dni">👨‍👩‍👧</span>أولياء الأمور</button>'+
-      '<button onclick="openTimetableModule()"><span class="dni">🗓️</span>جدول الحصص</button>'+
-      '<button onclick="openRecordsModule()"><span class="dni">📑</span>القيود</button>'+
-      '<button onclick="openNotesModule()"><span class="dni">📝</span>الملاحظات</button>'+
-      '<button onclick="openAccountsModule()"><span class="dni">💰</span>الحسابات</button>'+
-      '<button onclick="openSchoolLogsModule()"><span class="dni">📁</span>سجلات المدرسة</button>'+
-      '<button onclick="openBarcodeModule()"><span class="dni">📷</span>باركود</button>'+
-      
-      
-      '<button onclick="authLogout()"><span class="dni">🚪</span>تسجيل خروج</button>'+
-      '<button onclick="openExamsModule()"><span class="dni">📝</span>الامتحانات</button>'+
-      '<button onclick="openResultsSectionsFromDashboard()"><span class="dni">🖨️</span>كشوف النتائج</button>'+
-      '<button onclick="openSubjectsEditor()"><span class="dni">📚</span>المواد الدراسية</button>'+
-      '<button onclick="openSettings()"><span class="dni">⚙️</span>إعدادات المدرسة</button>'+
+    '<aside id="dashboardSidebar" class="dashboard-sidebar"><div class="ds-brand"><div class="ds-logo">'+dashboardSidebarLogo()+'</div><div><strong>'+escapeHtml(APP.school.name||'ادارة المدرسه والامتحانات')+'</strong><small>'+escapeHtml(gradebookStageTitle())+'</small></div></div><div class="ds-label">القائمة الرئيسية</div><nav class="ds-nav">'+
+      '<button class="active" onclick="closeDashboardSidebar();goDashboard()"><span class="dni">▦</span>كشوفات المدرسة</button>'+
+      '<button onclick="closeDashboardSidebar();openGradesEditor()"><span class="dni">🏫</span>الطلاب</button>'+
+      '<button onclick="closeDashboardSidebar();openGradebook()"><span class="dni">📊</span>سجل الدرجات</button>'+
+      '<button onclick="closeDashboardSidebar();openLevelsModule()"><span class="dni">📈</span>سجل المستويات</button>'+
+      '<button onclick="closeDashboardSidebar();openExamsModule()"><span class="dni">📝</span>الامتحانات</button>'+
+      '<button onclick="closeDashboardSidebar();openSchoolLogsModule()"><span class="dni">📁</span>سجلات المدرسة</button>'+
+      '<button onclick="closeDashboardSidebar();openStaffModule()"><span class="dni">👥</span>الملاك</button>'+
+      '<button onclick="closeDashboardSidebar();openResultsSectionsFromDashboard()"><span class="dni">🖨️</span>كشوف النتائج</button>'+
+      '<button onclick="closeDashboardSidebar();openSubjectsEditor()"><span class="dni">📚</span>المواد الدراسية</button>'+
+      '<button onclick="closeDashboardSidebar();openAttendanceModule()"><span class="dni">📋</span>الغياب</button>'+
+      '<button onclick="closeDashboardSidebar();openTimetableModule()"><span class="dni">🗓️</span>جدول الحصص</button>'+
+      '<button onclick="closeDashboardSidebar();openPropertiesModule()"><span class="dni">🏫</span>الممتلكات</button>'+
+      '<button onclick="closeDashboardSidebar();openCareModule()"><span class="dni">🤍</span>الرعاية والأيتام</button>'+
+      '<button onclick="closeDashboardSidebar();openParentsModule()"><span class="dni">👨‍👩‍👧</span>أولياء الأمور</button>'+
+      '<button onclick="closeDashboardSidebar();openRecordsModule()"><span class="dni">📑</span>القيود</button>'+
+      '<button onclick="closeDashboardSidebar();openNotesModule()"><span class="dni">📝</span>الملاحظات</button>'+
+      '<button onclick="closeDashboardSidebar();openAccountsModule()"><span class="dni">💰</span>الحسابات</button>'+
+      '<button onclick="closeDashboardSidebar();openBarcodeModule()"><span class="dni">📷</span>باركود</button>'+
+      '<button onclick="closeDashboardSidebar();openAboutModule()"><span class="dni">ℹ️</span>حول التطبيق</button>'+
+      '<button onclick="closeDashboardSidebar();openBackupModule()"><span class="dni">💾</span>النسخة الاحتياطية</button>'+
+      '<button onclick="closeDashboardSidebar();openSettings()"><span class="dni">⚙️</span>الإعدادات</button>'+
+      '<div style="height:6px"></div>'+
+      '<button onclick="toggleUiTheme()"><span class="dni ui-theme-icon">🌙</span><span class="ui-theme-toggle-text">الوضع الليلي</span></button>'+
+      '<button onclick="closeDashboardSidebar();authLogout()"><span class="dni">🚪</span>تسجيل خروج</button>'+
       '<button onclick="toggleUiTheme()"><span class="dni ui-theme-icon">🌙</span><span class="ui-theme-toggle-text">الوضع الليلي</span></button>'+
       '<button class="ds-exit" onclick="requestAppBack()"><span class="dni">↩</span>رجوع / خروج</button>'+
     '</nav></aside><main class="dashboard-main"><header class="dashboard-top"><div><h1>كشوفات المدرسة</h1><p>نظرة شاملة على أعداد الطلاب ونتائج آخر امتحان مسجل</p></div><div class="dashboard-date">'+escapeHtml(dateText)+'</div></header>'+
@@ -16184,6 +16234,8 @@ if(document.readyState==='loading'){
 
   function showOverlay(){ overlay().style.display="block"; document.body.style.overflow="hidden"; }
   function hideOverlay(){ overlay().style.display="none"; document.body.style.overflow=""; }
+  // expose globally for use by global setup wrapper
+  window.__actTitle=title; window.__actSubtitle=subtitle; window.__actBody=body; window.__actShowOverlay=showOverlay; window.__actHideOverlay=hideOverlay;
 
   function normIraqPhoneLocal(p){
     let digits=String(p||"").replace(/[^0-9]/g,"");
@@ -16787,7 +16839,7 @@ if(document.readyState==='loading'){
       syncToCloud(acc);
     }
     if(v.ok){
-      if(!localStorage.getItem("daragat_school_setup_v2")){ showOverlay(); showSchoolSetupOverlay(); return; }
+      if(!localStorage.getItem("daragat_school_setup_v2")){ showOverlay(); showSchoolSetupOverlayGlobal(); return; }
       hideOverlay();
       if(v.trial) setStatusLabel("تجريبي - "+v.daysLeft+" يوم");
       else setStatusLabel("مفعّلة - "+planLabel(acc.plan));
@@ -16830,7 +16882,7 @@ if(document.readyState==='loading'){
 <!-- ===== AUTO UPDATE NOTIFICATION (small icon in topbar) ===== -->
 <script>
 (function(){
-  const APP_VERSION = "1.3.4";
+  const APP_VERSION = "1.4.2";
   const CHECK_EVERY_MINUTES = 30;
   const LS_ACCEPTED = "daragat_accepted_version";
   const LS_SNOOZE   = "daragat_update_snooze";
@@ -16918,7 +16970,383 @@ if(document.readyState==='loading'){
     setInterval(checkForUpdate, CHECK_EVERY_MINUTES*60000);
     window.addEventListener("focus", checkForUpdate);
     window.addEventListener("online", checkForUpdate);
+  });// ============ Backup Module + Tabbed Settings ============
+function openBackupModule(){ navigateTo('view-backup'); renderBackupView(); }
+function renderBackupView(){
+  const el=document.getElementById('view-backup');
+  if(!el) return;
+  let total=0;try{for(let i=0;i<localStorage.length;i++){const k=localStorage.key(i);total+=(k||'').length+(localStorage.getItem(k)||'').length;}}catch(e){}
+  const sizeMB=(total/1048576).toFixed(2);
+  el.innerHTML='<div class="panel"><h2>💾 النسخة الاحتياطية</h2>'+
+    '<p style="color:#555;font-size:13px;margin:4px 0 14px;line-height:1.8">احفظ نسخة كاملة من بيانات المدرسة (طلاب، درجات، امتحانات، ملاك، إعدادات) في ملف، واستعدها لاحقاً على نفس الجهاز أو جهاز آخر.</p>'+
+    '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px;margin-bottom:14px">'+
+      '<div style="background:#e8f5e9;border:1px solid #a5d6a7;border-radius:12px;padding:12px"><div style="font-size:12px;color:#2e7d32;font-weight:700">📦 حجم البيانات</div><div style="font-size:22px;font-weight:800;color:#1b5e20;margin-top:4px">'+sizeMB+' MB</div><div style="font-size:11px;color:#666">'+total.toLocaleString()+' حرف</div></div>'+
+      '<div style="background:#e3f2fd;border:1px solid #90caf9;border-radius:12px;padding:12px"><div style="font-size:12px;color:#0d47a1;font-weight:700">🏫 المدرسة</div><div style="font-size:15px;font-weight:800;color:#0d47a1;margin-top:4px">'+escapeHtml(APP.school.name||'—')+'</div><div style="font-size:11px;color:#666">'+(stageLabel(APP.school.stage||''))+'</div></div>'+
+    '</div>'+
+    '<div style="display:flex;flex-wrap:wrap;gap:10px;margin-bottom:10px">'+
+      '<button class="material-btn" onclick="backupExportFile()">📥 تصدير نسخة احتياطية (.daragat)</button>'+
+      '<button class="material-btn accent" onclick="document.getElementById(\'backupFileInput\').click()">📤 استعادة نسخة احتياطية</button>'+
+      '<input type="file" id="backupFileInput" accept=".json,.daragat,application/json" style="display:none" onchange="backupImportFile(event)">'+
+      '<button class="material-btn purple" onclick="backupExportCSV()">📊 تصدير البيانات (CSV / Excel)</button>'+
+    '</div>'+
+    '<div id="backupStatus"></div>'+
+    '<div style="background:#fff3e0;border-radius:10px;padding:10px;font-size:12px;color:#795548;line-height:1.8;margin-top:12px">'+
+      '⚠️ <b>تنبيهات:</b> استعادة نسخة احتياطية ستحل محل البيانات الحالية. تأكد من حفظ نسخة من البيانات الحالية أولاً. ملف النسخة الاحتياطية مشفّر كنص JSON ولا يحتوي على تفعيل الاشتراك السحابي.'+
+    '</div>'+
+    '<div style="margin-top:14px"><button class="material-btn secondary" onclick="goDashboard()">رجوع للوحة التحكم</button></div></div>';
+}
+function backupSetStatus(msg,ok){
+  const el=document.getElementById('backupStatus'); if(!el)return;
+  el.innerHTML='<div style="margin-top:8px;padding:10px 12px;border-radius:8px;background:'+(ok===false?'#ffebee':'#e8f5e9')+';color:'+(ok===false?'#b71c1c':'#1b5e20')+'">'+msg+'</div>';
+}
+function backupExportFile(){
+  try{
+    const data={__backup:'daragat',version:APP_VERSION||'',createdAt:new Date().toISOString(),school:JSON.parse(JSON.stringify(APP)),localStorage:{}};
+    for(let i=0;i<localStorage.length;i++){const k=localStorage.key(i);if(k){try{data.localStorage[k]=localStorage.getItem(k);}catch(e){}}}
+    const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});
+    const a=document.createElement('a');a.href=URL.createObjectURL(blob);
+    const safe=(APP.school.name||'daragat').replace(/[^a-zA-Z0-9\u0600-\u06FF_\-]+/g,'_');
+    a.download='نسخة-احتياطية-'+safe+'-'+new Date().toISOString().slice(0,10)+'.daragat';
+    document.body.appendChild(a);a.click();setTimeout(()=>a.remove(),500);
+    backupSetStatus('✅ تم تصدير النسخة الاحتياطية بنجاح.',true);
+  }catch(e){backupSetStatus('❌ خطأ: '+e.message,false);}
+}
+function backupImportFile(ev){
+  const f=ev.target.files&&ev.target.files[0];if(!f)return;
+  if(!confirm('⚠️ سيتم استبدال البيانات الحالية بالنسخة المُختارة.\nهل تريد المتابعة؟')){ev.target.value='';return;}
+  const r=new FileReader();
+  r.onload=function(e){
+    try{
+      const data=JSON.parse(e.target.result);
+      if(!data||data.__backup!=='daragat'){backupSetStatus('❌ الملف غير صالح',false);return;}
+      if(data.school){for(const k in data.school){try{APP[k]=data.school[k];}catch(_){}}saveApp();}
+      if(data.localStorage){for(const k in data.localStorage){try{localStorage.setItem(k,data.localStorage[k]);}catch(_){}}}
+      backupSetStatus('✅ تم الاستعادة — جاري إعادة التحميل…',true);
+      setTimeout(()=>location.reload(),1200);
+    }catch(err){backupSetStatus('❌ تعذر قراءة الملف: '+err.message,false);}
+  };
+  r.readAsText(f);ev.target.value='';
+}
+function backupExportCSV(){
+  try{
+    const parts=[];
+    parts.push(['=== بيانات المدرسة ===']);
+    parts.push(['الاسم',APP.school.name||'']);
+    parts.push(['المرحلة',stageLabel(APP.school.stage||'')]);
+    parts.push(['النوع',genderLabel(APP.school.gender||'')]);
+    parts.push(['المدير',APP.school.principal||'']);
+    parts.push([]);
+    parts.push(['=== الطلاب ===']);
+    parts.push(['الصف','الشعبة','ت','الاسم','الرقم الامتحاني','رقم القيد','الأب','الأم','الجنس','الحالة','ملاحظات']);
+    try{
+      Object.keys(APP.grades||{}).forEach(g=>{
+        Object.keys((APP.grades[g].sections||{})).forEach(sid=>{
+          const sec=APP.grades[g].sections[sid];
+          (sec.students||[]).forEach((st,i)=>parts.push([g,sec.name||sid,i+1,st.name||'',st.examNo||'',st.regNo||'',st.father||'',st.mother||'',st.gender==='female'?'أنثى':'ذكر',st.status||'مستمر',st.notes||'']));
+        });
+      });
+    }catch(e){}
+    parts.push([]);
+    parts.push(['=== المواد والدرجات ===']);
+    parts.push(['الصف','الشعبة','المادة','ت','الطالب','الدرجة']);
+    try{
+      Object.keys(APP.grades||{}).forEach(g=>{
+        Object.keys((APP.grades[g].sections||{})).forEach(sid=>{
+          const sec=APP.grades[g].sections[sid];
+          (sec.subjects||[]).forEach(sub=>{
+            (sec.students||[]).forEach((st,i)=>{
+              parts.push([g,sec.name||sid,sub.name||'',i+1,st.name||'',sub.scores&&sub.scores[st.id]!=null?sub.scores[st.id]:'']);
+            });
+          });
+        });
+      });
+    }catch(e){}
+    parts.push([]);
+    parts.push(['=== الملاك ===']);
+    parts.push(['ت','الاسم','الصفة','الهاتف','العنوان']);
+    try{
+      ((APP.staff&&APP.staff.list)||[]).forEach((e,i)=>parts.push([i+1,e.name||'',({admin:'مدير',teacher:'معلم',employee:'موظف'})[e.role]||e.role||'',e.phone||'',e.address||'']));
+    }catch(e){}
+    const csv=parts.map(r=>r.map(c=>'"'+String(c==null?'':c).replace(/"/g,'""')+'"').join(',')).join('\n');
+    const blob=new Blob(["\ufeff"+csv],{type:'text/csv;charset=utf-8'});
+    const a=document.createElement('a');a.href=URL.createObjectURL(blob);
+    a.download='تصدير-بيانات-'+new Date().toISOString().slice(0,10)+'.csv';
+    document.body.appendChild(a);a.click();setTimeout(()=>a.remove(),500);
+    backupSetStatus('✅ تم تصدير ملف CSV — يفتح في Excel أو Google Sheets.',true);
+  }catch(e){backupSetStatus('❌ خطأ: '+e.message,false);}
+}
+
+// ============ Tabbed Settings (self-contained, no dependency on original render) ============
+function renderSettingsTabbed(isOnboarding){
+  const el=document.getElementById('view-settings');if(!el)return;
+  const cur=currentStage();
+  const staffOpts=settingsStaffOptions(APP.school.principal);
+  const gradeGuides=settingsGradeGuideFields();
+  const font=currentAppFontSize();
+  const num=currentNumeralStyle();
+  const menu=APP.school.mainMenu||'sidebar';
+  const themeHtml=renderThemePickerHtml();
+  const completeMax=APP.school.completeMax!=null?APP.school.completeMax:2;
+  const failMin=APP.school.failMin!=null?APP.school.failMin:3;
+  const attStart=APP.school.attendanceStartDate||'';
+  const fb=APP.school.facebookUrl||'';
+  const stuGrades=APP.school.studentShowGrades!==false;
+  const stuLevels=APP.school.studentShowLevels!==false;
+  const logoHtml=(APP.school.logo?'<img src="'+APP.school.logo+'">':'شعار');
+  const logoStyle=APP.school.logo?'':'style="display:flex;align-items:center;justify-content:center;background:#f4f6fb;color:#888;font-size:14px"';
+  el.innerHTML=
+    '<style>'+
+    '.st-tabs{display:flex;flex-wrap:wrap;gap:4px;border-bottom:2px solid #e0e3e8;margin:0 0 14px;overflow-x:auto;-webkit-overflow-scrolling:touch}'+
+    '.st-tab{background:#f3f4f6;border:none;padding:10px 13px;border-radius:10px 10px 0 0;font-weight:700;cursor:pointer;font-family:inherit;font-size:13px;color:#555;white-space:nowrap;border-bottom:2px solid transparent;margin-bottom:-2px}'+
+    '.st-tab.active{background:#fff;color:#1a237e;border-bottom-color:#1a237e}'+
+    '.st-panel{display:none}.st-panel.active{display:block}'+
+    '@media(max-width:560px){.st-tab{font-size:12px;padding:8px 10px}}'+
+    '</style>'+
+    '<div class="panel"><h2>⚙️ الإعدادات</h2>'+
+    '<div class="st-tabs" id="stTabs">'+
+      '<button class="st-tab" data-tab="school">🏫 المدرسة</button>'+
+      '<button class="st-tab" data-tab="app">🎨 المظهر</button>'+
+      '<button class="st-tab" data-tab="rules">📏 القواعد</button>'+
+      '<button class="st-tab" data-tab="student">👨‍🎓 الطالب</button>'+
+      '<button class="st-tab" data-tab="att">📅 الدوام</button>'+
+      '<button class="st-tab" data-tab="logo">🖼️ الشعار</button>'+
+    '</div>'+
+    '<div class="st-panel" id="stp-school">'+
+      '<label>مرحلة المدرسة</label>'+
+      '<div class="stage-radios">'+
+        '<label><input type="radio" name="setStage" value="elementary"'+(cur==='elementary'?' checked':'')+'> ابتدائية</label>'+
+        '<label><input type="radio" name="setStage" value="intermediate"'+(cur==='intermediate'?' checked':'')+'> متوسطة</label>'+
+        '<label><input type="radio" name="setStage" value="prep"'+(cur==='prep'?' checked':'')+'> إعدادية</label>'+
+      '</div>'+
+      '<p style="color:#888;font-size:12px;margin:6px 0">يظهر فقط صفوف وبطاقات المرحلة المختارة. بيانات المراحل الأخرى تبقى محفوظة.</p>'+
+      '<label>اسم المدرسة</label>'+
+      '<input type="text" id="setSchoolName" value="'+escapeHtml(APP.school.name)+'">'+
+      '<label>مدير المدرسة (من الملاك)</label>'+
+      '<select id="setPrincipal">'+staffOpts+'</select>'+
+      '<label>مرشدو الصفوف (من الملاك)</label>'+
+      '<div id="setGradeGuides">'+gradeGuides+'</div>'+
+      '<label>رابط فيسبوك (اختياري)</label>'+
+      '<input type="url" id="setFacebook" dir="ltr" placeholder="https://facebook.com/yourpage" value="'+escapeHtml(fb)+'">'+
+    '</div>'+
+    '<div class="st-panel" id="stp-app">'+
+      '<label>ثيمات الواجهة</label>'+
+      '<p style="color:#888;font-size:12px;margin:4px 0">أربع ثيمات نهارية وأربع ليلية. يُحفظ الاختيار على هذا الجهاز.</p>'+
+      themeHtml+
+      '<label>حجم الخط</label>'+
+      '<select id="setAppFont">'+
+        '<option value="small"'+(font==='small'?' selected':'')+'>صغير</option>'+
+        '<option value="normal"'+(font==='normal'?' selected':'')+'>عادي</option>'+
+        '<option value="large"'+(font==='large'?' selected':'')+'>كبير</option>'+
+        '<option value="xlarge"'+(font==='xlarge'?' selected':'')+'>أكبر</option>'+
+        '<option value="huge"'+(font==='huge'?' selected':'')+'>ضخم</option>'+
+        '<option value="xhuge"'+(font==='xhuge'?' selected':'')+'>أضخم</option>'+
+        '<option value="xxhuge"'+(font==='xxhuge'?' selected':'')+'>ضخم جداً</option>'+
+      '</select>'+
+      '<label>شكل الأرقام</label>'+
+      '<select id="setNumerals">'+
+        '<option value="ar"'+(num==='ar'?' selected':'')+'>عربية (١٢٣٤)</option>'+
+        '<option value="en"'+(num==='en'?' selected':'')+'>إنجليزية (1234)</option>'+
+      '</select>'+
+      '<label>شكل القائمة الرئيسية</label>'+
+      '<div class="stage-radios">'+
+        '<label><input type="radio" name="setMainMenu" value="sidebar"'+(menu!=='cards'&&menu!=='capsules'?' checked':'')+'> القائمة الجانبية</label>'+
+        '<label><input type="radio" name="setMainMenu" value="cards"'+(menu==='cards'?' checked':'')+'> بطاقات ملء الشاشة</label>'+
+        '<label><input type="radio" name="setMainMenu" value="capsules"'+(menu==='capsules'?' checked':'')+'> كبسولات احترافية</label>'+
+      '</div>'+
+    '</div>'+
+    '<div class="st-panel" id="stp-rules">'+
+      '<label>عدد دروس الإكمال</label>'+
+      '<input type="number" id="setCompleteMax" min="1" max="20" value="'+completeMax+'">'+
+      '<label>عدد دروس الرسوب</label>'+
+      '<input type="number" id="setFailMin" min="1" max="20" value="'+failMin+'">'+
+      '<p style="color:#888;font-size:12px;margin:6px 0">إذا رسب الطالب في دروس أقل من أو تساوي عدد دروس الإكمال يُعد <b>مكملاً</b>. إذا بلغ عدد دروس الرسوب أو تجاوزه يُعد <b>راسباً</b>.</p>'+
+    '</div>'+
+    '<div class="st-panel" id="stp-student">'+
+      '<label>ما يظهر في واجهة الطالب</label>'+
+      '<div style="display:flex;flex-wrap:wrap;gap:12px;margin:6px 0">'+
+        '<label><input type="checkbox" id="setStuGrades"'+(stuGrades?' checked':'')+'> سجل الدرجات</label>'+
+        '<label><input type="checkbox" id="setStuLevels"'+(stuLevels?' checked':'')+'> سجل المستويات</label>'+
+      '</div>'+
+      '<p style="color:#888;font-size:12px">التحضير يبقى ظاهراً دائماً.</p>'+
+    '</div>'+
+    '<div class="st-panel" id="stp-att">'+
+      '<label>تاريخ أول يوم دوام</label>'+
+      '<input type="date" id="setAttendanceStart" value="'+attStart+'">'+
+      '<p style="color:#888;font-size:12px;margin:6px 0">من هذا التاريخ تُحسب أيام الدوام والعطل.</p>'+
+    '</div>'+
+    '<div class="st-panel" id="stp-logo">'+
+      '<label>شعار المدرسة</label>'+
+      '<div class="logo-picker">'+
+        '<div class="logo-preview" id="logoPreview" '+logoStyle+'>'+logoHtml+'</div>'+
+        '<label class="upload-btn">اختيار صورة<input type="file" accept="image/*" id="setLogoFile" style="display:none"></label>'+
+      '</div>'+
+    '</div>'+
+    '<div class="panel-actions">'+
+      (isOnboarding?'<button onclick="saveSettingsAndNext()">التالي ←</button>':'<button onclick="saveSettingsOnly()">💾 حفظ</button>')+
+      '<button class="material-btn secondary" onclick="goDashboard()" style="margin-right:8px">رجوع</button>'+
+    '</div>'+
+    '</div>';
+  // Bind events
+  const saved=localStorage.getItem('daragat_settings_tab')||'school';
+  function showTab(t){document.querySelectorAll('.st-tab').forEach(b=>b.classList.toggle('active',b.dataset.tab===t));document.querySelectorAll('.st-panel').forEach(p=>p.classList.toggle('active',p.id==='stp-'+t));localStorage.setItem('daragat_settings_tab',t);}
+  showTab(saved);
+  document.querySelectorAll('.st-tab').forEach(b=>b.onclick=()=>showTab(b.dataset.tab));
+  // Theme + font + numeral bindings
+  bindThemePicker();
+  const fs=document.getElementById('setAppFont');if(fs)fs.onchange=()=>applyAppFontSize(fs.value);
+  const ns=document.getElementById('setNumerals');if(ns)ns.onchange=()=>applyNumeralStyle(ns.value);
+  // Stage radios refresh grade guides
+  document.querySelectorAll('input[name="setStage"]').forEach(r=>{
+    r.onchange=()=>{const host=document.getElementById('setGradeGuides');const st=document.querySelector('input[name="setStage"]:checked');if(st){APP.school.stage=st.value;host.innerHTML=settingsGradeGuideFields();}};
   });
+  // Logo picker
+  const preview=document.getElementById('logoPreview');preview.dataset.src=APP.school.logo||'';
+  document.getElementById('setLogoFile').onchange=function(){
+    const f=this.files[0];if(!f)return;const r=new FileReader();
+    r.onload=e=>{preview.innerHTML='<img src="'+e.target.result+'">';preview.dataset.src=e.target.result;};
+    r.readAsDataURL(f);
+  };
+}
+window.openSettings=function(){renderSettingsTabbed(false);navigateTo('view-settings');};
+window.renderSettingsView=function(isOnboarding){renderSettingsTabbed(isOnboarding);};
+// Patch collectSettingsForm to read from tabbed form (same IDs used, so original works as-is)
+// ============ قسم حول التطبيق ============
+var ABOUT_SUPPORT_PHONE = "07712080871"; // رقم الدعم الفني (واتساب)
+function waSupportLink(){
+  var d=String(ABOUT_SUPPORT_PHONE||"").replace(/[^0-9]/g,"");
+  if(d.startsWith("00964"))d=d.slice(5);
+  else if(d.startsWith("964"))d=d.slice(3);
+  if(d.startsWith("0"))d=d.slice(1);
+  // normalize to country code 964 for Iraq (numbers starting 7, should be 10 digits after stripping 0)
+  if(d.length===10&&/^7/.test(d))d="964"+d;
+  else if(d.length===9&&/^7/.test(d))d="964"+d;
+  var msg=encodeURIComponent("السلام عليكم، لدي استفسار بخصوص تطبيق ادارة المدرسه والامتحانات");
+  return "https://wa.me/"+d+"?text="+msg;
+}
+function openAboutModule(){ navigateTo('view-about'); renderAboutView(); }
+window.openAboutModule = openAboutModule;
+
+function renderAboutView(){
+  var el=document.getElementById('view-about');
+  if(!el)return;
+  el.innerHTML='<style>'+
+    '.about-wrap{padding:0}'+
+    '.about-hero{background:linear-gradient(135deg,#1a237e 0%,#6a1b9a 50%,#c62828 100%);color:#fff;padding:28px 22px;border-radius:14px;text-align:center;margin-bottom:16px;position:relative;overflow:hidden}'+
+    '.about-hero::before{content:"";position:absolute;top:-60px;right:-60px;width:220px;height:220px;background:#ffffff15;border-radius:50%}'+
+    '.about-hero::after{content:"";position:absolute;bottom:-80px;left:-40px;width:180px;height:180px;background:#ffffff10;border-radius:50%}'+
+    '.about-hero .big-icon{font-size:64px;margin-bottom:8px;position:relative;z-index:1}'+
+    '.about-hero h1{margin:0 0 6px;font-size:26px;font-weight:900;position:relative;z-index:1}'+
+    '.about-hero p{margin:0;opacity:.92;font-size:14px;position:relative;z-index:1}'+
+    '.about-hero .ver{display:inline-block;margin-top:10px;background:#ffffff25;padding:3px 12px;border-radius:20px;font-size:11.5px;font-weight:700;position:relative;z-index:1}'+
+    '.about-cta{background:linear-gradient(135deg,#0d7c3f,#25d366);color:#fff;border-radius:14px;padding:20px;margin-bottom:16px;display:flex;flex-wrap:wrap;align-items:center;gap:14px;box-shadow:0 6px 20px #25d36640}'+
+    '.about-cta .txt{flex:1;min-width:200px}'+
+    '.about-cta h3{margin:0 0 4px;font-size:18px;font-weight:900}'+
+    '.about-cta p{margin:0;font-size:13px;opacity:.95}'+
+    '.about-cta .num{font-family:monospace;font-size:17px;font-weight:800;direction:ltr;display:inline-block;background:#ffffff25;padding:3px 10px;border-radius:8px;margin-top:6px}'+
+    '.about-cta a.btn-wa{background:#fff;color:#075e54;border:none;padding:13px 20px;border-radius:12px;font-weight:900;font-size:15px;cursor:pointer;text-decoration:none;display:inline-flex;align-items:center;gap:8px;white-space:nowrap;box-shadow:0 4px 12px #00000025}'+
+    '.about-cta a.btn-wa:hover{transform:translateY(-1px)}'+
+    '.about-section-title{font-size:17px;font-weight:900;color:#1a237e;margin:18px 0 10px;display:flex;align-items:center;gap:8px;padding-right:4px;border-right:4px solid #c9a13b;padding-right:10px}'+
+    '.about-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px}'+
+    '.feat-card{background:#fff;border:1px solid #e7eaf0;border-radius:12px;padding:14px;box-shadow:0 1px 4px #00000008;transition:transform .15s,box-shadow .15s}'+
+    '.feat-card:hover{transform:translateY(-2px);box-shadow:0 6px 18px #00000012}'+
+    '.feat-card .ico{font-size:28px;margin-bottom:6px;display:inline-block}'+
+    '.feat-card h4{margin:0 0 6px;font-size:14px;font-weight:900;color:#1a237e}'+
+    '.feat-card p{margin:0;font-size:12.5px;color:#555;line-height:1.75}'+
+    '.feat-card ul{margin:6px 0 0 16px;padding:0;font-size:12px;color:#555;line-height:1.8}'+
+    '.about-howto{background:#fff;border:1px solid #e7eaf0;border-radius:12px;padding:16px;margin-top:12px}'+
+    '.about-howto h4{margin:0 0 8px;font-size:15px;font-weight:900;color:#7a0e2e;display:flex;align-items:center;gap:7px}'+
+    '.about-howto ol{margin:0 0 0 18px;padding:0;font-size:13px;color:#444;line-height:2}'+
+    '.about-howto .note{background:#fff8e1;border-right:4px solid #ffa000;padding:10px 12px;border-radius:8px;margin-top:10px;font-size:12.5px;color:#795548;line-height:1.8}'+
+    '.about-stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:10px;margin:14px 0}'+
+    '.about-stat{background:linear-gradient(135deg,#e8eaf6,#f5f6ff);border-radius:12px;padding:12px;text-align:center;border:1px solid #dfe3f0}'+
+    '.about-stat .n{font-size:22px;font-weight:900;color:#1a237e}'+
+    '.about-stat .l{font-size:11px;color:#666;margin-top:2px}'+
+    '.about-footer{text-align:center;padding:18px 10px;color:#888;font-size:12px;margin-top:14px}'+
+    '@media(max-width:500px){'+
+    '.about-hero{padding:22px 14px}'+
+    '.about-hero h1{font-size:20px}'+
+    '.about-cta{flex-direction:column;text-align:center}'+
+    '.about-grid{grid-template-columns:1fr}'+
+    '}'+
+    '</style>'+
+    '<div class="about-wrap">'+
+      '<div class="about-hero">'+
+        '<div class="big-icon">🏫</div>'+
+        '<h1>ادارة المدرسه والامتحانات</h1>'+
+        '<p>نظام متكامل لإدارة الدرجات والامتحانات والطلاب بدون إنترنت</p>'+
+        '<div class="ver">الإصدار '+(APP_VERSION||"1")+'</div>'+
+      '</div>'+
+
+      '<div class="about-cta">'+
+        '<div class="txt">'+
+          '<h3>💬 هل تحتاج إلى مساعدة؟</h3>'+
+          '<p>تواصل مباشرة مع الدعم الفني عبر الواتساب لأي استفسار أو مشكلة.</p>'+
+          '<div class="num" dir="ltr">+964 '+ABOUT_SUPPORT_PHONE+'</div>'+
+        '</div>'+
+        '<a class="btn-wa" href="'+waSupportLink()+'" target="_blank" rel="noopener">💬 تواصل واتساب</a>'+
+      '</div>'+
+
+      '<div class="about-stats">'+
+        '<div class="about-stat"><div class="n">💯</div><div class="l">درجات آلية</div></div>'+
+        '<div class="about-stat"><div class="n">🖨️</div><div class="l">طباعة فورية</div></div>'+
+        '<div class="about-stat"><div class="n">🔒</div><div class="l">بيانات محليّة</div></div>'+
+        '<div class="about-stat"><div class="n">⚡</div><div class="l">بدون إنترنت</div></div>'+
+      '</div>'+
+
+      '<h3 class="about-section-title">✨ مميزات التطبيق الرئيسية</h3>'+
+      '<div class="about-grid">'+
+        '<div class="feat-card"><div class="ico">🏫</div><h4>كشوفات المدرسة</h4><p>لوحة شاملة تعرض أعداد الطلاب، الناجحين، الراسبين، الغائبين والحاضرين اليوم، مع إحصائيات مباشرة لكل صف وشعبة، وإمكانية طباعة قوائم الأسماء عمودياً أو أفقياً.</p></div>'+
+        '<div class="feat-card"><div class="ico">👨‍🎓</div><h4>إدارة الطلاب</h4><p>إضافة وتعديل بيانات الطلاب (اسم، رقم امتحاني، رقم قيد، الأب والأم، الجنس، الحالة، صورة شخصية) مع ترقيم تلقائي، وبحث فوري بالاسم في جميع الصفوف، وإمكانية نقل الطلاب بين الشعب.</p></div>'+
+        '<div class="feat-card"><div class="ico">📊</div><h4>سجل الدرجات</h4><p>إدخال درجات المواد لكل شعبة، مع حساب المعدل تلقائياً (مجموع الدرجات مقسوم على عدد المواد)، وتمييز الناجح والراسب، وتلوين الصفوف، وإصدار كشوف النتائج النهائية وطباعتها.</p></div>'+
+        '<div class="feat-card"><div class="ico">📈</div><h4>سجل المستويات</h4><p>تتبع مستوى الطالب أسبوعياً وشهرياً لكل مادة (ممتاز / جيد / متوسط / ضعيف) بتواقيع المعلمين، لمعرفة تطور أداء الطالب طوال السنة الدراسية.</p></div>'+
+        '<div class="feat-card"><div class="ico">📝</div><h4>الامتحانات</h4><p>إنشاء دورات امتحانية، توزيع الطلاب على القاعات، طباعة بطاقات دخول الامتحان لكل طالب مع الصورة والمعلومات، وكشوف بأسماء الطلاب في كل قاعة (جاهزة للطباعة).</p></div>'+
+        '<div class="feat-card"><div class="ico">🖨️</div><h4>طباعة احترافية</h4><p>طباعة عمودي وأفقي لجميع الكشوفات والبطاقات، مع قوالب جاهزة وألوان ذهبية/حمراء رسمية، ودعم الطباعة الملونة (Print Color Adjust)، وحفظ التنسيق بدون تشويه على أي طابعة.</p></div>'+
+        '<div class="feat-card"><div class="ico">👥</div><h4>إدارة الملاك</h4><p>إضافة المعلمين والموظفين، صلاحيات دخول منفصلة لكل منهم (المدير / معلم / طالب)، حسابات دخول تلقائية، وكشوف الملاك جاهزة للطباعة.</p></div>'+
+        '<div class="feat-card"><div class="ico">📅</div><h4>الغياب والحضور</h4><p>تسجيل غياب يومي للطلاب والملاك، إجازات، وحساب أيام الدوام الفعلية وأيام العطل تلقائياً من تاريخ أول يوم دوام.</p></div>'+
+        '<div class="feat-card"><div class="ico">🗓️</div><h4>جدول الحصص</h4><p>إنشاء جداول الحصص الأسبوعية لكل صف ومعلم، مع طباعة الجدول بشكل منظم.</p></div>'+
+        '<div class="feat-card"><div class="ico">📁</div><h4>سجلات المدرسة</h4><p>أرشيف إلكتروني لقيود الطلاب، وثائق الدرجات، الملاحظات الإدارية، والحسابات المدرسية في مكان واحد.</p></div>'+
+        '<div class="feat-card"><div class="ico">🤍</div><h4>الرعاية والأيتام</h4><p>تسجيل الحالات الاجتماعية (رعاية، أيتام، ذوي احتياجات خاصة) مع تقارير خاصة بهم.</p></div>'+
+        '<div class="feat-card"><div class="ico">👨‍👩‍👧</div><h4>أولياء الأمور</h4><p>ربط أرقام أولياء الأمور بالطلاب وإمكانية التواصل المباشر معهم عبر واتساب.</p></div>'+
+        '<div class="feat-card"><div class="ico">💾</div><h4>نسخ احتياطي</h4><p>تصدير نسخة احتياطية كاملة لجميع البيانات واستعادتها على أي جهاز، مع تصدير الجداول بصيغة CSV/Excel.</p></div>'+
+        '<div class="feat-card"><div class="ico">🔐</div><h4>التفعيل الآمن</h4><p>نظام اشتراكات واضح (تجريبي 3 أيام، أسبوعي، شهري، سنوي، دائم) مع إمكانية نقل الجهاز بموافقة الأدمن، واستعادة كلمة السر عبر واتساب.</p></div>'+
+      '</div>'+
+
+      '<h3 class="about-section-title">🧮 كيف تُحسَب الدرجات؟</h3>'+
+      '<div class="about-howto">'+
+        '<h4>طريقة احتساب النتيجة النهائية:</h4>'+
+        '<ol>'+
+          '<li>لكل طالب مجموع درجاته في جميع المواد التي دخل امتحانها.</li>'+
+          '<li>يُحسَب المعدل = مجموع الدرجات ÷ عدد المواد.</li>'+
+          '<li><b>ناجح</b>: إذا حصل على درجة النجاح في جميع المواد.</li>'+
+          '<li><b>مكمل</b>: إذا رسب في عدد من المواد أقل من أو يساوي <b>عدد دروس الإكمال</b> (افتراضياً 2).</li>'+
+          '<li><b>راسب</b>: إذا بلغ عدد المواد التي رسب فيها <b>عدد دروس الرسوب</b> (افتراضياً 3) فأكثر.</li>'+
+        '</ol>'+
+        '<div class="note">💡 يمكنك تعديل عدد دروس الإكمال والرسوب من قسم ⚙️ الإعدادات ← 📏 القواعد ليتناسب مع تعليمات مديريتك.</div>'+
+      '</div>'+
+
+      '<h3 class="about-section-title">📱 كيف يعمل التطبيق؟</h3>'+
+      '<div class="about-howto">'+
+        '<ol>'+
+          '<li>أنشئ حساب مدرسة وأدخل البريد وكلمة السر ورقم الهاتف.</li>'+
+          '<li>يبدأ تلقائياً بفترة تجريبية مجانية ٣ أيام.</li>'+
+          '<li>للطلب التفعيل اضغط زر التفعيل وسيتم فتح واتساب الإدارة مع بياناتك.</li>'+
+          '<li>أدخل معلومات مدرستك، ثم أضف الصفوف والشعب والطلاب.</li>'+
+          '<li>ابدأ بإدخال الدرجات والامتحانات. بياناتك محفوظة على جهازك وتعمل بدون إنترنت.</li>'+
+          '<li>يمكنك أخذ نسخة احتياطية من قسم 💾 النسخة الاحتياطية في أي وقت.</li>'+
+        '</ol>'+
+        '<div class="note">🔒 جميع بيانات الطلاب والدرجات تُحفظ <b>محلياً على جهازك</b>، ولا يطّلع عليها أحد سواك. الإنترنت مطلوب فقط للتفعيل ونقل الاشتراك.</div>'+
+      '</div>'+
+
+      '<div class="about-footer">'+
+        '🏫 ادارة المدرسه والامتحانات — الإصدار '+(APP_VERSION||"")+'<br>'+
+        '<span style="color:#aaa">جميع الحقوق محفوظة © '+new Date().getFullYear()+'</span>'+
+      '</div>'+
+      '</div>';
+}
+window.renderAboutView = renderAboutView;
+window.waSupportLink = waSupportLink;
+window.ABOUT_SUPPORT_PHONE = ABOUT_SUPPORT_PHONE;
+
 })();
 </script>
 
