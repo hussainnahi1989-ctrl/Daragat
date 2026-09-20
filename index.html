@@ -7331,8 +7331,20 @@ function showSchoolSetupOverlayGlobal(){
 }
 window.__realInitApp = (typeof initApp==='function') ? initApp : null;
 function initApp(){
+  // ==== Activation gate: do NOT run the app until the license system (screenRegister/screenLogin) has approved ====
+  if(!window.__actReady){
+    // Activation script hasn't finished booting yet; wait briefly then retry
+    setTimeout(initApp, 50);
+    return;
+  }
   if(window.__actGetInfo && !window.__actGetInfo().valid){
-    if(window.__actResume) window.__actResume();
+    // License not valid — hand control to the activation system (shows register/login/expired/conflict screen)
+    try{
+      var ov=document.getElementById("actOverlay");
+      if(ov) ov.style.display="none";
+    }catch(e){}
+    if(window.__actResume){ window.__actResume(); return; }
+    setTimeout(initApp, 50);
     return;
   }
   authEnsure();
@@ -15844,8 +15856,16 @@ function staffMergeState(localSt,incSt){
 }
 
 loadUiTheme();
-initApp();
-setTimeout(function(){try{liveStart();}catch(e){}},800);
+// DO NOT call initApp() directly — the activation/license system (window.__actResume) is the sole entry point
+// and will call window.__realInitApp once login/registration is completed successfully.
+function __bootLiveAfterActivation(){
+  if(!window.__actReady || (window.__actGetInfo && !window.__actGetInfo().valid)){
+    setTimeout(__bootLiveAfterActivation, 200);
+    return;
+  }
+  try{liveStart();}catch(e){}
+}
+setTimeout(__bootLiveAfterActivation, 800);
 try{document.addEventListener('visibilitychange',function(){if(!document.hidden){liveHeartbeat();liveCheckIncoming();}}); }catch(e){}
 
 
@@ -16882,7 +16902,7 @@ if(document.readyState==='loading'){
 <!-- ===== AUTO UPDATE NOTIFICATION (small icon in topbar) ===== -->
 <script>
 (function(){
-  const APP_VERSION = "1.4.2";
+  const APP_VERSION = "1.4.3";
   const CHECK_EVERY_MINUTES = 30;
   const LS_ACCEPTED = "daragat_accepted_version";
   const LS_SNOOZE   = "daragat_update_snooze";
