@@ -7326,8 +7326,19 @@ function restoreEntry(entry){
   showView(entry.id);
 }
 
+function appEntryKey(entry){
+  if(!entry)return '';
+  let meta='';
+  try{meta=JSON.stringify(entry.meta||{});}catch(e){meta='';}
+  return String(entry.id||'')+'|'+meta;
+}
 function appGoBack(){
   // A back action is always an in-app navigation step. It must never close the page.
+  // Remove accidental duplicate history entries first; some menu layouts can
+  // render the same view once before and once after navigation.
+  if(Array.isArray(appStack)&&appStack.length>1){
+    while(appStack.length>1&&appEntryKey(appStack[appStack.length-1])===appEntryKey(appStack[appStack.length-2])) appStack.pop();
+  }
   if(document.getElementById('dashListOverlay')&&document.getElementById('dashListOverlay').classList.contains('open')){ closeDashNameList(); return true; }
   if(typeof isAccountsFormOpen==='function'&&isAccountsFormOpen()){ closeAccountsForm(); return true; }
   if(typeof isNotesFormOpen==='function'&&isNotesFormOpen()){ closeNotesForm(); return true; }
@@ -9847,12 +9858,18 @@ function gradebookDecisionAllocations(grade,section,record){
       candidates.push({id:st.id,raw:raw,need:50-raw,index:index});
     }
   });
-  // Spend only enough points to complete a raise to 50; nearest-to-50 first.
+  // Distribute the available decision points to failing grades only,
+  // starting with the grade nearest to 50. A partial allocation is valid:
+  // for example, 10 points on a grade of 39 produces 49 rather than doing
+  // nothing because 11 points would be needed to reach 50.
   candidates.sort(function(a,b){return a.need-b.need||a.index-b.index;});
   candidates.forEach(function(item){
-    if(remaining+1e-9>=item.need){
-      allocations[item.id]={raw:item.raw,applied:item.need,effective:50};
-      remaining-=item.need;
+    if(remaining<=0)return;
+    const applied=Math.min(remaining,item.need);
+    if(applied>0){
+      const effective=Number((item.raw+applied).toFixed(2));
+      allocations[item.id]={raw:item.raw,applied:applied,effective:effective};
+      remaining-=applied;
     }
   });
   Object.keys(allocations).forEach(function(id){allocations[id].remainingAfter=Math.max(0,remaining);});
@@ -9863,13 +9880,13 @@ function gradebookDecisionCellHtml(raw,allocation,extraClass){
   const has=!!(allocation&&allocation.applied>0);
   const cls=(extraClass||'')+(has?' decision-applied':'');
   if(!has)return '<td class="'+cls+' calc-cell" data-calc="finalGrade" data-decision-cell="1">'+showGrade(raw)+'</td>';
-  return '<td class="'+cls+' calc-cell decision-cell" data-calc="finalGrade" data-decision-cell="1"><div class="decision-mark">قرار +'+toArabicDigits(formatDecisionPoints(allocation.applied))+'</div><div class="decision-values"><del class="decision-old">'+showGrade(raw)+'</del><b class="decision-final">'+toArabicDigits('50')+'</b></div></td>';
+  return '<td class="'+cls+' calc-cell decision-cell" data-calc="finalGrade" data-decision-cell="1"><div class="decision-mark">قرار +'+toArabicDigits(formatDecisionPoints(allocation.applied))+'</div><div class="decision-values"><del class="decision-old">'+showGrade(raw)+'</del><b class="decision-final">'+toArabicDigits(formatDecisionPoints(allocation.effective))+'</b></div></td>';
 }
 function gradebookDecisionInput(stId,field,value,allocation){
   const has=!!(allocation&&allocation.applied>0);
   const input=gbInput(stId,field,value);
   if(!has)return input;
-  return input.replace('<td>','<td class="decision-cell decision-input-cell" data-decision-cell="1"><div class="decision-mark">قرار +'+toArabicDigits(formatDecisionPoints(allocation.applied))+'</div><div class="decision-values"><del class="decision-old">'+showGrade(value)+'</del><b class="decision-final">'+toArabicDigits('50')+'</b></div>');
+  return input.replace('<td>','<td class="decision-cell decision-input-cell" data-decision-cell="1"><div class="decision-mark">قرار +'+toArabicDigits(formatDecisionPoints(allocation.applied))+'</div><div class="decision-values"><del class="decision-old">'+showGrade(value)+'</del><b class="decision-final">'+toArabicDigits(formatDecisionPoints(allocation.effective))+'</b></div>');
 }
 function updateGradebookDecisionPoints(value){
   const grade=(document.getElementById('gbGrade')||{}).value||'',sectionId=(document.getElementById('gbSection')||{}).value||'',subject=(document.getElementById('gbSubject')||{}).value||'';
@@ -9888,7 +9905,7 @@ function refreshGradebookDecisionDisplay(){
     cell.classList.toggle('decision-applied',!!a);
     if(mark)mark.textContent=a?'قرار +'+toArabicDigits(formatDecisionPoints(a.applied)):'';
     if(old)old.textContent=a?showGrade(a.raw):'';
-    if(final)final.textContent=a?toArabicDigits('50'):'';
+    if(final)final.textContent=a?toArabicDigits(formatDecisionPoints(a.effective)):'';
   });
 }
 function keepTableHScroll(root){
