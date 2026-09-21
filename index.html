@@ -7432,42 +7432,68 @@ function showSchoolSetupOverlayGlobal(){
     if(!_t||!_s||!_b||!_show){setTimeout(showSchoolSetupOverlayGlobal,50);return;}
     _t().textContent="إعداد المدرسة";
     _s().textContent="اختر المرحلة ونوع المدرسة للبدء";
-    _b().innerHTML='<div style="display:grid;gap:14px">'
+    var root=_b();
+    root.innerHTML='<div style="display:grid;gap:14px">'
       +'<div style="background:#ffffff15;padding:14px;border-radius:10px">'
       +'<label style="font-size:13px;opacity:.95;display:block;margin-bottom:8px;font-weight:700">🎓 المرحلة الدراسية:</label>'
       +'<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px">'
-      +'<button data-stage="elementary" class="sbtn">ابتدائية</button>'
-      +'<button data-stage="intermediate" class="sbtn">متوسطة</button>'
-      +'<button data-stage="prep" class="sbtn">إعدادية / ثانوية</button>'
+      +'<button type="button" data-stage="elementary" class="sbtn">ابتدائية</button>'
+      +'<button type="button" data-stage="intermediate" class="sbtn">متوسطة</button>'
+      +'<button type="button" data-stage="prep" class="sbtn">إعدادية / ثانوية</button>'
       +'</div></div>'
       +'<div style="background:#ffffff15;padding:14px;border-radius:10px">'
       +'<label style="font-size:13px;opacity:.95;display:block;margin-bottom:8px;font-weight:700">👥 نوع المدرسة:</label>'
       +'<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px">'
-      +'<button data-gender="boys" class="gbtn">بنين</button>'
-      +'<button data-gender="girls" class="gbtn">بنات</button>'
-      +'<button data-gender="mixed" class="gbtn">مختلطة</button>'
+      +'<button type="button" data-gender="boys" class="gbtn">بنين</button>'
+      +'<button type="button" data-gender="girls" class="gbtn">بنات</button>'
+      +'<button type="button" data-gender="mixed" class="gbtn">مختلطة</button>'
       +'</div></div>'
       +'<div id="setupErr" style="color:#ff8a80;font-size:13px;text-align:center;min-height:18px"></div>'
-      +'<button id="setupStart" style="padding:14px;border:none;border-radius:10px;background:#1976d2;color:#fff;font-weight:800;font-size:16px;cursor:pointer;opacity:.5" disabled>🚀 ابدأ استخدام التطبيق</button>'
-      +'</div>';
-    // wire up — reuse existing wiring logic from the original showSchoolSetupOverlay
+      +'<button type="button" id="setupStart" style="padding:14px;border:none;border-radius:10px;background:#1976d2;color:#fff;font-weight:800;font-size:16px;cursor:pointer;opacity:.5" disabled>🚀 ابدأ استخدام التطبيق</button>'
+      +'</div>'
+      +'<style>.sbtn,.gbtn{appearance:none;width:100%;padding:12px;border-radius:10px;border:2px solid #ffffff33;background:#00000040;color:#fff;font-weight:800;cursor:pointer;font-family:inherit;font-size:14px;transition:background .2s,border-color .2s,transform .12s,box-shadow .2s}.sbtn:active,.gbtn:active{transform:scale(.96)}.sbtn:focus-visible,.gbtn:focus-visible{outline:2px solid #ffe082;outline-offset:2px}.sbtn.sel,.gbtn.sel{border-color:#ffd54f;background:linear-gradient(135deg,#ffd54f40,#ff980040);color:#ffd54f;box-shadow:0 0 0 2px #ffd54f33}</style>';
     var stage="",gender="";
-    var start=document.getElementById("setupStart");
-    var err=document.getElementById("setupErr");
-    function check(){start.disabled=!(stage&&gender);start.style.opacity=start.disabled?".5":"1";}
-    document.querySelectorAll(".sbtn").forEach(function(b){b.onclick=function(){document.querySelectorAll(".sbtn").forEach(x=>x.classList.remove("active"));b.classList.add("active");stage=b.dataset.stage;check();};});
-    document.querySelectorAll(".gbtn").forEach(function(b){b.onclick=function(){document.querySelectorAll(".gbtn").forEach(x=>x.classList.remove("active"));b.classList.add("active");gender=b.dataset.gender;check();};});
+    var start=root.querySelector("#setupStart");
+    var err=root.querySelector("#setupErr");
+    var stageButtons=root.querySelectorAll(".sbtn");
+    var genderButtons=root.querySelectorAll(".gbtn");
+    function check(){
+      var disabled=!(stage&&gender);
+      start.disabled=disabled;
+      start.style.opacity=disabled?".5":"1";
+      start.setAttribute("aria-disabled",disabled?"true":"false");
+    }
+    stageButtons.forEach(function(b){
+      b.setAttribute("aria-pressed","false");
+      b.onclick=function(e){
+        if(e){e.preventDefault();e.stopPropagation();}
+        stage=String(b.getAttribute("data-stage")||"");
+        stageButtons.forEach(function(x){x.classList.remove("sel");x.setAttribute("aria-pressed","false");});
+        b.classList.add("sel"); b.setAttribute("aria-pressed","true");
+        check();
+      };
+    });
+    genderButtons.forEach(function(b){
+      b.setAttribute("aria-pressed","false");
+      b.onclick=function(e){
+        if(e){e.preventDefault();e.stopPropagation();}
+        gender=String(b.getAttribute("data-gender")||"");
+        genderButtons.forEach(function(x){x.classList.remove("sel");x.setAttribute("aria-pressed","false");});
+        b.classList.add("sel"); b.setAttribute("aria-pressed","true");
+        check();
+      };
+    });
     start.onclick=function(){
       if(!stage||!gender){err.textContent="الرجاء اختيار المرحلة ونوع المدرسة";return;}
       if(!APP.school)APP.school={};
       APP.school.stage=stage;
       APP.school.gender=gender;
-      var dn=({elementary:"مدرسة ابتدائية",intermediate:"متوسطة",prep:"إعدادية"}[stage]||"مدرسة");
       if(!APP.school.name)APP.school.name="ادارة المدرسه والامتحانات";
       localStorage.setItem("daragat_school_setup_v2","1");
       var _hide=window.__actHideOverlay; if(_hide)_hide();
       try{window.__schoolSetupAfterDone&&window.__schoolSetupAfterDone();}catch(e){location.reload();}
     };
+    check();
     _show();
 }
 window.__realInitApp = (typeof initApp==='function') ? initApp : null;
