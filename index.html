@@ -9798,11 +9798,11 @@ function renderGradebookGrade(grade){
   const el=document.getElementById('view-gradebook-detail'); if(!el) return;
   const sections=gbSectionsForGrade(grade);
   const subjects=gbSubjects(grade);
-  const sectionOptions=sections.map(function(x){return '<option value="'+x.id+'">شعبة '+escapeHtml(x.label)+'</option>';}).join('');
+  const sectionOptions=sections.map(function(x){return '<option value="'+escapeHtml(String(x.id))+'">شعبة '+escapeHtml(x.label)+'</option>';}).join('');
   const subjectButtons=subjects.map(function(name){return '<button type="button" class="subject-icon-btn" data-subject="'+escapeHtml(name)+'" onclick="selectGradebookSubject(this)"><span class="sib-icon">'+subjectMaterialIcon(name)+'</span><span class="sib-name">'+escapeHtml(name)+'</span></button>';}).join('');
   el.innerHTML='<div class="module-shell"><div class="module-head"><div class="module-title"><span class="mi">📘</span><div><h2>سجل الصف '+escapeHtml(grade)+'</h2><p>صفحة مستقلة لكل صف — ولكل شعبة ومادة جدول محفوظ</p></div></div><div class="gb-head-actions">'+printThemeSelectHtml()+'<button class="material-btn purple" onclick="issueGradebookSectionResults()">📄 إصدار نتائج الشعبة</button><button class="material-btn" onclick="printGradebookTable(\'portrait\')">🖨️ طباعة عمودي</button><button class="material-btn" onclick="printGradebookTable(\'landscape\')">🖨️ طباعة أفقي</button><button class="material-btn accent" onclick="exportGradebookExcel()">📥 تصدير Excel</button><button class="material-btn secondary" onclick="appGoBack()">رجوع إلى الصفوف</button></div></div>'+
     '<input type="hidden" id="gbGrade" value="'+escapeHtml(grade)+'"><input type="hidden" id="gbSubject" value="">'+
-    '<section class="gradebook-work-head"><div class="gradebook-work-row"><div class="mat-field"><label>اختر الشعبة</label><select id="gbSection" onchange="gradebookSectionChanged()"><option value="">اختر الشعبة</option>'+sectionOptions+'</select></div><button type="button" class="material-btn" onclick="openSectionRatesTable()">📊 جدول نسب الشعبة</button><div class="mat-field"><label>اسم '+gradebookTeacherRole()+'</label><input id="gbTeacherName" type="text" placeholder="اكتب اسم '+gradebookTeacherRole()+'" oninput="updateGradebookTeacherName(this.value)"></div><div style="color:#78909c;font-size:12px">اختر المادة من الأيقونات لعرض درجات طلابها</div></div><div class="subject-icon-strip">'+subjectButtons+'</div></section>'+
+    '<section class="gradebook-work-head"><div class="gradebook-work-row"><div class="mat-field"><label>اختر الشعبة</label><select id="gbSection" name="gbSection" aria-label="اختر الشعبة" onchange="gradebookSectionChanged(this)" oninput="gradebookSectionChanged(this)"><option value="">اختر الشعبة</option>'+sectionOptions+'</select></div><button type="button" class="material-btn" onclick="openSectionRatesTable()">📊 جدول نسب الشعبة</button><div class="mat-field"><label>اسم '+gradebookTeacherRole()+'</label><input id="gbTeacherName" type="text" placeholder="اكتب اسم '+gradebookTeacherRole()+'" oninput="updateGradebookTeacherName(this.value)"></div><div style="color:#78909c;font-size:12px">اختر المادة من الأيقونات لعرض درجات طلابها</div></div><div class="subject-icon-strip">'+subjectButtons+'</div></section>'+
     '<div id="gbTableHost" class="data-surface"><div class="empty-module">'+(sections.length?'اختر الشعبة ثم اضغط على أي مادة لفتح جدول درجاتها.':'لا توجد شعب لهذا الصف. أضف الشعب والطلاب من قسم الصفوف والشعب أولاً.')+'</div></div></div>';
 }
 function selectGradebookSubject(button){
@@ -9811,12 +9811,18 @@ function selectGradebookSubject(button){
   const input=document.getElementById('gbSubject'); if(input) input.value=button.dataset.subject||'';
   renderGradebookTable();
 }
-function gradebookSectionChanged(){
+function gradebookSectionChanged(selectEl){
+  // Use the control that actually changed. This avoids reading a stale/hidden
+  // duplicate control when the module is restored or a teacher view is present.
+  const sectionId=selectEl&&selectEl.value!=null?String(selectEl.value):String((document.getElementById('gbSection')||{}).value||'');
+  if(selectEl) selectEl.setAttribute('data-selected-section',sectionId);
   const subject=document.getElementById('gbSubject');
-  if(subject&&subject.value) renderGradebookTable();
+  if(subject&&subject.value) renderGradebookTable(selectEl);
   else{
     const host=document.getElementById('gbTableHost');
-    if(host) host.innerHTML='<div class="empty-module">اضغط على أيقونة المادة لعرض جدول درجات طلاب هذه الشعبة.</div>';
+    if(host) host.innerHTML=sectionId
+      ? '<div class="empty-module">اضغط على أيقونة المادة لعرض جدول درجات هذه الشعبة.</div>'
+      : '<div class="empty-module">اختر الشعبة ثم اضغط على أيقونة المادة لعرض جدول درجاتها.</div>';
   }
 }
 function gradebookDecisionNumber(value){
@@ -9898,8 +9904,11 @@ function keepTableHScroll(root){
     box.addEventListener('pointerdown',function(){box.__hScrollX=box.scrollLeft;},true);
   });
 }
-function renderGradebookTable(){
-  const grade=document.getElementById('gbGrade').value, sectionId=document.getElementById('gbSection').value, subject=document.getElementById('gbSubject').value;
+function renderGradebookTable(sectionEl){
+  const grade=document.getElementById('gbGrade').value;
+  const sectionControl=sectionEl&&sectionEl.value!=null?sectionEl:document.getElementById('gbSection');
+  const sectionId=sectionControl?String(sectionControl.value||''):'';
+  const subject=document.getElementById('gbSubject').value;
   const host=document.getElementById('gbTableHost'); if(!host) return;
   if(!grade||!sectionId||!subject){ host.innerHTML='<div class="empty-module">اختر الصف والشعبة والمادة لعرض سجل الدرجات.</div>'; return; }
   const section=gbSectionById(grade,sectionId);
@@ -11578,7 +11587,7 @@ function renderLevelsGrade(grade){
   const el=document.getElementById('view-levels');if(!el)return;const sections=gbSectionsForGrade(grade),subjects=gbSubjects(grade);
   const sectionOptions=sections.map(function(sec){return '<option value="'+escapeHtml(String(sec.id))+'">شعبة '+escapeHtml(sec.label)+'</option>';}).join('');
   const subjectButtons=subjects.map(function(subject){return '<button type="button" class="subject-icon-btn" data-subject="'+escapeHtml(subject)+'" onclick="selectLevelsSubject(this)"><span class="sib-icon">'+subjectMaterialIcon(subject)+'</span><span class="sib-name">'+escapeHtml(subject)+'</span></button>';}).join('');
-  el.innerHTML='<div class="module-shell"><div class="module-head"><div class="module-title"><span class="mi">📈</span><div><h2>مستويات الصف '+escapeHtml(grade)+'</h2><p>لكل شعبة ومادة سجل أسبوعي وشهري مستقل</p></div></div><button class="material-btn secondary" onclick="appGoBack()">رجوع إلى الصفوف</button></div><input type="hidden" id="levelsGrade" value="'+escapeHtml(grade)+'"><input type="hidden" id="levelsSubject" value=""><section class="gradebook-work-head"><div class="gradebook-work-row"><div class="mat-field"><label>اختر الشعبة</label><select id="levelsSection" onchange="levelsSectionChanged()"><option value="">اختر الشعبة</option>'+sectionOptions+'</select></div><div class="mat-field"><label>اسم معلم المادة</label><input id="levelsTeacherName" type="text" placeholder="اكتب اسم معلم المادة" oninput="updateLevelsTeacherName(this.value)"></div><div class="levels-legend"><b class="excellent">ممتاز</b><b class="good">جيد</b><b class="average">متوسط</b><b class="weak">ضعيف</b></div></div><div class="subject-icon-strip">'+subjectButtons+'</div></section><div id="levelsTablesHost" class="levels-empty">اختر الشعبة ثم اضغط على المادة لعرض سجلات المستويات.</div></div>';
+  el.innerHTML='<div class="module-shell"><div class="module-head"><div class="module-title"><span class="mi">📈</span><div><h2>مستويات الصف '+escapeHtml(grade)+'</h2><p>لكل شعبة ومادة سجل أسبوعي وشهري مستقل</p></div></div><button class="material-btn secondary" onclick="appGoBack()">رجوع إلى الصفوف</button></div><input type="hidden" id="levelsGrade" value="'+escapeHtml(grade)+'"><input type="hidden" id="levelsSubject" value=""><section class="gradebook-work-head"><div class="gradebook-work-row"><div class="mat-field"><label>اختر الشعبة</label><select id="levelsSection" name="levelsSection" aria-label="اختر الشعبة" onchange="levelsSectionChanged(this)" oninput="levelsSectionChanged(this)"><option value="">اختر الشعبة</option>'+sectionOptions+'</select></div><div class="mat-field"><label>اسم معلم المادة</label><input id="levelsTeacherName" type="text" placeholder="اكتب اسم معلم المادة" oninput="updateLevelsTeacherName(this.value)"></div><div class="levels-legend"><b class="excellent">ممتاز</b><b class="good">جيد</b><b class="average">متوسط</b><b class="weak">ضعيف</b></div></div><div class="subject-icon-strip">'+subjectButtons+'</div></section><div id="levelsTablesHost" class="levels-empty">اختر الشعبة ثم اضغط على المادة لعرض سجلات المستويات.</div></div>';
 }
 function levelsCurrentSelection(){
   return {
@@ -11596,9 +11605,15 @@ function selectLevelsSubject(button){
   const selection=levelsCurrentSelection();
   if(selection.sectionId&&selection.subject)renderLevelsTables();else showLevelsSelectionHint('اختر الشعبة لعرض سجل المادة.');
 }
-function levelsSectionChanged(){
+function levelsSectionChanged(selectEl){
+  // Read the changed select directly so the chosen section is retained even
+  // when the surrounding view is restored or another hidden module has a
+  // control with the same legacy id.
+  const sectionId=selectEl&&selectEl.value!=null?String(selectEl.value):String((document.getElementById('levelsSection')||{}).value||'');
+  if(selectEl) selectEl.setAttribute('data-selected-section',sectionId);
   const selection=levelsCurrentSelection();
-  if(selection.sectionId&&selection.subject)renderLevelsTables();
+  selection.sectionId=sectionId;
+  if(selection.sectionId&&selection.subject)renderLevelsTables(selectEl);
   else showLevelsSelectionHint(selection.sectionId?'اضغط على المادة لعرض سجلات المستويات.':'اختر الشعبة ثم اضغط على المادة لعرض السجل.');
 }
 function updateLevelsTeacherName(value){
@@ -11615,8 +11630,11 @@ function updateLevelCell(select){
   if(kind==='weekly'&&select.dataset.index!=='')row.weekly[field][Number(select.dataset.index)]=value;else row[kind][field]=value;
   select.className='level-select '+levelCssClass(value);saveLevelsState();
 }
-function renderLevelsTables(){
-  const grade=document.getElementById('levelsGrade').value,sectionId=document.getElementById('levelsSection').value,subject=document.getElementById('levelsSubject').value,host=document.getElementById('levelsTablesHost');
+function renderLevelsTables(sectionEl){
+  const grade=document.getElementById('levelsGrade').value;
+  const sectionControl=sectionEl&&sectionEl.value!=null?sectionEl:document.getElementById('levelsSection');
+  const sectionId=sectionControl?String(sectionControl.value||''):'';
+  const subject=document.getElementById('levelsSubject').value,host=document.getElementById('levelsTablesHost');
   if(!grade||!sectionId||!subject){host.className='levels-empty';host.innerHTML='اختر الشعبة والمادة.';return;}
   const section=levelsSectionById(grade,sectionId);if(!section){host.className='levels-empty';host.innerHTML='تعذر العثور على الشعبة.';return;}
   const record=getLevelsRecord(grade,sectionId,subject,true);const teacherInput=document.getElementById('levelsTeacherName');if(teacherInput)teacherInput.value=record.teacherName||'';let weeklyRows='',monthlyRows='';
@@ -16542,8 +16560,8 @@ if(document.readyState==='loading'){
     return {ok:false, reason:"phone", account:acc};
   }
 
-  function syncToCloud(acc){
-    if(!fbReady||!acc) return;
+  function syncToCloud(acc,done){
+    if(!fbReady||!acc){if(done)done(false);return;}
     const emailKey = acc.email.replace(/\./g,",");
     const d = deviceInfo();
     const payload = {
@@ -16570,14 +16588,21 @@ if(document.readyState==='loading'){
     };
     try{
       // Never overwrite an existing authoritative activation decision with an old local copy.
+      // The listener is attached only after this write completes; otherwise Firebase can
+      // emit the initial null value and falsely stop a brand-new account before its first
+      // registration record is written.
       fbRef("activation/accounts/"+emailKey).once("value",function(snap){
         const remote=snap.val();
         if(remote && (remote.accountDisabled||["approved","suspended","disabled","deleted","cancelled","pending","device_transfer_pending","rejected","device_conflict"].includes(remote.status))){
-          applyCloudAccount(acc,remote); return;
+          applyCloudAccount(acc,remote);
+          if(done)done(true);
+          return;
         }
-        fbRef("activation/accounts/"+emailKey).update(payload);
-      },function(){ /* no network: keep local state and retry on reconnect */ });
-    }catch(e){}
+        fbRef("activation/accounts/"+emailKey).update(payload,function(err){
+          if(done)done(!err);
+        });
+      },function(){ if(done)done(false); });
+    }catch(e){if(done)done(false);}
   }
 
   function markAccountStopped(acc,reason,cb){
@@ -16735,7 +16760,12 @@ if(document.readyState==='loading'){
       };
       state.accounts.push(acc); state.activeEmail=email; saveState(state);
       if(typeof APP!=="undefined"&&APP.school){APP.school.name=schoolName;saveApp();}
-      initFB(); syncToCloud(acc); listenAccount(acc);
+      initFB();
+      syncToCloud(acc,function(cloudReady){
+        // Start the real-time admin/license listener only after the initial
+        // customer record has been written successfully.
+        if(cloudReady) listenAccount(acc);
+      });
       document.getElementById("rStatus").textContent="";
       showMsg("✅ تم إنشاء الحساب بنجاح، جاري الدخول...","ok");
       setTimeout(resume, 600);
