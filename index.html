@@ -2462,6 +2462,12 @@
   .gradebook-work-head{ background:#fff; border-radius:16px; box-shadow:0 3px 14px rgba(0,0,0,.10); padding:16px; margin-bottom:15px; }
   .gradebook-work-row{ display:flex; align-items:end; justify-content:space-between; gap:14px; flex-wrap:wrap; }
   .gradebook-work-row .mat-field{ min-width:230px; }
+  .sec-select-hidden{ position:absolute!important; width:1px!important; height:1px!important; min-height:0!important; opacity:0!important; pointer-events:none!important; overflow:hidden; padding:0!important; border:0!important; }
+  .sec-chips{ display:flex; flex-wrap:wrap; gap:8px; margin-top:2px; }
+  .sec-chip{ border:2px solid #c9a13b; background:#fff8e1; color:#5a1020; font-family:inherit; font-weight:800; font-size:16px; min-height:46px; padding:8px 18px; border-radius:12px; cursor:pointer; touch-action:manipulation; }
+  .sec-chip.active{ background:#7a0e2e; color:#ffe083; border-color:#ffe083; }
+  body.theme-dark .sec-chip{ background:#182028; color:#e7edf2; border-color:#43535d; }
+  body.theme-dark .sec-chip.active{ background:#9c1238; color:#ffe083; border-color:#ffe083; }
   .subject-icon-strip{ display:flex; gap:10px; overflow-x:auto; padding:13px 2px 4px; scrollbar-width:thin; }
   .subject-icon-btn{
     flex:0 0 116px; min-height:91px; border:2px solid #eceff1; border-radius:14px;
@@ -9710,6 +9716,25 @@ function gbSectionsForGrade(label){
   }
   return grade ? (grade.sections || []) : [];
 }
+// Section buttons: a tap-friendly alternative to the native <select> (whose popup does not open in some Android WebViews).
+function sectionChipsHtml(sections,kind){
+  if(!sections||!sections.length) return '';
+  return '<div class="sec-chips" role="group" aria-label="اختر الشعبة">'+sections.map(function(x){
+    return '<button type="button" class="sec-chip" data-sec="'+escapeHtml(String(x.id))+'" onclick="pickSectionChip(this,\''+kind+'\')">شعبة '+escapeHtml(x.label)+'</button>';
+  }).join('')+'</div>';
+}
+function syncSectionChips(sel){
+  try{
+    var wrap=sel&&sel.parentNode&&sel.parentNode.querySelector('.sec-chips'); if(!wrap) return;
+    var v=String(sel.value==null?'':sel.value);
+    wrap.querySelectorAll('.sec-chip').forEach(function(b){ b.classList.toggle('active', b.getAttribute('data-sec')===v && v!==''); });
+  }catch(e){}
+}
+function pickSectionChip(btn,kind){
+  var sel=document.getElementById(kind==='levels'?'levelsSection':'gbSection'); if(!sel||!btn) return;
+  sel.value=btn.getAttribute('data-sec')||'';
+  if(kind==='levels') levelsSectionChanged(sel); else gradebookSectionChanged(sel);
+}
 function gbSectionById(grade,sectionId){
   const wanted=String(sectionId==null?'':sectionId);
   return gbSectionsForGrade(grade).find(function(section){return String(section.id)===wanted;})||null;
@@ -9843,7 +9868,7 @@ function renderGradebookGrade(grade){
   const subjectButtons=subjects.map(function(name){return '<button type="button" class="subject-icon-btn" data-subject="'+escapeHtml(name)+'" onclick="selectGradebookSubject(this)"><span class="sib-icon">'+subjectMaterialIcon(name)+'</span><span class="sib-name">'+escapeHtml(name)+'</span></button>';}).join('');
   el.innerHTML='<div class="module-shell"><div class="module-head"><div class="module-title"><span class="mi">📘</span><div><h2>سجل الصف '+escapeHtml(grade)+'</h2><p>صفحة مستقلة لكل صف — ولكل شعبة ومادة جدول محفوظ</p></div></div><div class="gb-head-actions">'+printThemeSelectHtml()+'<button class="material-btn purple" onclick="issueGradebookSectionResults()">📄 إصدار نتائج الشعبة</button><button class="material-btn" onclick="printGradebookTable(\'portrait\')">🖨️ طباعة عمودي</button><button class="material-btn" onclick="printGradebookTable(\'landscape\')">🖨️ طباعة أفقي</button><button class="material-btn accent" onclick="exportGradebookExcel()">📥 تصدير Excel</button><button class="material-btn secondary" onclick="appGoBack()">رجوع إلى الصفوف</button></div></div>'+
     '<input type="hidden" id="gbGrade" value="'+escapeHtml(grade)+'"><input type="hidden" id="gbSubject" value="">'+
-    '<section class="gradebook-work-head"><div class="gradebook-work-row"><div class="mat-field"><label>اختر الشعبة</label><select id="gbSection" name="gbSection" aria-label="اختر الشعبة" onchange="gradebookSectionChanged(this)" oninput="gradebookSectionChanged(this)"><option value="">اختر الشعبة</option>'+sectionOptions+'</select></div><button type="button" class="material-btn" onclick="openSectionRatesTable()">📊 جدول نسب الشعبة</button><div class="mat-field"><label>اسم '+gradebookTeacherRole()+'</label><input id="gbTeacherName" type="text" placeholder="اكتب اسم '+gradebookTeacherRole()+'" oninput="updateGradebookTeacherName(this.value)"></div><div style="color:#78909c;font-size:12px">اختر المادة من الأيقونات لعرض درجات طلابها</div></div><div class="subject-icon-strip">'+subjectButtons+'</div></section>'+
+    '<section class="gradebook-work-head"><div class="gradebook-work-row"><div class="mat-field"><label>اختر الشعبة</label><select id="gbSection" class="sec-select-hidden" name="gbSection" aria-label="اختر الشعبة" onchange="gradebookSectionChanged(this)" oninput="gradebookSectionChanged(this)"><option value="">اختر الشعبة</option>'+sectionOptions+'</select>'+sectionChipsHtml(sections,'gb')+'</div><button type="button" class="material-btn" onclick="openSectionRatesTable()">📊 جدول نسب الشعبة</button><div class="mat-field"><label>اسم '+gradebookTeacherRole()+'</label><input id="gbTeacherName" type="text" placeholder="اكتب اسم '+gradebookTeacherRole()+'" oninput="updateGradebookTeacherName(this.value)"></div><div style="color:#78909c;font-size:12px">اختر المادة من الأيقونات لعرض درجات طلابها</div></div><div class="subject-icon-strip">'+subjectButtons+'</div></section>'+
     '<div id="gbTableHost" class="data-surface"><div class="empty-module">'+(sections.length?'اختر الشعبة ثم اضغط على أي مادة لفتح جدول درجاتها.':'لا توجد شعب لهذا الصف. أضف الشعب والطلاب من قسم الصفوف والشعب أولاً.')+'</div></div></div>';
 }
 function selectGradebookSubject(button){
@@ -9856,7 +9881,7 @@ function gradebookSectionChanged(selectEl){
   // Use the control that actually changed. This avoids reading a stale/hidden
   // duplicate control when the module is restored or a teacher view is present.
   const sectionId=selectEl&&selectEl.value!=null?String(selectEl.value):String((document.getElementById('gbSection')||{}).value||'');
-  if(selectEl) selectEl.setAttribute('data-selected-section',sectionId);
+  if(selectEl){ selectEl.setAttribute('data-selected-section',sectionId); syncSectionChips(selectEl); }
   const subject=document.getElementById('gbSubject');
   if(subject&&subject.value) renderGradebookTable(selectEl);
   else{
@@ -11634,7 +11659,7 @@ function renderLevelsGrade(grade){
   const el=document.getElementById('view-levels');if(!el)return;const sections=gbSectionsForGrade(grade),subjects=gbSubjects(grade);
   const sectionOptions=sections.map(function(sec){return '<option value="'+escapeHtml(String(sec.id))+'">شعبة '+escapeHtml(sec.label)+'</option>';}).join('');
   const subjectButtons=subjects.map(function(subject){return '<button type="button" class="subject-icon-btn" data-subject="'+escapeHtml(subject)+'" onclick="selectLevelsSubject(this)"><span class="sib-icon">'+subjectMaterialIcon(subject)+'</span><span class="sib-name">'+escapeHtml(subject)+'</span></button>';}).join('');
-  el.innerHTML='<div class="module-shell"><div class="module-head"><div class="module-title"><span class="mi">📈</span><div><h2>مستويات الصف '+escapeHtml(grade)+'</h2><p>لكل شعبة ومادة سجل أسبوعي وشهري مستقل</p></div></div><button class="material-btn secondary" onclick="appGoBack()">رجوع إلى الصفوف</button></div><input type="hidden" id="levelsGrade" value="'+escapeHtml(grade)+'"><input type="hidden" id="levelsSubject" value=""><section class="gradebook-work-head"><div class="gradebook-work-row"><div class="mat-field"><label>اختر الشعبة</label><select id="levelsSection" name="levelsSection" aria-label="اختر الشعبة" onchange="levelsSectionChanged(this)" oninput="levelsSectionChanged(this)"><option value="">اختر الشعبة</option>'+sectionOptions+'</select></div><div class="mat-field"><label>اسم معلم المادة</label><input id="levelsTeacherName" type="text" placeholder="اكتب اسم معلم المادة" oninput="updateLevelsTeacherName(this.value)"></div><div class="levels-legend"><b class="excellent">ممتاز</b><b class="good">جيد</b><b class="average">متوسط</b><b class="weak">ضعيف</b></div></div><div class="subject-icon-strip">'+subjectButtons+'</div></section><div id="levelsTablesHost" class="levels-empty">اختر الشعبة ثم اضغط على المادة لعرض سجلات المستويات.</div></div>';
+  el.innerHTML='<div class="module-shell"><div class="module-head"><div class="module-title"><span class="mi">📈</span><div><h2>مستويات الصف '+escapeHtml(grade)+'</h2><p>لكل شعبة ومادة سجل أسبوعي وشهري مستقل</p></div></div><button class="material-btn secondary" onclick="appGoBack()">رجوع إلى الصفوف</button></div><input type="hidden" id="levelsGrade" value="'+escapeHtml(grade)+'"><input type="hidden" id="levelsSubject" value=""><section class="gradebook-work-head"><div class="gradebook-work-row"><div class="mat-field"><label>اختر الشعبة</label><select id="levelsSection" class="sec-select-hidden" name="levelsSection" aria-label="اختر الشعبة" onchange="levelsSectionChanged(this)" oninput="levelsSectionChanged(this)"><option value="">اختر الشعبة</option>'+sectionOptions+'</select>'+sectionChipsHtml(sections,'levels')+'</div><div class="mat-field"><label>اسم معلم المادة</label><input id="levelsTeacherName" type="text" placeholder="اكتب اسم معلم المادة" oninput="updateLevelsTeacherName(this.value)"></div><div class="levels-legend"><b class="excellent">ممتاز</b><b class="good">جيد</b><b class="average">متوسط</b><b class="weak">ضعيف</b></div></div><div class="subject-icon-strip">'+subjectButtons+'</div></section><div id="levelsTablesHost" class="levels-empty">اختر الشعبة ثم اضغط على المادة لعرض سجلات المستويات.</div></div>';
 }
 function levelsCurrentSelection(){
   return {
@@ -11657,7 +11682,7 @@ function levelsSectionChanged(selectEl){
   // when the surrounding view is restored or another hidden module has a
   // control with the same legacy id.
   const sectionId=selectEl&&selectEl.value!=null?String(selectEl.value):String((document.getElementById('levelsSection')||{}).value||'');
-  if(selectEl) selectEl.setAttribute('data-selected-section',sectionId);
+  if(selectEl){ selectEl.setAttribute('data-selected-section',sectionId); syncSectionChips(selectEl); }
   const selection=levelsCurrentSelection();
   selection.sectionId=sectionId;
   if(selection.sectionId&&selection.subject)renderLevelsTables(selectEl);
@@ -17456,7 +17481,7 @@ if(document.readyState==='loading'){
 <!-- ===== AUTO UPDATE NOTIFICATION (small icon in topbar) ===== -->
 <script>
 (function(){
-  const APP_VERSION = "1.8.3";
+  const APP_VERSION = "1.8.4";
   const CHECK_EVERY_MINUTES = 30;
   const LS_ACCEPTED = "daragat_accepted_version";
   const LS_SNOOZE   = "daragat_update_snooze";
