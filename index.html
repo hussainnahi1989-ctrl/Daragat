@@ -17908,7 +17908,7 @@ if(document.readyState==='loading'){
 <!-- ===== AUTO UPDATE NOTIFICATION (small icon in topbar) ===== -->
 <script>
 (function(){
-  const APP_VERSION = "1.10.2";
+  const APP_VERSION = "1.10.3";
   const CHECK_EVERY_MINUTES = 30;
   const LS_ACCEPTED = "daragat_accepted_version";
   const LS_SNOOZE   = "daragat_update_snooze";
@@ -18855,7 +18855,9 @@ window.ABOUT_SUPPORT_PHONE = ABOUT_SUPPORT_PHONE;
         try{
           if(frame&&frame.style){
             frame.style.left='0'; frame.style.top='0'; frame.style.right='auto'; frame.style.bottom='auto';
-            frame.style.opacity='0.01'; frame.style.zIndex='-1'; frame.style.pointerEvents='none';
+            // Keep the print iframe live and visible to mobile print engines. Some Android/WebView
+            // versions ignore a print target when it is transparent or behind the page.
+            frame.style.opacity='1'; frame.style.zIndex='2147483645'; frame.style.pointerEvents='auto';
           }
           var pw=frame&&frame.contentWindow;
           try{if(typeof applyDigitsToPrintDoc==='function')applyDigitsToPrintDoc(frame.contentDocument);}catch(e){}
@@ -18881,5 +18883,201 @@ window.ABOUT_SUPPORT_PHONE = ABOUT_SUPPORT_PHONE;
 })();
 
 </script>
+
+<script>
+/* ================= Unified print and export controls =================
+ * This layer only changes the screen controls. It delegates to the existing
+ * print/PDF handlers, so every existing print template, size, orientation,
+ * data source, and PDF pipeline remains untouched.
+ */
+(function(){
+  'use strict';
+  var scanTimer=null;
+  var controlSerial=0;
+
+  function textOf(el){return String((el&&el.textContent)||'').replace(/\s+/g,' ').trim();}
+  function attrOf(el){return String((el&&el.getAttribute&&el.getAttribute('onclick'))||'');}
+  function isUnified(el){return !!(el&&el.classList&&el.classList.contains('print-export-control'));}
+  function isPdfButton(el){
+    if(!el||el.tagName!=='BUTTON'||isUnified(el))return false;
+    if(el.closest&&el.closest('.print-export-wrap'))return false;
+    if(el.dataset&&el.dataset.peOriginal==='1')return false;
+    var t=textOf(el)+' '+attrOf(el);
+    return el.classList.contains('pdf-download-btn')||/\bPDF\b|تصدير\s*PDF|export(?:Results|Exam)?PDF/i.test(t);
+  }
+  function isPrintButton(el){
+    if(!el||el.tagName!=='BUTTON'||isUnified(el))return false;
+    if(el.closest&&el.closest('.print-export-wrap'))return false;
+    if(el.dataset&&el.dataset.peOriginal==='1')return false;
+    if(isPdfButton(el))return false;
+    var t=textOf(el)+' '+attrOf(el);
+    return /طباعة|🖨|🖶|print/i.test(t);
+  }
+  function isActionButton(el){return isPrintButton(el)||isPdfButton(el);}
+  function cleanLabel(el,fallback){
+    var t=textOf(el).replace(/[🖨🖶📄⬇️]/g,'').replace(/\s+/g,' ').trim();
+    return t||fallback;
+  }
+  function hideOriginal(el){
+    if(!el)return;
+    var wasPrint=isPrintButton(el);
+    el.dataset.peOriginal='1';
+    // Stop the legacy PDF decorator from adding a second visible button after
+    // this source has been absorbed into the unified control.
+    if(wasPrint)el.dataset.pdfPaired='1';
+    el.setAttribute('aria-hidden','true');
+    el.setAttribute('tabindex','-1');
+    el.style.setProperty('display','none','important');
+  }
+  function closeMenus(){
+    document.querySelectorAll('.print-export-wrap.open').forEach(function(w){
+      w.classList.remove('open');
+      var b=w.querySelector('.print-export-trigger');if(b)b.setAttribute('aria-expanded','false');
+    });
+    document.querySelectorAll('.print-export-sub.open').forEach(function(s){s.classList.remove('open');});
+  }
+  function activate(source,wrap){
+    closeMenus();
+    if(!source)return;
+    try{source.click();}
+    catch(e){
+      try{if(typeof source.onclick==='function')source.onclick.call(source,{type:'click',target:source});}
+      catch(ignore){console.error('Print/export action failed',e);}
+    }
+  }
+  function makeMenuItem(label,icon,source,wrap){
+    var b=document.createElement('button');
+    b.type='button';b.className='print-export-item';b.innerHTML='<span class="pe-item-icon">'+icon+'</span><span>'+label.replace(/&/g,'&amp;').replace(/</g,'&lt;')+'</span>';
+    b.addEventListener('click',function(e){e.preventDefault();e.stopPropagation();activate(source,wrap);});
+    return b;
+  }
+  function makeNestedItem(label,icon,items,wrap,kind){
+    var holder=document.createElement('div');holder.className='print-export-nested';
+    var top=document.createElement('button');top.type='button';top.className='print-export-item print-export-parent';
+    top.innerHTML='<span class="pe-item-icon">'+icon+'</span><span>'+label+'</span><span class="pe-chevron">‹</span>';
+    var sub=document.createElement('div');sub.className='print-export-sub '+(kind||'');
+    items.forEach(function(item){sub.appendChild(makeMenuItem(item.label,'↳',item.source,wrap));});
+    top.addEventListener('click',function(e){
+      e.preventDefault();e.stopPropagation();
+      document.querySelectorAll('.print-export-sub.open').forEach(function(x){if(x!==sub)x.classList.remove('open');});
+      sub.classList.toggle('open');
+    });
+    holder.appendChild(top);holder.appendChild(sub);return holder;
+  }
+  function nearestPdf(printButton,direct){
+    var n=printButton.nextElementSibling;
+    if(n&&isPdfButton(n)&&!n.dataset.peUsed)return n;
+    // The PDF decorator normally inserts the paired button immediately after
+    // the print button. This second check supports action rows that reorder it.
+    var list=direct||[];
+    for(var i=0;i<list.length;i++){
+      if(isPdfButton(list[i])&&!list[i].dataset.peUsed)return list[i];
+    }
+    return null;
+  }
+  function actionGroupFor(btn){
+    var parent=btn&&btn.parentElement;
+    if(!parent)return {parent:null,buttons:[btn]};
+    var direct=Array.prototype.slice.call(parent.children||[]).filter(isActionButton);
+    if(direct.length)return {parent:parent,buttons:direct};
+    return {parent:parent,buttons:[btn]};
+  }
+  function buildControl(parent,buttons){
+    if(!parent||!buttons||!buttons.length)return;
+    var prints=buttons.filter(isPrintButton), pdfs=buttons.filter(isPdfButton), used=[];
+    var printItems=[];
+    prints.forEach(function(btn){
+      var pair=nearestPdf(btn,buttons);
+      if(pair){pair.dataset.peUsed='1';used.push(pair);}
+      printItems.push({source:btn,label:cleanLabel(btn,'طباعة'),pdf:pair});
+    });
+    // An explicit «تصدير PDF» action is preferred over generated pair buttons
+    // when both exist (for example the results and exam-card toolbars).
+    var explicitPdfs=pdfs.filter(function(x){return used.indexOf(x)<0;});
+    var exportItems=[];
+    if(explicitPdfs.length){
+      explicitPdfs.forEach(function(btn){exportItems.push({source:btn,label:cleanLabel(btn,'تصدير PDF')});});
+    }else{
+      printItems.forEach(function(item){
+        var pdfSource=item.pdf||{
+          click:function(){
+            if(typeof window.downloadPdfFromPrintButton==='function')window.downloadPdfFromPrintButton(item.source);
+            else if(typeof window.exportResultsPDF==='function')window.exportResultsPDF();
+          }
+        };
+        exportItems.push({source:pdfSource,label:item.pdf?(item.label.replace(/طباعة/g,'PDF')||'تصدير PDF'):'تصدير PDF'});
+      });
+    }
+    if(!prints.length&&!exportItems.length)return;
+
+    var wrap=document.createElement('div');
+    wrap.className='print-export-wrap print-export-control';
+    wrap.dataset.peControl=String(++controlSerial);
+    var trigger=document.createElement('button');
+    trigger.type='button';trigger.className='print-export-trigger';trigger.setAttribute('aria-haspopup','menu');trigger.setAttribute('aria-expanded','false');trigger.dataset.pdfPaired='1';
+    trigger.innerHTML='<span class="pe-trigger-icon">🖨️</span><span>طباعة وتصدير</span><span class="pe-trigger-chevron">▾</span>';
+    var menu=document.createElement('div');menu.className='print-export-menu';menu.setAttribute('role','menu');
+    if(prints.length===1){
+      menu.appendChild(makeMenuItem('طباعة','🖨️',prints[0],wrap));
+    }else if(prints.length>1){
+      menu.appendChild(makeNestedItem('طباعة','🖨️',printItems.map(function(x){return {label:x.label,source:x.source};}),wrap,'print-export-sub-print'));
+    }
+    if(exportItems.length===1){
+      menu.appendChild(makeMenuItem('تصدير PDF','📄',exportItems[0].source,wrap));
+    }else if(exportItems.length>1){
+      menu.appendChild(makeNestedItem('تصدير PDF','📄',exportItems,wrap,'print-export-sub-pdf'));
+    }
+    trigger.addEventListener('click',function(e){
+      e.preventDefault();e.stopPropagation();
+      var open=!wrap.classList.contains('open');closeMenus();
+      if(open){wrap.classList.add('open');trigger.setAttribute('aria-expanded','true');}
+    });
+    wrap.appendChild(trigger);wrap.appendChild(menu);
+    buttons.forEach(hideOriginal);
+    // Insert at the first action's position; unrelated actions stay intact.
+    parent.insertBefore(wrap,buttons[0]);
+  }
+  function scan(){
+    scanTimer=null;
+    var all=Array.prototype.slice.call(document.querySelectorAll('button'));
+    for(var i=0;i<all.length;i++){
+      var btn=all[i];
+      if(!isActionButton(btn)||btn.dataset.peOriginal==='1')continue;
+      var group=actionGroupFor(btn);
+      var candidates=group.buttons.filter(function(x){return isActionButton(x)&&x.dataset.peOriginal!=='1';});
+      if(!candidates.length)continue;
+      // If this is a paired PDF button, let its print button build the group.
+      if(isPdfButton(btn)&&candidates.some(isPrintButton))continue;
+      candidates.forEach(function(x){x.dataset.pePending='1';});
+      buildControl(group.parent,candidates);
+      candidates.forEach(function(x){delete x.dataset.pePending;});
+    }
+  }
+  function schedule(){
+    if(scanTimer)return;
+    scanTimer=setTimeout(scan,40);
+  }
+  function install(){
+    if(window.__daragatUnifiedPrintExport)return;
+    window.__daragatUnifiedPrintExport=true;
+    var st=document.createElement('style');st.id='daragatUnifiedPrintExportStyles';
+    st.textContent=""+
+      ".print-export-wrap{position:relative;display:inline-flex;align-items:center;vertical-align:middle;z-index:70;font-family:inherit}"+
+      ".print-export-trigger{display:inline-flex;align-items:center;justify-content:center;gap:7px;min-height:42px;padding:9px 13px;border:1px solid #d4af37;border-radius:10px;background:linear-gradient(135deg,#fff7d6,#d4af37);color:#4a2b00;font:900 13px Tahoma,Arial,sans-serif;cursor:pointer;white-space:nowrap;box-shadow:0 3px 0 rgba(0,0,0,.16);transition:filter .12s,transform .12s}"+
+      ".print-export-trigger:hover{filter:brightness(1.05)}.print-export-trigger:active{transform:translateY(1px)}.print-export-trigger:focus-visible{outline:3px solid rgba(21,101,192,.35);outline-offset:2px}"+
+      ".pe-trigger-icon{font-size:17px;line-height:1}.pe-trigger-chevron{font-size:12px;margin-inline-start:2px}"+
+      ".print-export-menu{position:absolute;right:0;top:calc(100% + 7px);display:none;min-width:190px;padding:7px;background:#fff;border:1px solid #d4af37;border-radius:12px;box-shadow:0 12px 30px rgba(0,0,0,.24);direction:rtl;text-align:right}"+
+      ".print-export-wrap.open .print-export-menu{display:block}.print-export-item{width:100%;display:flex;align-items:center;gap:8px;border:0;border-radius:8px;background:transparent;color:#263238;padding:10px 11px;font:800 13px Tahoma,Arial,sans-serif;cursor:pointer;text-align:right;white-space:nowrap}.print-export-item:hover,.print-export-item:focus{background:#fff4cc;color:#7a0e2e;outline:0}.pe-item-icon{width:20px;text-align:center}.pe-chevron{margin-inline-start:auto;font-size:18px;color:#78909c}.print-export-nested{position:relative}.print-export-sub{position:absolute;right:calc(100% + 5px);top:0;display:none;min-width:180px;padding:7px;background:#fff;border:1px solid #d4af37;border-radius:12px;box-shadow:0 12px 30px rgba(0,0,0,.24)}.print-export-sub.open{display:block}"+
+      "@media(max-width:560px){.print-export-trigger{min-height:40px;padding:8px 10px;font-size:12px}.print-export-menu{right:auto;left:0;min-width:180px}.print-export-sub{right:auto;left:calc(100% + 5px);top:0}.pe-trigger-chevron{display:none}}"+
+      "@media print{.print-export-wrap{display:none!important}}";
+    document.head.appendChild(st);
+    document.addEventListener('click',function(e){if(!e.target.closest||!e.target.closest('.print-export-wrap'))closeMenus();},true);
+    var observer=new MutationObserver(schedule);if(document.body)observer.observe(document.body,{childList:true,subtree:true});
+    schedule();setTimeout(schedule,350);setTimeout(schedule,1200);
+  }
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',install);else install();
+})();
+</script>
+
 </body>
 </html>
