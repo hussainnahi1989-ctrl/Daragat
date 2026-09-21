@@ -6864,6 +6864,23 @@ let currentSectionCtx = null;
 let appStack = [];
 let allowAppExit = false;
 let currentViewId = null;
+// Some ids (e.g. levelsSection/levelsGrade/levelsSubject) also exist in the hidden teacher view.
+// Prefer the element that lives inside the currently visible view so a stale hidden copy is never read.
+(function(){
+  var orig=document.getElementById.bind(document);
+  document.getElementById=function(id){
+    var e=orig(id);
+    if(!e) return e;
+    try{
+      var cur=(typeof currentViewId==='string'&&currentViewId)?orig(currentViewId):null;
+      if(cur&&!cur.contains(e)){
+        var alt=cur.querySelector('[id="'+String(id).replace(/"/g,'\\"')+'"]');
+        if(alt) return alt;
+      }
+    }catch(err){}
+    return e;
+  };
+})();
 
 const UI_THEME_KEY='schoolResultsUiTheme_v1';
 const UI_SKIN_KEY='schoolResultsUiSkin_v1';
@@ -7236,7 +7253,13 @@ function navigateTo(id, meta, replace){
     appStack[appStack.length - 1] = entry;
     try{ history.replaceState({app:1, n:appStack.length}, ''); }catch(e){}
   } else {
-    appStack.push(entry);
+    // If this exact page is already in the stack, this navigation is a "return" to it
+    // (e.g. an on-screen «رجوع» button that re-opens the parent page). Cut the stack back
+    // to that page instead of pushing a duplicate, so Back can never loop between two pages.
+    var __k=appEntryKey(entry), __idx=-1;
+    for(var __i=appStack.length-1;__i>=0;__i--){ if(appEntryKey(appStack[__i])===__k){ __idx=__i; break; } }
+    if(__idx>=0){ appStack.length=__idx+1; appStack[__idx]=entry; }
+    else appStack.push(entry);
     try{ history.pushState({app:1, n:appStack.length}, ''); }catch(e){}
   }
 }
@@ -9676,8 +9699,15 @@ function gradebookStageTitle(){
 function usesSixthGradeLayout(grade){
   return grade==='الخامس'||grade==='السادس'||/متوسط|علمي|أدبي|ادبي/.test(grade||'');
 }
+function gbNormGradeLabel(x){
+  return String(x==null?'':x).replace(/^\s*الصف\s+/,'').replace(/[أإآ]/g,'ا').replace(/ة/g,'ه').replace(/ى/g,'ي').replace(/\s+/g,' ').trim();
+}
 function gbSectionsForGrade(label){
-  const grade = (APP.grades || []).find(function(g){ return g.label === label; });
+  let grade = (APP.grades || []).find(function(g){ return g.label === label; });
+  if(!grade){
+    const want=gbNormGradeLabel(label);
+    grade = (APP.grades || []).find(function(g){ return gbNormGradeLabel(g.label) === want; });
+  }
   return grade ? (grade.sections || []) : [];
 }
 function gbSectionById(grade,sectionId){
@@ -17426,7 +17456,7 @@ if(document.readyState==='loading'){
 <!-- ===== AUTO UPDATE NOTIFICATION (small icon in topbar) ===== -->
 <script>
 (function(){
-  const APP_VERSION = "1.5.0";
+  const APP_VERSION = "1.8.3";
   const CHECK_EVERY_MINUTES = 30;
   const LS_ACCEPTED = "daragat_accepted_version";
   const LS_SNOOZE   = "daragat_update_snooze";
