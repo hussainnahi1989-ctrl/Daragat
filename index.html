@@ -17908,7 +17908,7 @@ if(document.readyState==='loading'){
 <!-- ===== AUTO UPDATE NOTIFICATION (small icon in topbar) ===== -->
 <script>
 (function(){
-  const APP_VERSION = "1.10.1";
+  const APP_VERSION = "1.10.2";
   const CHECK_EVERY_MINUTES = 30;
   const LS_ACCEPTED = "daragat_accepted_version";
   const LS_SNOOZE   = "daragat_update_snooze";
@@ -18515,6 +18515,30 @@ window.ABOUT_SUPPORT_PHONE = ABOUT_SUPPORT_PHONE;
     });
   }
 
+  async function pdfPrepareDestination(suggestedName){
+    if(!pdfSaveSupportsPicker())return null;
+    try{
+      var handle=await window.showSaveFilePicker({
+        suggestedName:pdfEnsureExtension(suggestedName),
+        types:[{description:'PDF document',accept:{'application/pdf':['.pdf']}}],
+        excludeAcceptAllOption:false
+      });
+      return {handle:handle,name:handle.name||pdfEnsureExtension(suggestedName)};
+    }catch(e){
+      if(e&&e.name==='AbortError')return false;
+      console.warn('Save picker unavailable',e);
+      return null;
+    }
+  }
+  async function pdfStoreBlob(blob,filename,destination){
+    if(destination&&destination.handle){
+      var writable=await destination.handle.createWritable();
+      await writable.write(blob);await writable.close();
+      return true;
+    }
+    return await pdfCreateChooser(blob,filename);
+  }
+
   function vectorPdfColor(value){
     value=String(value||'').trim();
     if(!value||value==='transparent'||value==='none')return null;
@@ -18624,14 +18648,13 @@ window.ABOUT_SUPPORT_PHONE = ABOUT_SUPPORT_PHONE;
       try{pdf.addImage(src,src.indexOf('image/jpeg')===0?'JPEG':'PNG',x,y,w,h,undefined,'FAST');}catch(e){}
     });
   }
-  async function downloadPdfFromPrintFrame(frame, filename){
+  async function downloadPdfFromPrintFrame(frame, filename, destination){
     if(!frame||!frame.contentDocument)throw new Error('نافذة الطباعة غير جاهزة');
     var jsp=window.jspdf&&window.jspdf.jsPDF;if(!jsp)throw new Error('مولّد PDF الحقيقي غير متاح');
     var doc=frame.contentDocument, win=doc.defaultView, pageWpx=frameCssDimension(frame,'width'), pageHpx=frameCssDimension(frame,'height');
     var pxmm=25.4/PDF_PAGE_DPI, pageW=pageWpx*pxmm, pageH=pageHpx*pxmm, targets=vectorPageTargets(doc);if(!targets.length)targets=[doc.body];
     var pdf=new jsp({unit:'mm',format:[pageW,pageH],orientation:pageW>pageH?'landscape':'portrait',putOnlyUsedFonts:true,compress:true});
     try{pdf.addFileToVFS('DaragatKufi.ttf',String(KUFI_FONT_DATA||'').split(',')[1]||'');pdf.addFont('DaragatKufi.ttf','DaragatKufi','normal');pdf.setFont('DaragatKufi','normal');}catch(e){pdf.setFont('helvetica','normal');}
-    try{if(pdf.setR2L)pdf.setR2L(true);}catch(e){}
     pdf.setProperties({title:filename||'Daragat PDF',subject:'School print export',author:'Daragat'});
     var pageIndex=0;
     targets.forEach(function(target,targetIndex){
@@ -18660,15 +18683,15 @@ window.ABOUT_SUPPORT_PHONE = ABOUT_SUPPORT_PHONE;
     });
     if(!pageIndex)throw new Error('لم يتم العثور على محتوى للطباعة');
     var blob=pdf.output('blob');
-    var saved=await pdfCreateChooser(blob,filename||pdfSafeName('طباعة'));
+    var saved=await pdfStoreBlob(blob,filename||pdfSafeName('طباعة'),destination);
     return saved;
   }
 
-  async function capturePrintFrame(frame, filename){
+  async function capturePrintFrame(frame, filename, destination){
     if(PDF_BUSY)return;
     PDF_BUSY=true; pdfToast('جاري إنشاء PDF نصي حقيقي بالحجم نفسه للطباعة…');
     try{
-      var saved=await downloadPdfFromPrintFrame(frame,filename);
+      var saved=await downloadPdfFromPrintFrame(frame,filename,destination);
       if(saved!==false)pdfToast('تم تنزيل PDF الحقيقي إلى الملفات بنجاح.');
       else pdfToast('تم إلغاء حفظ ملف PDF.');
     }catch(err){
@@ -18677,9 +18700,9 @@ window.ABOUT_SUPPORT_PHONE = ABOUT_SUPPORT_PHONE;
     }finally{PDF_BUSY=false;}
   }
 
-  function requestPdfForPrintAction(action, filename){
+  function requestPdfForPrintAction(action, filename, destination){
     if(PDF_BUSY)return;
-    PDF_REQUEST={filename:filename||pdfSafeName('طباعة'),started:Date.now()};
+    PDF_REQUEST={filename:filename||pdfSafeName('طباعة'),destination:destination||null,started:Date.now()};
     try{action();}
     catch(e){PDF_REQUEST=null;pdfToast('تعذر تجهيز ملف PDF.',true);}
     setTimeout(function(){
@@ -18728,7 +18751,7 @@ window.ABOUT_SUPPORT_PHONE = ABOUT_SUPPORT_PHONE;
     setTimeout(function(){if(frame.parentNode)frame.remove();},120000);
   }
 
-  function captureCurrentHostAsPdf(host,filename){
+  function captureCurrentHostAsPdf(host,filename,destination){
     if(!host)return;
     var frame=document.createElement('iframe');
     frame.style.cssText='position:fixed;left:-10000px;top:0;width:210mm;height:297mm;border:0;background:#fff';
@@ -18739,26 +18762,28 @@ window.ABOUT_SUPPORT_PHONE = ABOUT_SUPPORT_PHONE;
     doc.open();
     doc.write('<!DOCTYPE html><html lang="ar" dir="rtl" class="exam-print-mode" style="'+rootStyle+'"><head><meta charset="UTF-8"><style>'+css+'</style><style>@page{size:A4 portrait;margin:12mm 10mm}html,body{margin:0!important;padding:0!important;background:#fff!important;overflow:visible!important}#examPrintHost{display:block!important}.exam-card-paper{page-break-after:always!important;break-after:page!important}.exam-card-paper:last-child{page-break-after:auto!important;break-after:auto!important}</style></head><body class="exam-print-mode">'+host.outerHTML+'</body></html>');
     doc.close();
-    setTimeout(function(){capturePrintFrame(frame,filename||pdfSafeName('بطاقات-الطلاب'));},450);
+    setTimeout(function(){capturePrintFrame(frame,filename||pdfSafeName('بطاقات-الطلاب'),destination);},450);
     setTimeout(function(){if(frame.parentNode)frame.remove();},120000);
   }
-  function runPrintButtonAsPdf(printButton){
+  async function runPrintButtonAsPdf(printButton){
     if(!printButton || PDF_BUSY)return;
     var label=printButton.getAttribute('data-pdf-title')||printButton.textContent||'طباعة';
     var onclick=printButton.getAttribute('onclick')||'';
-    var filename=pdfSafeName(label);
+    var filename=pdfSafeName(label), destination=await pdfPrepareDestination(filename);
+    if(destination===false)return;
     if(/window\.print\s*\(/.test(onclick)){
-      downloadCurrentCardsPDF();
+      downloadCurrentCardsPDF(destination);
       return;
     }
-    requestPdfForPrintAction(function(){printButton.click();},filename);
+    requestPdfForPrintAction(function(){printButton.click();},filename,destination);
   }
 
-  function downloadCurrentCardsPDF(){
+  async function downloadCurrentCardsPDF(destination){
     if(PDF_BUSY)return;
-    var built=createCardsPrintFrame();if(!built)return;
     var name=pdfSafeName('نتائج-الطلاب');
-    setTimeout(function(){capturePrintFrame(built.frame,name);},450);
+    if(destination===undefined){destination=await pdfPrepareDestination(name);if(destination===false)return;}
+    var built=createCardsPrintFrame();if(!built)return;
+    setTimeout(function(){capturePrintFrame(built.frame,name,destination);},450);
     setTimeout(function(){if(built.frame.parentNode)built.frame.remove();},120000);
   }
 
@@ -18799,7 +18824,7 @@ window.ABOUT_SUPPORT_PHONE = ABOUT_SUPPORT_PHONE;
     window.downloadPdfFromPrintFrame=downloadPdfFromPrintFrame;
     window.downloadPdfFromPrintButton=runPrintButtonAsPdf;
     window.exportResultsPDF=downloadCurrentCardsPDF;
-    window.exportExamPDF=function(){requestPdfForPrintAction(function(){printExamSelection(false);},pdfSafeName('بطاقة-الامتحان'));};
+    window.exportExamPDF=async function(){var name=pdfSafeName('بطاقة-الامتحان'),destination=await pdfPrepareDestination(name);if(destination===false)return;requestPdfForPrintAction(function(){printExamSelection(false);},name,destination);};
     var originalBatchPrint=window.printGradebookSectionCards;
     if(typeof originalBatchPrint==='function'){
       window.printGradebookSectionCards=function(meta){
@@ -18810,7 +18835,7 @@ window.ABOUT_SUPPORT_PHONE = ABOUT_SUPPORT_PHONE;
           setTimeout(function(){
             var host=document.getElementById('examPrintHost');
             if(!host){pdfToast('تعذر العثور على صفحة البطاقات.',true);return;}
-            if(PDF_REQUEST){var req=PDF_REQUEST;PDF_REQUEST=null;captureCurrentHostAsPdf(host,req.filename);}
+            if(PDF_REQUEST){var req=PDF_REQUEST;PDF_REQUEST=null;captureCurrentHostAsPdf(host,req.filename,req.destination);}
             else printCurrentHost(host);
           },80);
         };
@@ -18824,7 +18849,7 @@ window.ABOUT_SUPPORT_PHONE = ABOUT_SUPPORT_PHONE;
         if(PDF_REQUEST){
           var req=PDF_REQUEST; PDF_REQUEST=null;
           try{if(typeof applyDigitsToPrintDoc==='function')applyDigitsToPrintDoc(frame.contentDocument); }catch(e){}
-          capturePrintFrame(frame,req.filename);
+          capturePrintFrame(frame,req.filename,req.destination);
           return;
         }
         try{
