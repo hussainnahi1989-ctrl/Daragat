@@ -17115,8 +17115,17 @@ if(document.readyState==='loading'){
   }
   function applyCloudAccount(acc,v,cb){
     if(!acc)return;
-    // A removed record is treated as a remotely stopped account, not as an offline success.
-    if(!v){markAccountStopped(acc,"تم حذف أو إيقاف حسابك من الإدارة",cb);return;}
+    // An empty read is only treated as "removed by admin" once we've already confirmed a
+    // real record existed in the cloud at least one time before. Admin suspension/deletion
+    // always writes an explicit accountDisabled/status flag first (see admin.html), so a
+    // missing record never represents a genuine stop on its own — it only ever means the
+    // very first sync of a brand-new account (or a slow/offline connection) hasn't reached
+    // the server yet. Treating that as "deleted" was locking out brand-new customers.
+    if(!v){
+      if(acc.cloudConfirmed){ markAccountStopped(acc,"تم حذف أو إيقاف حسابك من الإدارة",cb); return; }
+      cb&&cb({pending:true}); return;
+    }
+    acc.cloudConfirmed=true;
     if(v.accountDisabled||["suspended","disabled","deleted","cancelled"].includes(v.status)){
       markAccountStopped(acc,v.disabledReason||"تم إيقاف الحساب من الإدارة",cb);return;
     }
@@ -17908,7 +17917,7 @@ if(document.readyState==='loading'){
 <!-- ===== AUTO UPDATE NOTIFICATION (small icon in topbar) ===== -->
 <script>
 (function(){
-  const APP_VERSION = "1.10.3";
+  const APP_VERSION = "1.10.4";
   const CHECK_EVERY_MINUTES = 30;
   const LS_ACCEPTED = "daragat_accepted_version";
   const LS_SNOOZE   = "daragat_update_snooze";
