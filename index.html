@@ -22,7 +22,7 @@
 
   *{ box-sizing:border-box; }
 
-  html{ overflow-x:hidden; }
+  html{ overflow-x:hidden; overflow-y:auto; }
   img,svg,video{ max-width:100%; height:auto; }
 
   body{
@@ -31,7 +31,6 @@
     background:#d9d9d9;
     font-family:"Tahoma","Segoe UI",Arial,sans-serif;
     color:var(--ink);
-    overflow-x:hidden;
   }
 
   @media (max-width:480px){
@@ -2856,7 +2855,7 @@
   @media print{ #globalNavDrawer,#globalNavBackdrop{display:none!important;} }
 
   /* ================= Professional sidebar dashboard ================= */
-  body.dashboard-active{ padding:0; background:#edf2f6; overflow-x:hidden; }
+  body.dashboard-active{ padding:0; background:#edf2f6; }
   body.dashboard-active #topbar{ display:none; }
   #view-dashboard{ max-width:none; padding:0; overflow-x:hidden; }
   .dashboard-layout{ min-height:100vh; background:#edf2f6; overflow-x:hidden; }
@@ -2926,13 +2925,13 @@
   .dashboard-backdrop{ display:none; position:fixed; z-index:69; inset:0; background:rgba(0,0,0,.48); }
   .stats-kpis{ display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:15px; margin-bottom:22px; align-items:stretch; }
   .stat-kpi{ background:#fff; border-radius:17px; padding:18px; display:flex; align-items:center; gap:13px; min-height:108px; height:100%; box-sizing:border-box; box-shadow:0 6px 0 #d9e0e5,0 10px 22px rgba(38,50,56,.08); border:1px solid #e1e7eb; }
-  .stat-kpi .sk-icon{display:none!important; width:49px; height:49px; border-radius:14px; display:flex; align-items:center; justify-content:center; font-size:23px; color:#fff; background:linear-gradient(135deg,#1565c0,#42a5f5); flex:0 0 auto; }
+  .stat-kpi .sk-icon{ width:49px; height:49px; border-radius:14px; display:flex; align-items:center; justify-content:center; font-size:23px; color:#fff; background:linear-gradient(135deg,#1565c0,#42a5f5); flex:0 0 auto; box-shadow:0 3px 8px rgba(0,0,0,.18); }
   .stat-kpi.success .sk-icon{ background:linear-gradient(135deg,#2e7d32,#66bb6a); }
   .stat-kpi.fail .sk-icon{ background:linear-gradient(135deg,#c62828,#ef5350); }
   .stat-kpi.sections .sk-icon{ background:linear-gradient(135deg,#ef6c00,#ffa726); }
   .stat-kpi.leave .sk-icon{ background:linear-gradient(135deg,#00695c,#26a69a); }
   .attendance-today-kpis{ grid-template-columns:repeat(3,minmax(0,1fr)); }
-  .stat-kpi strong{ display:block; color:#263238; font-size:29px; line-height:1; font-weight:900; letter-spacing:.3px; }
+  .stat-kpi strong{ display:block; color:#263238; font-size:32px; line-height:1; font-weight:900; letter-spacing:.3px; }
   .stat-kpi span{ display:block; color:#78909c; font-size:11.5px; margin-top:7px; }
   .grades-report-head{ display:flex; justify-content:space-between; align-items:end; gap:12px; margin:25px 0 14px; }
   .grades-report-head h2{ margin:0; color:#2a0c18; font-size:19px; font-weight:900; }
@@ -3009,7 +3008,7 @@
     .stats-kpis{ grid-template-columns:1fr 1fr; gap:10px; }
     .stat-kpi{ padding:13px 10px; gap:9px; box-shadow:0 5px 0 #d9e0e5,0 8px 16px rgba(38,50,56,.07); }
     .stat-kpi .sk-icon{ width:41px; height:41px; font-size:19px; }
-    .stat-kpi strong{ font-size:23px; }
+    .stat-kpi strong{ font-size:25px; }
     .grade-report-grid{ grid-template-columns:1fr; gap:15px; }
   }
   @media(max-width:400px){
@@ -3288,8 +3287,8 @@
   html[data-app-font="xxhuge"] .student-search-overlay,
   html[data-app-font="xxhuge"] .dashboard-backdrop{ zoom:1.7; }
   @media print{ html, html[data-app-font] .view, html[data-app-font] .dashboard-main{ zoom:1 !important; } }
-  html{ overflow-x:hidden; }
-  body{ margin:0; padding:0 !important; overflow-x:hidden; max-width:100%; }
+  html{ overflow-x:hidden; overflow-y:auto; }
+  body{ margin:0; padding:0 !important; max-width:100%; }
   #topbar{
     display:flex !important;
     flex-direction:row !important;
@@ -4075,7 +4074,7 @@
 
 /* ====== Responsive improvements (الإدارة المدرسية — جميع الأجهزة) ====== */
 html{-webkit-text-size-adjust:100%;-ms-text-size-adjust:100%;text-size-adjust:100%;touch-action:manipulation}
-body{-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;overflow-x:hidden}
+body{-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale}
 body,#topStack{width:100%;max-width:100%}
 #topbar{position:sticky!important;top:0;z-index:9000;width:100%;box-sizing:border-box}
 .topbar-nav{gap:2px}
@@ -4215,6 +4214,34 @@ img,.splash-logo-container img,.card img,.page img{max-width:100%;height:auto}
     body.dashboard-active .dashboard-main{padding-top:52px!important;}
     .dashboard-sidebar{top:42px!important;}
     .module-head{padding-block:6px;}
+  }
+
+  /* ---------------- Topbar: guaranteed no-clip responsive layout (all sizes/orientations) ----------------
+     Stays a single row (matching the fixed content-offset assumptions used elsewhere in the app), the
+     brand title shrinks first, and if icons still don't all fit, only the icon strip itself scrolls
+     horizontally (nothing is ever left positioned outside the visible/reachable area). */
+  #topbar{
+    display:flex!important;flex-wrap:nowrap!important;align-items:center!important;
+    column-gap:8px!important;
+  }
+  #topbar b{
+    flex:1 1 auto!important;min-width:0!important;max-width:none!important;
+    overflow:hidden!important;text-overflow:ellipsis!important;white-space:nowrap!important;
+  }
+  #topbar .topbar-nav{
+    flex:0 1 auto!important;width:auto!important;min-width:0!important;
+    display:flex!important;flex-wrap:nowrap!important;
+    overflow-x:auto!important;overflow-y:hidden!important;
+    -webkit-overflow-scrolling:touch;scrollbar-width:none;
+    justify-content:flex-end!important;column-gap:6px!important;padding:2px 0!important;
+  }
+  #topbar .topbar-nav::-webkit-scrollbar{ display:none; }
+  #topbar .topbar-nav>*{ flex:0 0 auto!important; white-space:nowrap!important; position:relative; }
+  @media (max-width:420px){
+    #topbar .apps-mini-link{ display:none!important; }
+    #btnGlobalMenu{ font-size:0!important; padding:8px!important; min-width:36px!important; }
+    #btnGlobalMenu::before{ content:"☰"; font-size:15px; }
+    #topbar b{ font-size:12.5px!important; }
   }
 }
 </style>
@@ -9933,22 +9960,21 @@ function renderDashboard(){
       '<div style="height:6px"></div>'+
       '<button onclick="toggleUiTheme()"><span class="dni ui-theme-icon">🌙</span><span class="ui-theme-toggle-text">الوضع الليلي</span></button>'+
       '<button onclick="closeDashboardSidebar();authLogout()"><span class="dni">🚪</span>تسجيل خروج</button>'+
-      '<button onclick="toggleUiTheme()"><span class="dni ui-theme-icon">🌙</span><span class="ui-theme-toggle-text">الوضع الليلي</span></button>'+
       '<button class="ds-exit" onclick="requestAppBack()"><span class="dni">↩</span>رجوع خطوة</button>'+
     '</nav></aside><main class="dashboard-main"><header class="dashboard-top"><div><h1>كشوفات المدرسة</h1><p>نظرة شاملة على أعداد الطلاب ونتائج آخر امتحان مسجل</p></div><div class="dashboard-date">'+escapeHtml(dateText)+'</div></header>'+
     '<section class="stats-kpis">'+
-      '<div class="stat-kpi" onclick="openDashNameList(\'total\')" style="cursor:pointer"><div><strong>'+toArabicDigits(String(stats.total))+'</strong><span>إجمالي طلاب المدرسة</span></div></div>'+
-      '<div class="stat-kpi success" onclick="openDashNameList(\'passed\')" style="cursor:pointer"><div><strong>'+toArabicDigits(String(stats.passed))+'</strong><span>الطلاب الناجحون</span></div></div>'+
-      '<div class="stat-kpi fail" onclick="openDashNameList(\'failed\')" style="cursor:pointer"><div><strong>'+toArabicDigits(String(stats.failed))+'</strong><span>الطلاب الراسبون</span></div></div>'+
-      '<div class="stat-kpi sections" onclick="openDashNameList(\'sections\')" style="cursor:pointer"><div><strong>'+toArabicDigits(String(stats.sections))+'</strong><span>مجموع الشعب الدراسية</span></div></div>'+
-      '<div class="stat-kpi fail" onclick="openDashNameList(\'absent\')" style="cursor:pointer"><div><strong>'+toArabicDigits(String(attToday.absent))+'</strong><span>الغائبون اليوم</span></div></div>'+
-      '<div class="stat-kpi leave" onclick="openDashNameList(\'leave\')" style="cursor:pointer"><div><strong>'+toArabicDigits(String(attToday.leave))+'</strong><span>المجازون اليوم</span></div></div>'+
-      '<div class="stat-kpi success" onclick="openDashNameList(\'present\')" style="cursor:pointer"><div><strong>'+toArabicDigits(String(attToday.present))+'</strong><span>الحاضرون اليوم</span></div></div>'+
-      '<div class="stat-kpi sections" onclick="openDashNameList(\'workdays\')" style="cursor:pointer"><div><strong>'+toArabicDigits(String(calDays.work||0))+'</strong><span>ملخص أيام الدوام الفعلي</span></div></div>'+
-      '<div class="stat-kpi leave" onclick="openDashNameList(\'holidays\')" style="cursor:pointer"><div><strong>'+toArabicDigits(String(calDays.holidays||0))+'</strong><span>ملخص أيام العطل</span></div></div>'+
-      '<div class="stat-kpi success" onclick="openDashNameList(\'teachers\')" style="cursor:pointer"><div><strong>'+toArabicDigits(String(staffCounts.teachers||0))+'</strong><span>'+escapeHtml(staffCounts.teacherLabel)+'</span></div></div>'+
-      '<div class="stat-kpi sections" onclick="openDashNameList(\'employees\')" style="cursor:pointer"><div><strong>'+toArabicDigits(String(staffCounts.employees||0))+'</strong><span>عدد الموظفين</span></div></div>'+
-      '<div class="stat-kpi" onclick="openDashNameList(\'toppers\')" style="cursor:pointer"><div><strong>'+toArabicDigits(String(toppers.length))+'</strong><span>أعلى الطلاب درجات</span></div></div>'+
+      '<div class="stat-kpi" onclick="openDashNameList(\'total\')" style="cursor:pointer"><div class="sk-icon">🎓</div><div><strong>'+toArabicDigits(String(stats.total))+'</strong><span>إجمالي طلاب المدرسة</span></div></div>'+
+      '<div class="stat-kpi success" onclick="openDashNameList(\'passed\')" style="cursor:pointer"><div class="sk-icon">✅</div><div><strong>'+toArabicDigits(String(stats.passed))+'</strong><span>الطلاب الناجحون</span></div></div>'+
+      '<div class="stat-kpi fail" onclick="openDashNameList(\'failed\')" style="cursor:pointer"><div class="sk-icon">❌</div><div><strong>'+toArabicDigits(String(stats.failed))+'</strong><span>الطلاب الراسبون</span></div></div>'+
+      '<div class="stat-kpi sections" onclick="openDashNameList(\'sections\')" style="cursor:pointer"><div class="sk-icon">🏫</div><div><strong>'+toArabicDigits(String(stats.sections))+'</strong><span>مجموع الشعب الدراسية</span></div></div>'+
+      '<div class="stat-kpi fail" onclick="openDashNameList(\'absent\')" style="cursor:pointer"><div class="sk-icon">🚫</div><div><strong>'+toArabicDigits(String(attToday.absent))+'</strong><span>الغائبون اليوم</span></div></div>'+
+      '<div class="stat-kpi leave" onclick="openDashNameList(\'leave\')" style="cursor:pointer"><div class="sk-icon">🧳</div><div><strong>'+toArabicDigits(String(attToday.leave))+'</strong><span>المجازون اليوم</span></div></div>'+
+      '<div class="stat-kpi success" onclick="openDashNameList(\'present\')" style="cursor:pointer"><div class="sk-icon">🙋</div><div><strong>'+toArabicDigits(String(attToday.present))+'</strong><span>الحاضرون اليوم</span></div></div>'+
+      '<div class="stat-kpi sections" onclick="openDashNameList(\'workdays\')" style="cursor:pointer"><div class="sk-icon">📅</div><div><strong>'+toArabicDigits(String(calDays.work||0))+'</strong><span>ملخص أيام الدوام الفعلي</span></div></div>'+
+      '<div class="stat-kpi leave" onclick="openDashNameList(\'holidays\')" style="cursor:pointer"><div class="sk-icon">🎉</div><div><strong>'+toArabicDigits(String(calDays.holidays||0))+'</strong><span>ملخص أيام العطل</span></div></div>'+
+      '<div class="stat-kpi success" onclick="openDashNameList(\'teachers\')" style="cursor:pointer"><div class="sk-icon">👨‍🏫</div><div><strong>'+toArabicDigits(String(staffCounts.teachers||0))+'</strong><span>'+escapeHtml(staffCounts.teacherLabel)+'</span></div></div>'+
+      '<div class="stat-kpi sections" onclick="openDashNameList(\'employees\')" style="cursor:pointer"><div class="sk-icon">🧑‍💼</div><div><strong>'+toArabicDigits(String(staffCounts.employees||0))+'</strong><span>عدد الموظفين</span></div></div>'+
+      '<div class="stat-kpi" onclick="openDashNameList(\'toppers\')" style="cursor:pointer"><div class="sk-icon">🏆</div><div><strong>'+toArabicDigits(String(toppers.length))+'</strong><span>أعلى الطلاب درجات</span></div></div>'+
     '</section>'+
     '<div class="grades-report-head"><div><h2>إحصاءات الصفوف</h2><p>النجاح والرسوب محسوبان من أحدث درجات امتحان مدخلة لكل طالب</p></div></div><section class="grade-report-grid">'+gradeCards+'</section></main></div>';
   updateUiThemeControls();
@@ -17917,7 +17943,7 @@ if(document.readyState==='loading'){
 <!-- ===== AUTO UPDATE NOTIFICATION (small icon in topbar) ===== -->
 <script>
 (function(){
-  const APP_VERSION = "1.10.4";
+  const APP_VERSION = "1.10.5";
   const CHECK_EVERY_MINUTES = 30;
   const LS_ACCEPTED = "daragat_accepted_version";
   const LS_SNOOZE   = "daragat_update_snooze";
@@ -19592,9 +19618,14 @@ window.ABOUT_SUPPORT_PHONE = ABOUT_SUPPORT_PHONE;
     buttons.forEach(function(btn){
       if(btn.dataset.pdfPaired === '1' || btn.classList.contains('pdf-download-btn')) return;
       if(btn.disabled) return;
-      var text = (btn.textContent || '').trim(), attr = btn.getAttribute('onclick') || '';
-      if(/pdf|excel|إضافة ورقة|إضافة بطاقة|تحميل|استيراد|تصدير/i.test(text + ' ' + attr)) return;
-      if(!(/طباعة|🖨️|print/i.test(text + ' ' + attr))) return;
+      var attr = btn.getAttribute('onclick') || '';
+      // Only pair a PDF button with a button whose onclick actually triggers a real print
+      // routine (every print trigger in this app is a call to a function literally named
+      // print... or to window.print()). Matching on visible text/emoji alone previously
+      // misfired on purely decorative uses of "طباعة"/🖨️ (e.g. a "كشوف النتائج" navigation
+      // link whose icon is a printer but which does not print anything by itself), adding a
+      // PDF button that did nothing useful wherever that icon appeared.
+      if(!/\bprint[A-Za-z]*\s*\(/.test(attr)) return;
       if(!btn.parentNode) return;
       btn.dataset.pdfPaired = '1';
       var pdf = document.createElement('button');
