@@ -2217,10 +2217,6 @@
   .dc-settings{ background:linear-gradient(135deg,#37474f,#607d8b); }
 
   .module-shell{ max-width:1180px; margin:0 auto; }
-  .tt-embed-wrap{ width:100%; height:80vh; min-height:520px; border-radius:12px; overflow:hidden; box-shadow:0 4px 14px rgba(0,0,0,.12); background:#fff; }
-  .tt-embed-frame{ width:100%; height:100%; border:0; display:block; background:#fff; }
-  @media (max-width:600px){ .tt-embed-wrap{ height:75vh; min-height:420px; } }
-  @media (orientation:landscape) and (max-height:500px){ .tt-embed-wrap{ height:88vh; min-height:320px; } }
   .module-head{ display:flex; align-items:center; justify-content:space-between; gap:14px; margin-bottom:16px; flex-wrap:wrap; }
   html[data-print-theme] .students-table th,
   html[data-print-theme] .attendance-records-table th,
@@ -11103,26 +11099,8 @@ const TIMETABLE_KEY='schoolResultsTimetable_v1';
 function loadTimetable(){try{const o=JSON.parse(localStorage.getItem(TIMETABLE_KEY)||'{}')||{}; if(!Array.isArray(o.rows))o.rows=[['الحصة','الأحد','الاثنين','الثلاثاء','الأربعاء','الخميس']]; return o;}catch(e){return {rows:[['الحصة','الأحد','الاثنين','الثلاثاء','الأربعاء','الخميس']]};}}
 function saveTimetable(){try{localStorage.setItem(TIMETABLE_KEY,JSON.stringify(TIMETABLE_STATE));}catch(e){} if(typeof wifiOnSave==='function')wifiOnSave(); if(typeof cloudOnSave==='function')cloudOnSave();}
 let TIMETABLE_STATE=loadTimetable();
-function renderTimetableViewEmbedded(){
-  // Embeds the standalone "الجدول الأسبوعي الذكي" app (schedule/index.html) inside the
-  // existing view-timetable screen, fully isolated in its own iframe/origin-scoped page so
-  // none of its code, styles, or storage can ever touch the main Daragat app. Built once and
-  // left alone on repeat visits (no reload/flicker, no loss of in-progress state inside it).
-  const el=document.getElementById('view-timetable'); if(!el)return;
-  if(document.getElementById('ttEmbedFrame')) return;
-  const role=typeof authRole==='function'?authRole():'';
-  const back=role==='teacher'
-    ? '<button class="material-btn secondary" onclick="openTeacherHome()">رجوع لمهام المعلم</button>'
-    : (role==='student'
-      ? '<button class="material-btn secondary" onclick="renderStudentHome();navigateTo(\'view-student\',{page:\'home\'})">رجوع لموادي</button>'
-      : '<button class="material-btn secondary" onclick="appGoBack()">رجوع خطوة</button>');
-  el.innerHTML='<div class="module-shell tt-embed-shell"><div class="module-head"><div class="module-title"><span class="mi">🗓️</span><div><h2>الجدول الأسبوعي</h2><p>الجدول الأسبوعي الذكي — استيراد ولصق وصورة ذكية</p></div></div>'+back+'</div>'+
-    '<div class="tt-embed-wrap"><iframe id="ttEmbedFrame" class="tt-embed-frame" title="الجدول الأسبوعي الذكي"></iframe></div></div>';
-  const frame=document.getElementById('ttEmbedFrame');
-  if(frame) frame.src='schedule/index.html';
-}
 function openTimetableModule(){
-  renderTimetableViewEmbedded(); navigateTo('view-timetable',{});
+  renderTimetableView(); navigateTo('view-timetable',{});
 }
 function ttCollectGrid(){
   const tb=document.getElementById('ttGrid'); if(!tb)return;
@@ -17952,7 +17930,7 @@ if(document.readyState==='loading'){
   });
   window.__actResume=resume;
   window.__actReady=true;
-  window.__actGetInfo=function(){ const v=canOpenApp(); return {valid:v.ok,trial:!!v.trial,plan:v.account&&v.account.plan,expiresAt:v.account&&v.account.expiresAt,deviceId:deviceId(),email:state.activeEmail}; };
+  window.__actGetInfo=function(){ const v=canOpenApp(); return {valid:v.ok,reason:v.reason||"",status:v.account&&v.account.status,trial:!!v.trial,daysLeft:v.daysLeft||0,plan:v.account&&v.account.plan,expiresAt:v.account&&v.account.expiresAt,registeredAt:v.account&&v.account.registeredAt,deviceId:deviceId(),email:state.activeEmail}; };
   window.__actOpenOffline=screenOfflineKey;
 
   if(document.readyState==="loading") document.addEventListener("DOMContentLoaded",resume);
@@ -17965,7 +17943,7 @@ if(document.readyState==='loading'){
 <!-- ===== AUTO UPDATE NOTIFICATION (small icon in topbar) ===== -->
 <script>
 (function(){
-  const APP_VERSION = "1.10.6";
+  const APP_VERSION = "1.10.7";
   const CHECK_EVERY_MINUTES = 30;
   const LS_ACCEPTED = "daragat_accepted_version";
   const LS_SNOOZE   = "daragat_update_snooze";
@@ -18309,6 +18287,50 @@ function waSupportLink(){
 function openAboutModule(){ navigateTo('view-about'); renderAboutView(); }
 window.openAboutModule = openAboutModule;
 
+function aboutTrialRemainingText(){
+  try{
+    var info=typeof window.__actGetInfo==='function'?window.__actGetInfo():null;
+    if(info&&info.trial){
+      var ms=Number(info.expiresAt||0)-Date.now();
+      if(ms>0){
+        var days=Math.floor(ms/86400000);
+        var hours=Math.ceil((ms-days*86400000)/3600000);
+        if(days>0)return 'المتبقي: '+toArabicDigits(String(days))+' '+(days===1?'يوم':'أيام');
+        return 'المتبقي: '+toArabicDigits(String(Math.max(1,hours)))+' ساعة';
+      }
+      if(Number(info.daysLeft||0)>0)return 'المتبقي: '+toArabicDigits(String(info.daysLeft))+' '+(Number(info.daysLeft)===1?'يوم':'أيام');
+      return 'انتهت الفترة التجريبية';
+    }
+    if(info&&info.valid){
+      if(info.plan==='permanent')return 'الحساب مفعل بشكل دائم';
+      var left=Math.ceil((Number(info.expiresAt||0)-Date.now())/86400000);
+      if(left>0)return 'الحساب مفعل — متبقي '+toArabicDigits(String(left))+' '+(left===1?'يوم':'أيام');
+    }
+    if(info&&info.reason==='trial_ended')return 'الفترة التجريبية منتهية';
+    if(info&&info.reason==='expired')return 'الاشتراك منتهٍ';
+    if(info&&info.reason==='pending')return 'طلب التفعيل قيد المراجعة';
+  }catch(e){}
+  return 'عرض حالة التفعيل';
+}
+function aboutRefreshTrialTime(){
+  var b=document.getElementById('aboutTrialButton');
+  if(!b)return;
+  b.innerHTML='⏳ وقت الفترة التجريبية <span>'+aboutTrialRemainingText()+'</span>';
+}
+function aboutOpenActivation(){
+  try{
+    if(typeof window.__actOpen==='function'){
+      window.__actOpen({preventDefault:function(){},stopPropagation:function(){},stopImmediatePropagation:function(){}});
+      return false;
+    }
+    if(typeof window.__actResume==='function'){window.__actResume();return false;}
+  }catch(e){console.error('Activation panel could not open',e);}
+  alert('لوحة التفعيل غير جاهزة بعد. حاول مرة أخرى.');
+  return false;
+}
+window.aboutOpenActivation=aboutOpenActivation;
+window.aboutRefreshTrialTime=aboutRefreshTrialTime;
+
 function renderAboutView(){
   var el=document.getElementById('view-about');
   if(!el)return;
@@ -18321,6 +18343,9 @@ function renderAboutView(){
     '.about-hero h1{margin:0 0 6px;font-size:26px;font-weight:900;position:relative;z-index:1}'+
     '.about-hero p{margin:0;opacity:.92;font-size:14px;position:relative;z-index:1}'+
     '.about-hero .ver{display:inline-block;margin-top:10px;background:#ffffff25;padding:3px 12px;border-radius:20px;font-size:11.5px;font-weight:700;position:relative;z-index:1}'+
+    '.about-trial-button{width:100%;border:1px solid #ffe082;border-radius:12px;padding:12px 16px;background:linear-gradient(135deg,#fff8e1,#ffe082);color:#5d4037;font:900 14px Tahoma,Arial,sans-serif;cursor:pointer;box-shadow:0 4px 12px #00000018;display:flex;align-items:center;justify-content:center;gap:8px;flex-wrap:wrap}'+
+    '.about-trial-button:hover{filter:brightness(1.03);transform:translateY(-1px)}'+
+    '.about-trial-button span{font-weight:800;color:#7a0e2e}'+
     '.about-cta{background:linear-gradient(135deg,#0d7c3f,#25d366);color:#fff;border-radius:14px;padding:20px;margin-bottom:16px;display:flex;flex-wrap:wrap;align-items:center;gap:14px;box-shadow:0 6px 20px #25d36640}'+
     '.about-cta .txt{flex:1;min-width:200px}'+
     '.about-cta h3{margin:0 0 4px;font-size:18px;font-weight:900}'+
@@ -18358,6 +18383,7 @@ function renderAboutView(){
         '<h1>ادارة المدرسه والامتحانات</h1>'+
         '<p>نظام متكامل لإدارة الدرجات والامتحانات والطلاب بدون إنترنت</p>'+
         '<div class="ver">الإصدار '+(APP_VERSION||"1")+'</div>'+
+        '<button type="button" id="aboutTrialButton" class="about-trial-button" onclick="aboutOpenActivation()">⏳ وقت الفترة التجريبية <span>جارٍ حساب المدة...</span></button>'+
       '</div>'+
 
       '<div class="about-cta">'+
@@ -18425,6 +18451,8 @@ function renderAboutView(){
         '<span style="color:#aaa">جميع الحقوق محفوظة © '+new Date().getFullYear()+'</span>'+
       '</div>'+
       '</div>';
+  aboutRefreshTrialTime();
+  if(!window.__aboutTrialTimer)window.__aboutTrialTimer=setInterval(aboutRefreshTrialTime,60000);
 }
 window.renderAboutView = renderAboutView;
 window.waSupportLink = waSupportLink;
