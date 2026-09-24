@@ -2217,6 +2217,10 @@
   .dc-settings{ background:linear-gradient(135deg,#37474f,#607d8b); }
 
   .module-shell{ max-width:1180px; margin:0 auto; }
+  .tt-embed-wrap{ width:100%; height:80vh; min-height:520px; border-radius:12px; overflow:hidden; box-shadow:0 4px 14px rgba(0,0,0,.12); background:#fff; }
+  .tt-embed-frame{ width:100%; height:100%; border:0; display:block; background:#fff; }
+  @media (max-width:600px){ .tt-embed-wrap{ height:75vh; min-height:420px; } }
+  @media (orientation:landscape) and (max-height:500px){ .tt-embed-wrap{ height:88vh; min-height:320px; } }
   .module-head{ display:flex; align-items:center; justify-content:space-between; gap:14px; margin-bottom:16px; flex-wrap:wrap; }
   html[data-print-theme] .students-table th,
   html[data-print-theme] .attendance-records-table th,
@@ -11099,8 +11103,26 @@ const TIMETABLE_KEY='schoolResultsTimetable_v1';
 function loadTimetable(){try{const o=JSON.parse(localStorage.getItem(TIMETABLE_KEY)||'{}')||{}; if(!Array.isArray(o.rows))o.rows=[['الحصة','الأحد','الاثنين','الثلاثاء','الأربعاء','الخميس']]; return o;}catch(e){return {rows:[['الحصة','الأحد','الاثنين','الثلاثاء','الأربعاء','الخميس']]};}}
 function saveTimetable(){try{localStorage.setItem(TIMETABLE_KEY,JSON.stringify(TIMETABLE_STATE));}catch(e){} if(typeof wifiOnSave==='function')wifiOnSave(); if(typeof cloudOnSave==='function')cloudOnSave();}
 let TIMETABLE_STATE=loadTimetable();
+function renderTimetableViewEmbedded(){
+  // Embeds the standalone "الجدول الأسبوعي الذكي" app (schedule/index.html) inside the
+  // existing view-timetable screen, fully isolated in its own iframe/origin-scoped page so
+  // none of its code, styles, or storage can ever touch the main Daragat app. Built once and
+  // left alone on repeat visits (no reload/flicker, no loss of in-progress state inside it).
+  const el=document.getElementById('view-timetable'); if(!el)return;
+  if(document.getElementById('ttEmbedFrame')) return;
+  const role=typeof authRole==='function'?authRole():'';
+  const back=role==='teacher'
+    ? '<button class="material-btn secondary" onclick="openTeacherHome()">رجوع لمهام المعلم</button>'
+    : (role==='student'
+      ? '<button class="material-btn secondary" onclick="renderStudentHome();navigateTo(\'view-student\',{page:\'home\'})">رجوع لموادي</button>'
+      : '<button class="material-btn secondary" onclick="appGoBack()">رجوع خطوة</button>');
+  el.innerHTML='<div class="module-shell tt-embed-shell"><div class="module-head"><div class="module-title"><span class="mi">🗓️</span><div><h2>الجدول الأسبوعي</h2><p>الجدول الأسبوعي الذكي — استيراد ولصق وصورة ذكية</p></div></div>'+back+'</div>'+
+    '<div class="tt-embed-wrap"><iframe id="ttEmbedFrame" class="tt-embed-frame" title="الجدول الأسبوعي الذكي"></iframe></div></div>';
+  const frame=document.getElementById('ttEmbedFrame');
+  if(frame) frame.src='schedule/index.html';
+}
 function openTimetableModule(){
-  renderTimetableView(); navigateTo('view-timetable',{});
+  renderTimetableViewEmbedded(); navigateTo('view-timetable',{});
 }
 function ttCollectGrid(){
   const tb=document.getElementById('ttGrid'); if(!tb)return;
