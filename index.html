@@ -4244,6 +4244,75 @@ img,.splash-logo-container img,.card img,.page img{max-width:100%;height:auto}
     #topbar b{ font-size:12.5px!important; }
   }
 }
+
+  /* ================= Mobile topbar + professional About panel ================= */
+  .about-account-card{
+    display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;align-items:stretch;
+    margin:0 0 16px;padding:12px;border-radius:16px;
+    background:linear-gradient(135deg,#fffdf6,#fff7e0);border:1px solid #ead8a5;
+    box-shadow:0 6px 18px rgba(77,35,20,.10);
+  }
+  .about-account-item{min-width:0;border-radius:12px;padding:12px 10px;background:rgba(255,255,255,.78);border:1px solid rgba(201,161,59,.28);text-align:center;}
+  .about-account-item .ai-icon{font-size:22px;line-height:1.1;margin-bottom:5px;}
+  .about-account-item .ai-label{display:block;color:#7a5b25;font-size:11px;font-weight:800;margin-bottom:4px;}
+  .about-account-item .ai-value{display:block;color:#5a1020;font-size:14px;font-weight:900;line-height:1.5;overflow-wrap:anywhere;}
+  .about-account-actions{grid-column:1/-1;display:flex;gap:8px;flex-wrap:wrap;justify-content:center;}
+  .about-account-actions button{border:0;border-radius:11px;padding:10px 14px;font-family:inherit;font-size:13px;font-weight:900;cursor:pointer;transition:transform .15s,filter .15s;}
+  .about-account-actions button:hover{transform:translateY(-1px);filter:brightness(1.04);}
+  .about-subscribe-btn{background:linear-gradient(135deg,#7a0e2e,#b51d50);color:#fff;box-shadow:0 4px 12px rgba(122,14,46,.22);}
+  .about-update-btn{background:linear-gradient(135deg,#b07a18,#dfb94f);color:#3d2606;box-shadow:0 4px 12px rgba(176,122,24,.18);}
+  .about-update-btn:disabled{opacity:.7;cursor:wait;transform:none;}
+  .about-update-status{width:100%;text-align:center;color:#7a5b25;font-size:11.5px;line-height:1.6;min-height:18px;}
+  html[data-ui-skin] .about-account-card{background:var(--skin-card)!important;border-color:var(--skin-border)!important;box-shadow:0 8px 24px var(--skin-shadow)!important;}
+  html[data-ui-skin] .about-account-item{background:rgba(255,255,255,.06)!important;border-color:var(--skin-border)!important;}
+  html[data-ui-skin] .about-account-item .ai-label,html[data-ui-skin] .about-update-status{color:var(--skin-muted)!important;}
+  html[data-ui-skin] .about-account-item .ai-value{color:var(--skin-heading)!important;}
+  html[data-ui-skin] .about-subscribe-btn{background:linear-gradient(135deg,var(--skin-accent),var(--skin-accent-2))!important;color:var(--skin-icon-ink)!important;}
+  html[data-ui-skin] .about-update-btn{background:linear-gradient(135deg,var(--skin-accent-2),var(--skin-accent))!important;color:var(--skin-icon-ink)!important;}
+  html[data-ui-skin] .about-section-title{color:var(--skin-heading)!important;}
+  html[data-ui-skin] .about-wrap .feat-card,html[data-ui-skin] .about-wrap .about-howto{background:var(--skin-card)!important;border-color:var(--skin-border)!important;color:var(--skin-heading)!important;box-shadow:0 6px 18px var(--skin-shadow)!important;}
+  html[data-ui-skin] .about-wrap .feat-card h4,html[data-ui-skin] .about-wrap .about-howto h4{color:var(--skin-accent-2)!important;}
+  html[data-ui-skin] .about-wrap .feat-card p,html[data-ui-skin] .about-wrap .about-howto ol{color:var(--skin-muted)!important;}
+  html[data-ui-skin] .about-wrap .about-stat{background:var(--skin-surface)!important;border-color:var(--skin-border)!important;}
+  html[data-ui-skin] .about-wrap .about-stat .n{color:var(--skin-accent-2)!important;}
+  html[data-ui-skin] .about-wrap .about-stat .l{color:var(--skin-muted)!important;}
+  body.theme-dark .about-account-card{background:linear-gradient(135deg,#182028,#12191f)!important;border-color:#3a4b56!important;}
+  body.theme-dark .about-account-item{background:#10171d!important;border-color:#3a4b56!important;}
+  body.theme-dark .about-account-item .ai-label,body.theme-dark .about-update-status{color:#b7c5cc!important;}
+  body.theme-dark .about-account-item .ai-value{color:#ffe083!important;}
+  body.theme-dark .about-wrap .feat-card,body.theme-dark .about-wrap .about-howto{background:#182028!important;border-color:#3a4b56!important;color:#e7edf2!important;}
+  body.theme-dark .about-wrap .feat-card h4,body.theme-dark .about-wrap .about-howto h4{color:#ffe083!important;}
+  body.theme-dark .about-wrap .feat-card p,body.theme-dark .about-wrap .about-howto ol{color:#c3cfd5!important;}
+  body.theme-dark .about-wrap .about-stat{background:#121a20!important;border-color:#3a4b56!important;}
+  body.theme-dark .about-wrap .about-stat .n{color:#ffe083!important;}
+  body.theme-dark .about-wrap .about-stat .l{color:#b7c5cc!important;}
+  @media(max-width:700px){
+    /* Keep the school name available in the menu, but reserve the mobile bar for controls. */
+    #topbar #topBrand{display:none!important;}
+    #topbar{padding:4px 7px!important;gap:5px!important;}
+    #topbar #btnMainMenu{width:34px!important;min-width:34px!important;height:34px!important;min-height:34px!important;border-radius:11px!important;}
+    #topbar .topbar-nav{flex:1 1 auto!important;min-width:0!important;width:auto!important;display:flex!important;align-items:center!important;justify-content:space-between!important;gap:4px!important;overflow-x:auto!important;overflow-y:hidden!important;padding:1px 0!important;}
+    #topbar .topbar-nav>*{flex:0 0 auto!important;position:relative!important;}
+    #topbar .topbar-nav .apps-mini-link,#topbar .topbar-nav #btnFacebook{display:none!important;}
+    #topbar .topbar-nav .quick-theme-btn,#topbar .topbar-nav .top-search-btn{width:33px!important;min-width:33px!important;height:33px!important;min-height:33px!important;border-radius:11px!important;font-size:16px!important;background:rgba(255,255,255,.13)!important;border-color:rgba(255,255,255,.22)!important;}
+    #topbar .topbar-nav #btnGlobalMenu{width:36px!important;min-width:36px!important;height:33px!important;min-height:33px!important;padding:0!important;border-radius:11px!important;font-size:0!important;display:inline-flex!important;align-items:center!important;justify-content:center!important;}
+    #topbar .topbar-nav #btnGlobalMenu::before{content:"☰";font-size:18px;line-height:1;}
+    #topbar .topbar-nav #btnAppUpdate{width:auto!important;min-width:33px!important;padding:0 7px!important;font-size:0!important;}
+    #topbar .topbar-nav #btnAppUpdate::before{content:"↻";font-size:18px;}
+    #topbar .topbar-nav #btnActivateTop{width:33px!important;min-width:33px!important;height:33px!important;padding:0!important;border-radius:11px!important;font-size:16px!important;}
+    #topbar .topbar-nav #trialDaysTop{max-width:52px;overflow:hidden;text-overflow:ellipsis;font-size:9px!important;padding:3px 4px!important;}
+    .about-account-card{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;padding:9px;border-radius:14px;}
+    .about-account-item{padding:10px 7px;}
+    .about-account-item .ai-value{font-size:12.5px;}
+    .about-account-actions{gap:7px;}
+    .about-account-actions button{flex:1 1 140px;min-height:42px;padding:9px 10px;}
+  }
+  @media(max-width:380px){
+    .about-account-item .ai-icon{font-size:19px;}
+    .about-account-item .ai-label{font-size:10px;}
+    .about-account-item .ai-value{font-size:11.5px;}
+    #topbar .topbar-nav{gap:3px!important;}
+  }
 </style>
 <style id="dynamicPageSize">@page{ size:148.5mm 210mm; margin:0; }</style>
 <script>/** @license
@@ -17930,7 +17999,7 @@ if(document.readyState==='loading'){
   });
   window.__actResume=resume;
   window.__actReady=true;
-  window.__actGetInfo=function(){ const v=canOpenApp(); return {valid:v.ok,trial:!!v.trial,plan:v.account&&v.account.plan,expiresAt:v.account&&v.account.expiresAt,deviceId:deviceId(),email:state.activeEmail}; };
+  window.__actGetInfo=function(){ const v=canOpenApp(); return {valid:v.ok,reason:v.reason||"",status:v.account&&v.account.status,trial:!!v.trial,daysLeft:v.daysLeft||0,plan:v.account&&v.account.plan,expiresAt:v.account&&v.account.expiresAt,registeredAt:v.account&&v.account.registeredAt,deviceId:deviceId(),email:state.activeEmail}; };
   window.__actOpenOffline=screenOfflineKey;
 
   if(document.readyState==="loading") document.addEventListener("DOMContentLoaded",resume);
@@ -17943,7 +18012,7 @@ if(document.readyState==='loading'){
 <!-- ===== AUTO UPDATE NOTIFICATION (small icon in topbar) ===== -->
 <script>
 (function(){
-  const APP_VERSION = "1.10.9";
+  const APP_VERSION = "1.11.0";
   const CHECK_EVERY_MINUTES = 30;
   const LS_ACCEPTED = "daragat_accepted_version";
   const LS_SNOOZE   = "daragat_update_snooze";
@@ -18287,6 +18356,96 @@ function waSupportLink(){
 function openAboutModule(){ navigateTo('view-about'); renderAboutView(); }
 window.openAboutModule = openAboutModule;
 
+function aboutPlanLabel(p){
+  return {weekly:'أسبوعي',monthly:'شهري',yearly:'سنوي',permanent:'دائم'}[String(p||'').toLowerCase()]||String(p||'غير محدد');
+}
+function aboutDigits(v){try{return typeof toArabicDigits==='function'?toArabicDigits(String(v)):String(v);}catch(e){return String(v);}}
+function aboutRemainingText(ms){
+  if(!Number.isFinite(ms)||ms<=0)return 'منتهية';
+  var days=Math.floor(ms/86400000);
+  if(days>0)return 'متبقي '+aboutDigits(days)+' '+(days===1?'يوم':'أيام');
+  var hours=Math.max(1,Math.ceil(ms/3600000));
+  return 'متبقي '+aboutDigits(hours)+' ساعة';
+}
+function aboutSubscriptionText(info){
+  if(!info)return 'جارٍ التحقق من الحساب...';
+  if(info.trial){
+    var trialMs=Number(info.expiresAt||0)-Date.now();
+    if(trialMs>0)return 'تجريبية — '+aboutRemainingText(trialMs);
+    if(Number(info.daysLeft||0)>0)return 'تجريبية — متبقي '+aboutDigits(info.daysLeft)+' أيام';
+    return 'الفترة التجريبية منتهية';
+  }
+  if(info.valid){
+    if(String(info.plan||'').toLowerCase()==='permanent')return 'اشتراك دائم';
+    var ms=Number(info.expiresAt||0)-Date.now();
+    return aboutPlanLabel(info.plan)+' — '+aboutRemainingText(ms);
+  }
+  if(info.reason==='pending')return 'طلب التفعيل قيد المراجعة';
+  if(info.reason==='trial_ended')return 'الفترة التجريبية منتهية';
+  if(info.reason==='expired')return 'الاشتراك منتهٍ';
+  if(info.reason==='login'||!info.email)return 'لا يوجد حساب مفعل';
+  return 'الحساب يحتاج إلى تفعيل';
+}
+function aboutOpenSubscription(){
+  try{
+    if(typeof window.__actOpen==='function'){
+      window.__actOpen({preventDefault:function(){},stopPropagation:function(){},stopImmediatePropagation:function(){}});
+      return false;
+    }
+    if(typeof window.__actResume==='function'){window.__actResume();return false;}
+  }catch(e){console.error('Could not open subscription panel',e);}
+  alert('لوحة التفعيل غير جاهزة بعد. حاول مرة أخرى.');
+  return false;
+}
+function aboutVersionCompare(a,b){
+  var aa=String(a||'0').split('.').map(function(x){return parseInt(x,10)||0;});
+  var bb=String(b||'0').split('.').map(function(x){return parseInt(x,10)||0;});
+  for(var i=0;i<Math.max(aa.length,bb.length);i++){if((aa[i]||0)!==(bb[i]||0))return (aa[i]||0)>(bb[i]||0)?1:-1;}
+  return 0;
+}
+function aboutApplyUpdate(){
+  try{var u=new URL(location.href);u.searchParams.set('v',String(Date.now()));location.replace(u.toString());}
+  catch(e){location.reload();}
+}
+async function aboutCheckForUpdate(){
+  var btn=document.getElementById('aboutUpdateButton');
+  var st=document.getElementById('aboutUpdateStatus');
+  if(btn){btn.disabled=true;btn.textContent='⏳ جارٍ البحث...';}
+  if(st)st.textContent='جارٍ التحقق من أحدث إصدار...';
+  try{
+    var r=await fetch('version.json?aboutcb='+Date.now(),{cache:'no-store',credentials:'omit'});
+    if(!r.ok)throw new Error('HTTP '+r.status);
+    var j=await r.json(), remote=String(j&&j.version||'');
+    if(!remote)throw new Error('version missing');
+    if(aboutVersionCompare(remote,APP_VERSION)>0){
+      if(st)st.textContent='يتوفر إصدار أحدث: '+remote;
+      if(btn){btn.disabled=false;btn.textContent='⬆️ تثبيت التحديث';btn.onclick=aboutApplyUpdate;}
+    }else{
+      if(st)st.textContent='أنت تستخدم أحدث إصدار ('+APP_VERSION+')';
+      if(btn){btn.disabled=false;btn.textContent='✅ التطبيق محدث';btn.onclick=aboutCheckForUpdate;}
+    }
+  }catch(e){
+    if(st)st.textContent='تعذر التحقق الآن — تحقق من اتصال الإنترنت.';
+    if(btn){btn.disabled=false;btn.textContent='🔄 إعادة المحاولة';btn.onclick=aboutCheckForUpdate;}
+  }
+}
+function aboutRefreshAccountPanel(){
+  var ver=document.getElementById('aboutVersionValue');
+  if(ver)ver.textContent=APP_VERSION||'—';
+  var info=null;
+  try{if(typeof window.__actGetInfo==='function')info=window.__actGetInfo();}catch(e){}
+  var sub=document.getElementById('aboutSubscriptionValue');
+  if(sub)sub.textContent=aboutSubscriptionText(info);
+  var btn=document.getElementById('aboutSubscriptionButton');
+  if(btn){
+    btn.textContent=(info&&info.trial)?'🔑 الانتقال إلى التفعيل':'⚙️ فتح لوحة الاشتراك';
+    btn.title=(info&&info.trial)?'افتح لوحة التفعيل لإكمال الاشتراك':'عرض حالة الاشتراك أو طلب التفعيل';
+  }
+}
+window.aboutOpenSubscription=aboutOpenSubscription;
+window.aboutCheckForUpdate=aboutCheckForUpdate;
+window.aboutRefreshAccountPanel=aboutRefreshAccountPanel;
+
 function renderAboutView(){
   var el=document.getElementById('view-about');
   if(!el)return;
@@ -18338,6 +18497,15 @@ function renderAboutView(){
         '<div class="ver">الإصدار '+(APP_VERSION||"1")+'</div>'+
       '</div>'+
 
+      '<div class="about-account-card" aria-label="حالة التطبيق والاشتراك">'+
+        '<div class="about-account-item"><div class="ai-icon">📦</div><span class="ai-label">إصدار التطبيق</span><strong class="ai-value" id="aboutVersionValue">'+(APP_VERSION||'—')+'</strong></div>'+
+        '<div class="about-account-item"><div class="ai-icon">🔐</div><span class="ai-label">الاشتراك الحالي</span><strong class="ai-value" id="aboutSubscriptionValue">جارٍ التحقق...</strong></div>'+
+        '<div class="about-account-item"><div class="ai-icon">📡</div><span class="ai-label">حالة البيانات</span><strong class="ai-value">محفوظة محلياً</strong></div>'+
+        '<div class="about-account-actions">'+
+          '<button type="button" id="aboutSubscriptionButton" class="about-subscribe-btn" onclick="aboutOpenSubscription()">🔑 الانتقال إلى التفعيل</button>'+
+          '<button type="button" id="aboutUpdateButton" class="about-update-btn" onclick="aboutCheckForUpdate()">🔄 البحث عن تحديث</button>'+
+          '<div id="aboutUpdateStatus" class="about-update-status" aria-live="polite">اضغط «البحث عن تحديث» للتحقق من النسخة الأخيرة.</div>'+
+        '</div>'+      '</div>'+
       '<div class="about-cta">'+
         '<div class="txt">'+
           '<h3>💬 هل تحتاج إلى مساعدة؟</h3>'+
@@ -18403,6 +18571,9 @@ function renderAboutView(){
         '<span style="color:#aaa">جميع الحقوق محفوظة © '+new Date().getFullYear()+'</span>'+
       '</div>'+
       '</div>';
+  aboutRefreshAccountPanel();
+  aboutCheckForUpdate();
+  if(!window.__aboutAccountTimer)window.__aboutAccountTimer=setInterval(aboutRefreshAccountPanel,60000);
 }
 window.renderAboutView = renderAboutView;
 window.waSupportLink = waSupportLink;
