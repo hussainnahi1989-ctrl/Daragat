@@ -1,0 +1,11 @@
+{
+  "rules": {
+    "activation": {
+      "accounts": {
+        ".read": true,
+        ".write": true,
+        ".indexOn": ["status","registeredAt","phone","schoolStage"]
+      }
+    }
+  }
+}
