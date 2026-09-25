@@ -409,6 +409,10 @@ function listenAccounts(){
   });
 }
 
+function subscriptionExpiry(plan){
+  const selected=normalizePlan(plan)||"monthly";
+  return selected==="permanent"?0:Date.now()+planDays(selected)*86400000;
+}
 function approve(email, plan, amount){
   const k=emailKey(email);
   const selected=normalizePlan(plan)||"monthly";
@@ -417,9 +421,33 @@ function approve(email, plan, amount){
     status:"approved",accountDisabled:false,disabledReason:null,
     plan:selected,planCode:selected,durationDays:days,
     approvedAt:firebase.database.ServerValue.TIMESTAMP,
-    expiresAt:Date.now()+days*86400000,
-    paidAmount:amount||""
-  });
+    expiresAt:subscriptionExpiry(selected),
+    paidAmount:amount||"",
+    planChangedAt:null,previousPlan:null,previousExpiresAt:null
+  }).then(()=>alert("✅ تم تفعيل الاشتراك: "+planLabel(selected)))
+    .catch(e=>alert("❌ تعذر حفظ التفعيل: "+e.message));
+}
+function changePlan(email, plan, amount){
+  const k=emailKey(email);
+  const selected=normalizePlan(plan);
+  if(!selected||!planDays(selected)){alert("اختر مدة اشتراك صحيحة");return;}
+  const current=allAccounts[k]||{};
+  const oldPlan=normalizePlan(current.plan||current.planCode)||"monthly";
+  const oldExpiry=current.expiresAt||0;
+  if(oldPlan===selected && selected!=="permanent" && oldExpiry>Date.now()){
+    if(!confirm("الاشتراك مضبوط حالياً على "+planLabel(selected)+". هل تريد إعادة بدء مدته من الآن؟"))return;
+  }else if(!confirm("تغيير اشتراك العميل من "+planLabel(oldPlan)+" إلى "+planLabel(selected)+"؟\nستبدأ المدة الجديدة من الآن، ويمكن تغييرها لاحقاً في أي وقت."))return;
+  const patch={
+    status:"approved",accountDisabled:false,disabledReason:null,
+    plan:selected,planCode:selected,durationDays:planDays(selected),
+    expiresAt:subscriptionExpiry(selected),
+    planChangedAt:firebase.database.ServerValue.TIMESTAMP,
+    previousPlan:oldPlan,previousExpiresAt:oldExpiry
+  };
+  if(amount!==undefined && String(amount).trim()!=="")patch.paidAmount=amount;
+  db.ref("activation/accounts/"+k).update(patch)
+    .then(()=>alert("✅ تم تغيير مدة الاشتراك إلى: "+planLabel(selected)))
+    .catch(e=>alert("❌ تعذر تغيير مدة الاشتراك: "+e.message));
 }
 function approveTransfer(email){
   if(!confirm("✅ الموافقة على نقل الاشتراك للجهاز الجديد؟\nسيتم إيقاف الجهاز القديم."))return;
@@ -647,12 +675,12 @@ function renderTable(list,title){
 
     const currentPlan=normalizePlan(r.plan||r.planCode)||"monthly";
     const extendCell=isApproved?
-      `<select class="inline" id="ext-${esc(r.emailKey)}">
+      `<select class="inline" id="chg-${esc(r.emailKey)}">
          <option value="weekly" ${currentPlan==="weekly"?"selected":""}>أسبوع</option><option value="monthly" ${currentPlan==="monthly"?"selected":""}>شهر</option>
          <option value="yearly" ${currentPlan==="yearly"?"selected":""}>سنة</option>
          <option value="permanent" ${currentPlan==="permanent"?"selected":""}>دائم</option>
        </select>
-       <button class="btn warn small" onclick="approve('${emEsc}',document.getElementById('ext-${esc(r.emailKey)}').value,document.getElementById('pa-${esc(r.emailKey)}').value)">↻ تجديد</button>`:"";
+       <button class="btn warn small" onclick="changePlan('${emEsc}',document.getElementById('chg-${esc(r.emailKey)}').value,document.getElementById('pa-${esc(r.emailKey)}').value)">⏱ تغيير المدة</button>`:"";
 
     const pwCell = pw
       ? `<span class="code" dir="ltr" onclick="navigator.clipboard&&navigator.clipboard.writeText('${esc(pw).replace(/'/g,"\\'")}').then(()=>this.textContent='✅ تم النسخ',()=>{});this.style.background='#c8e6c9';setTimeout(()=>{this.style.background='#f6f8fa';this.textContent='${esc(pw).replace(/'/g,"\\'")}'},1200)" style="cursor:pointer" title="اضغط للنسخ">${esc(pw)}</span>`
@@ -700,7 +728,14 @@ function renderTable(list,title){
 
     let planBlock;
     if(isApproved){
-      planBlock=`<b>الخطة:</b><span><span class="badge-plan">${planLabel(r.plan||r.planCode)}</span></span>`;
+      planBlock=`<b>الخطة الحالية:</b><span><span class="badge-plan">${planLabel(r.plan||r.planCode)}</span></span>
+        <b>تغيير المدة:</b><span>
+          <select class="inline" id="chgm-${esc(r.emailKey)}">
+            <option value="weekly" ${currentPlan==="weekly"?"selected":""}>أسبوع</option><option value="monthly" ${currentPlan==="monthly"?"selected":""}>شهر</option>
+            <option value="yearly" ${currentPlan==="yearly"?"selected":""}>سنة</option><option value="permanent" ${currentPlan==="permanent"?"selected":""}>دائم</option>
+          </select>
+          <button class="btn warn small" onclick="changePlan('${emEsc}',document.getElementById('chgm-${esc(r.emailKey)}').value,document.getElementById('pam-${esc(r.emailKey)}').value)">⏱ تطبيق</button>
+        </span>`;
     }else{
       planBlock=`<b>التفعيل:</b><span>
         <select class="inline" id="plm-${esc(r.emailKey)}">
@@ -728,8 +763,6 @@ function renderTable(list,title){
         <b>سُجّل:</b><span>${fmtDate(r.registeredAt)}</span>
         ${planBlock}
         <b>المبلغ:</b><span><input type="text" id="pam-${esc(r.emailKey)}" data-paid-for="${email}" value="${esc(r.paidAmount||"")}" placeholder="المبلغ" class="inline" dir="ltr" style="width:90px" /></span>
-        ${isApproved?`<b>تجديد:</b><span><select class="inline" id="extm-${esc(r.emailKey)}"><option value="weekly" ${currentPlan==="weekly"?"selected":""}>أسبوع</option><option value="monthly" ${currentPlan==="monthly"?"selected":""}>شهر</option><option value="yearly" ${currentPlan==="yearly"?"selected":""}>سنة</option><option value="permanent" ${currentPlan==="permanent"?"selected":""}>دائم</option></select>
-          <button class="btn warn small" onclick="approve('${emEsc}',document.getElementById('extm-${esc(r.emailKey)}').value,document.getElementById('pam-${esc(r.emailKey)}').value)">↻</button></span>`:""}
       </div>
       <div class="actions">
         ${isReset?`<button class="btn violet" onclick="resetPassword('${emEsc}')">🔑 إرسال رمز الاستعادة</button>`:
