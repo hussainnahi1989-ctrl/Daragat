@@ -5967,6 +5967,9 @@ if (typeof module !== 'undefined' && module.exports) { module.exports = QRCodeLi
 <meta name="apple-mobile-web-app-title" content="ادارة المدرسه والامتحانات">
 <link rel="apple-touch-icon" href="icon-192.png">
 <meta name="theme-color" content="#571127">
+<style id="schoolInfoStyles">
+.school-info-shell{max-width:1180px;margin:0 auto;padding-bottom:24px}.school-info-shell .module-head{align-items:center}.school-info-tabs{display:flex;gap:8px;flex-wrap:wrap;margin:0 0 16px;padding:6px;background:var(--surface,#fff);border:1px solid var(--border,#ead9c9);border-radius:14px;box-shadow:0 5px 18px #57112712}.school-info-tabs button{border:0;border-radius:10px;padding:12px 18px;background:transparent;color:var(--text,#321521);font-family:inherit;font-weight:800;cursor:pointer}.school-info-tabs button.active{background:linear-gradient(135deg,#7a0e2e,#a8234d);color:#fff;box-shadow:0 5px 12px #7a0e2e30}.school-info-panel{background:var(--surface,#fff);border:1px solid var(--border,#ead9c9);border-radius:18px;padding:18px;box-shadow:0 8px 26px #57112712}.school-info-panel-head{display:flex;justify-content:space-between;gap:16px;align-items:center;border-bottom:1px solid var(--border,#ead9c9);padding:2px 2px 15px;margin-bottom:14px}.school-info-panel-head h3{margin:0 0 5px;color:var(--accent,#7a0e2e);font-size:20px}.school-info-panel-head p{margin:0;color:var(--muted,#806c71);font-size:13px}.school-info-total,.school-info-badge{min-width:90px;text-align:center;border-radius:14px;padding:9px 13px;background:linear-gradient(135deg,#fff4ce,#f5df9a);color:#6a4211;border:1px solid #d4af37}.school-info-total small{display:block;font-weight:800}.school-info-total strong{display:block;font-size:25px;line-height:1.2}.school-info-actions,.school-info-form-actions{display:flex;gap:9px;align-items:center;flex-wrap:wrap;margin:8px 0 16px}.school-info-actions .material-btn,.school-info-form-actions .material-btn{min-height:40px}.school-info-actions .accent{background:linear-gradient(135deg,#d4af37,#b78613);color:#351f05}.school-info-table-wrap{overflow:auto;border:1px solid #e8d9c8;border-radius:12px}.school-info-table{width:100%;border-collapse:collapse;min-width:580px}.school-info-table th,.school-info-table td{padding:10px 9px;border-bottom:1px solid #eadfce;text-align:center}.school-info-table thead th{background:linear-gradient(135deg,#69102b,#8d1b3f);color:#fff;white-space:nowrap}.school-info-table tbody tr:nth-child(even){background:#fffaf1}.school-info-table tbody tr:hover{background:#fff4d9}.school-info-table tfoot th{background:#f8ebc1;color:#5b3910}.school-info-table .si-seq{width:55px;color:#8a6a30;font-weight:900}.school-info-table .si-item-name{text-align:right;font-weight:700;min-width:230px;outline:none}.school-info-table .si-item-name:focus{box-shadow:inset 0 -2px #d4af37;background:#fffdf4}.school-info-table .si-count{width:105px;text-align:center;padding:8px;border:1px solid #d9c7ad;border-radius:8px;background:#fff;color:inherit;font:inherit}.school-info-add-bottom{text-align:center;padding-top:12px}.school-info-add-bottom .material-btn{font-size:12px;padding:8px 14px;min-height:36px}.si-delete{border:0;background:#ffe7e7;color:#b4232e;border-radius:7px;padding:6px 9px;cursor:pointer;font-weight:900}.school-info-form-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}.si-field{display:flex;flex-direction:column;gap:7px;font-weight:800;color:var(--text,#321521)}.si-field>span{font-size:13px;color:#6e3c4c}.si-field input,.si-field select{width:100%;min-height:43px;padding:10px 12px;border:1px solid #d9c7ad;border-radius:10px;background:var(--input,#fff);color:inherit;font:inherit;outline:none}.si-field input:focus,.si-field select:focus{border-color:#b78613;box-shadow:0 0 0 3px #d4af3730}.si-location{grid-column:1/-1}.si-location-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}.si-location-grid label{display:flex;flex-direction:column;gap:5px;font-size:12px;color:#856d73}.si-save-note{color:#517b45;font-size:12px;font-weight:800}.school-info-form-actions{border-top:1px solid var(--border,#ead9c9);padding-top:15px;margin-top:18px;margin-bottom:0}@media(max-width:700px){.school-info-panel{padding:12px;border-radius:14px}.school-info-panel-head{align-items:flex-start}.school-info-panel-head h3{font-size:17px}.school-info-total{min-width:72px}.school-info-form-grid{grid-template-columns:1fr}.si-location{grid-column:auto}.si-location-grid{grid-template-columns:1fr}.school-info-tabs button{flex:1;padding:11px 8px;font-size:12px}.school-info-actions .material-btn,.school-info-form-actions .material-btn{flex:1;min-width:135px}.school-info-table{min-width:510px}.school-info-table th,.school-info-table td{padding:8px 6px}}
+</style>
 <script>if('serviceWorker' in navigator){window.addEventListener('load',function(){navigator.serviceWorker.register('sw.js').catch(function(){});});}</script>
 </head>
 <body>
@@ -6035,6 +6038,7 @@ if (typeof module !== 'undefined' && module.exports) { module.exports = QRCodeLi
     <button type="button" data-nav="attendance" onclick="closeGlobalNav();openAttendanceModule()"><span>📋</span>الغياب</button>
     <button type="button" data-nav="timetable" onclick="closeGlobalNav();openTimetableModule()"><span>🗓️</span>جدول الحصص</button>
     <button type="button" data-nav="properties" onclick="closeGlobalNav();openPropertiesModule()"><span>🏫</span>الممتلكات</button>
+    <button type="button" data-nav="schoolinfo" onclick="closeGlobalNav();openSchoolInfoModule()"><span>🏛️</span>معلومات عن المدرسة</button>
     <button type="button" data-nav="care" onclick="closeGlobalNav();openCareModule()"><span>🤍</span>الرعاية والأيتام</button>
     <button type="button" data-nav="parents" onclick="closeGlobalNav();openParentsModule()"><span>👨‍👩‍👧</span>أولياء الأمور</button>
     <button type="button" data-nav="records" onclick="closeGlobalNav();openRecordsModule()"><span>📑</span>القيود</button>
@@ -6116,6 +6120,7 @@ if (typeof module !== 'undefined' && module.exports) { module.exports = QRCodeLi
 <div class="view wide" id="view-staff"></div>
 <div class="view wide" id="view-attendance"></div>
 <div class="view wide" id="view-properties"></div>
+<div class="view wide" id="view-schoolinfo"></div>
 <div class="view wide" id="view-care"></div>
 <div class="view wide" id="view-parents"></div>
 <div class="view wide" id="view-timetable"></div>
@@ -7502,6 +7507,7 @@ function navSectionForView(viewId){
   if(viewId==='view-staff') return 'staff';
   if(viewId==='view-attendance') return 'attendance';
   if(viewId==='view-properties') return 'properties';
+  if(viewId==='view-schoolinfo') return 'schoolinfo';
   if(viewId==='view-care') return 'care';
   if(viewId==='view-records') return 'records';
   if(viewId==='view-notes') return 'notes';
@@ -7798,6 +7804,9 @@ function restoreEntry(entry){
     restoreAttendanceView(entry.meta||{});
   } else if(entry.id === 'view-properties'){
     renderPropertiesView();
+  } else if(entry.id === 'view-schoolinfo'){
+    SCHOOL_INFO_TAB=(entry.meta&&entry.meta.tab)==='form'?'form':'stats';
+    renderSchoolInfoView();
   } else if(entry.id === 'view-care'){
     restoreCareView(entry.meta||{});
   } else if(entry.id === 'view-parents'){
@@ -9926,6 +9935,7 @@ function dashMenuItems(){
     ['👥','الملاك','المعلمون والموظفون','openStaffModule()','linear-gradient(135deg,#6a1b9a,#ab47bc)'],
     ['📋','الغياب','التسجيل والإحصاءات','openAttendanceModule()','linear-gradient(135deg,#00695c,#26a69a)'],
     ['🏛','الممتلكات','عهدة المدرسة','openPropertiesModule()','linear-gradient(135deg,#ef6c00,#ffa726)'],
+    ['🏫','معلومات عن المدرسة','إحصاء ومعلومات رسمية','openSchoolInfoModule()','linear-gradient(135deg,#7a0e2e,#d4af37)'],
     ['🤍','الرعاية والأيتام','المشمولون بالرعاية','openCareModule()','linear-gradient(135deg,#ad1457,#ec407a)'],
     ['👨‍👩‍👧','أولياء الأمور','أرقام التواصل واتساب واتصال','openParentsModule()','linear-gradient(135deg,#1565c0,#42a5f5)'],
     ['🗓️','جدول الحصص','استيراد ولصق وصورة ذكية','openTimetableModule()','linear-gradient(135deg,#00695c,#26a69a)'],
@@ -9960,12 +9970,12 @@ function renderDashboardLauncher(){
 function renderCapsuleMenu(el){
   const items=dashMenuItems();
   const groups=[
-    {title:'📊 التقارير والكشوفات',indices:[0,20,19]},
-    {title:'🎓 الطلاب والتعليم',indices:[1,2,3,4,18]},
-    {title:'👥 الموارد البشرية',indices:[5,16]},
-    {title:'🏫 الإدارة اليومية',indices:[6,7,8,9,10,11,14]},
-    {title:'💰 المالية والتواصل',indices:[12,13,17]},
-    {title:'⚙️ النظام والأدوات',indices:[15]}
+    {title:'📊 التقارير والكشوفات',indices:[0,21,20]},
+    {title:'🎓 الطلاب والتعليم',indices:[1,2,3,4,19]},
+    {title:'👥 الموارد البشرية',indices:[5,17]},
+    {title:'🏫 الإدارة اليومية',indices:[6,7,8,9,10,11,12,15]},
+    {title:'💰 المالية والتواصل',indices:[13,14,18]},
+    {title:'⚙️ النظام والأدوات',indices:[16]}
   ];
   let html='<div class="dash-capsules-wrap"><div class="dash-capsules-head"><h1>'+escapeHtml((APP.school&&APP.school.name)||'القائمة الرئيسية')+'</h1><p>اختر القسم للبدء</p></div>';
   groups.forEach(function(gr){
@@ -10017,7 +10027,8 @@ function renderDashboard(){
       '<button onclick="closeDashboardSidebar();openAttendanceModule()"><span class="dni">📋</span>الغياب</button>'+
       '<button onclick="closeDashboardSidebar();openTimetableModule()"><span class="dni">🗓️</span>جدول الحصص</button>'+
       '<button onclick="closeDashboardSidebar();openPropertiesModule()"><span class="dni">🏫</span>الممتلكات</button>'+
-      '<button onclick="closeDashboardSidebar();openCareModule()"><span class="dni">🤍</span>الرعاية والأيتام</button>'+
+      '<button onclick="closeDashboardSidebar();openSchoolInfoModule()"><span class="dni">🏛️</span>معلومات عن المدرسة</button>'+
+      '<button onclick="closeDashboardSidebar();openCareModule()"><span class="dni">🤍</span>الرعاية والأيتام</button>'+ 
       '<button onclick="closeDashboardSidebar();openParentsModule()"><span class="dni">👨‍👩‍👧</span>أولياء الأمور</button>'+
       '<button onclick="closeDashboardSidebar();openRecordsModule()"><span class="dni">📑</span>القيود</button>'+
       '<button onclick="closeDashboardSidebar();openNotesModule()"><span class="dni">📝</span>الملاحظات</button>'+
@@ -11157,6 +11168,90 @@ function updateProperty(id,field,value){const item=PROPERTIES_STATE.items.find(f
 function deleteProperty(id){if(!confirm('حذف هذه المادة؟'))return;PROPERTIES_STATE.items=PROPERTIES_STATE.items.filter(function(x){return x.id!==id;});savePropertiesState();renderPropertiesView();}
 function printProfessionalTable(table,title,subtitle,landscape){if(!table)return;const clone=table.cloneNode(true);clone.querySelectorAll('select').forEach(function(sel){const span=document.createElement('span');span.textContent=sel.value;span.className=sel.value==='تالف'||sel.value==='لا'?'status-absent':'status-leave';sel.replaceWith(span);});const lastHead=clone.querySelector('thead th:last-child');if(lastHead&&/حذف|أدوات/.test(lastHead.textContent)){clone.querySelectorAll('tr').forEach(function(row){if(row.cells.length)row.deleteCell(row.cells.length-1);});}const logo=APP.school.logo?'<img src="'+APP.school.logo+'">':'شعار المدرسة',frame=document.createElement('iframe'),pw=landscape?'297mm':'210mm',ph=landscape?'210mm':'297mm';frame.style.cssText='position:fixed;left:-10000px;top:0;width:'+pw+';height:'+ph+';border:0';document.body.appendChild(frame);const doc=frame.contentDocument;doc.open();doc.write('<html dir="rtl"><head><meta charset="UTF-8"><style>'+printThemeRootCss()+'@page{size:'+pw+' '+ph+';margin:8mm}*{box-sizing:border-box;-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}body{margin:0;font-family:Tahoma}.page{position:relative;min-height:'+(landscape?'194mm':'279mm')+';border:1mm double var(--list-accent);padding:3mm 3mm 14mm}.head{display:grid;grid-template-columns:25mm 1fr 25mm;align-items:center;background:linear-gradient(125deg,var(--list-dark),var(--list-mid),var(--list-accent));color:#fff;padding:4mm 6mm;border-bottom:1.5mm solid var(--list-accent)}.logo{width:20mm;height:20mm;border-radius:50%;background:#fff;overflow:hidden}.logo img{width:100%;height:100%;object-fit:cover}.title{text-align:center}.title h1{margin:0;font-size:18px}.title h2{margin:1mm 0;font-size:14px}table{width:100%;border-collapse:collapse;margin-top:3mm;font-size:'+(landscape?'9':'12')+'px}thead{display:table-header-group}th,td{border:.3mm solid #8fa0aa;padding:2mm;text-align:center}th{background:#00695c;color:#fff;font-weight:900}.status-absent{color:#d00000;font-weight:900}.status-leave{color:#16823b;font-weight:900}.footer{position:absolute;right:0;left:0;bottom:0;padding:3mm 6mm;background:#fff3b8;border-top:.6mm solid #d4af37;display:flex;justify-content:space-between;font-weight:900;font-size:10px}</style><style>'+printThemeRootCss()+'</style></head><body><main class="page"><header class="head"><div class="logo">'+logo+'</div><div class="title"><h1>'+escapeHtml(APP.school.name)+'</h1><h2>'+escapeHtml(title)+'</h2><div>'+escapeHtml(subtitle||'')+'</div></div><div></div></header>'+clone.outerHTML+'<footer class="footer"><span>مدير المدرسة: '+escapeHtml(APP.school.principal||'—')+'</span><span>'+escapeHtml(title)+'</span></footer></main></body></html>');doc.close();setTimeout(function(){printIframeNow(frame);},650);setTimeout(function(){frame.remove();},120000);}
 function printProperties(){printProfessionalTable(document.querySelector('.properties-table'),'سجل الممتلكات','المواد والأجهزة المدرسية',false);}
+
+// ================= School information module =================
+const SCHOOL_INFO_KEY='schoolResultsSchoolInfo_v1';
+const SCHOOL_INFO_DEFAULT_ITEMS=[
+  ['عدد غرف الإدارة','عدد غرف الإدارة'],['عدد الصفوف الدراسية','عدد الصفوف الدراسية'],['عدد المخازن','عدد المخازن'],
+  ['عدد الرحلات','عدد الرحلات'],['عدد كراسي المكتبة','عدد كراسي المكتبة'],['الصبورات','الصبورات'],
+  ['جهاز حاسوب','جهاز حاسوب'],['طابعة','طابعة'],['دولاب','دولاب'],['ميز مكتبي','ميز مكتبي'],
+  ['بند ورق','بند ورق'],['قاصه','قاصه'],['ماتور ماء','ماتور ماء'],['خزان ماء','خزان ماء'],
+  ['عدد الصحيات','عدد الصحيات'],['عدد الساحات الرياضية','عدد الساحات الرياضية'],['الحانوت','الحانوت'],
+  ['كرة قدم','كرة قدم'],['كرة سلة','كرة سلة'],['كرة طائرة','كرة طائرة'],['منضدة','منضدة'],['كرة يد','كرة يد']
+].map(function(x){return {id:x[0],item:x[1],count:0,fixed:true};});
+function schoolInfoLoad(){
+  try{return JSON.parse(localStorage.getItem(SCHOOL_INFO_KEY)||'{}')||{};}catch(e){return {};}
+}
+function schoolInfoSave(){
+  try{localStorage.setItem(SCHOOL_INFO_KEY,JSON.stringify(SCHOOL_INFO_STATE));}catch(e){alert('تعذر حفظ معلومات المدرسة.');}
+}
+let SCHOOL_INFO_STATE=schoolInfoLoad();
+if(!Array.isArray(SCHOOL_INFO_STATE.items))SCHOOL_INFO_STATE.items=SCHOOL_INFO_DEFAULT_ITEMS.map(function(x){return Object.assign({},x);});
+if(!SCHOOL_INFO_STATE.details)SCHOOL_INFO_STATE.details={};
+const SCHOOL_INFO_DEFAULT_DETAILS={
+  buildingMaterial:'طابوق',schoolArea:'',longitude:'',latitude:'',ownership:'عائدة لوزارة التربية',
+  totalTeachers:1,statisticalNumber:'',permanentTeachers:1,contractTeachers:1,specialEducation:'لا',
+  specialClasses:1,deputies:1,floors:1
+};
+Object.keys(SCHOOL_INFO_DEFAULT_DETAILS).forEach(function(k){if(SCHOOL_INFO_STATE.details[k]===undefined)SCHOOL_INFO_STATE.details[k]=SCHOOL_INFO_DEFAULT_DETAILS[k];});
+function openSchoolInfoModule(){SCHOOL_INFO_TAB=SCHOOL_INFO_TAB||'stats';renderSchoolInfoView();navigateTo('view-schoolinfo',{tab:SCHOOL_INFO_TAB});}
+let SCHOOL_INFO_TAB='stats';
+function schoolInfoJs(v){return String(v||'').replace(/\\/g,'\\\\').replace(/'/g,"\\'");}
+function schoolInfoOptions(list,value){return list.map(function(v){return '<option value="'+escapeHtml(v)+'"'+(String(v)===String(value)?' selected':'')+'>'+escapeHtml(v)+'</option>';}).join('');}
+function schoolInfoNumbers(min,max,value){let h='';for(let i=min;i<=max;i++)h+='<option value="'+i+'"'+(Number(value)===i?' selected':'')+'>'+toArabicDigits(String(i))+'</option>';return h;}
+function schoolInfoSetTab(tab){SCHOOL_INFO_TAB=tab==='form'?'form':'stats';renderSchoolInfoView();navigateTo('view-schoolinfo',{tab:SCHOOL_INFO_TAB},true);}
+function schoolInfoSetItemName(id,value){const it=SCHOOL_INFO_STATE.items.find(function(x){return x.id===id;});if(!it)return;it.item=String(value||'').trim()||'مادة جديدة';schoolInfoSave();}
+function schoolInfoSetCount(id,value){const it=SCHOOL_INFO_STATE.items.find(function(x){return x.id===id;});if(!it)return;it.count=Math.max(0,parseInt(value,10)||0);schoolInfoSave();const total=document.getElementById('schoolInfoTotal');if(total)total.textContent=toArabicDigits(String(SCHOOL_INFO_STATE.items.reduce(function(n,x){return n+(Number(x.count)||0);},0)));}
+function schoolInfoAddItem(){const name=prompt('اكتب اسم المادة الجديدة:','مادة جديدة');if(name===null)return;const clean=String(name).trim();if(!clean){alert('اكتب اسم المادة أولاً.');return;}SCHOOL_INFO_STATE.items.push({id:'custom_'+Date.now(),item:clean,count:0,fixed:false});schoolInfoSave();renderSchoolInfoView();}
+function schoolInfoDeleteItem(id){if(!confirm('حذف هذه المادة من الإحصاء؟'))return;SCHOOL_INFO_STATE.items=SCHOOL_INFO_STATE.items.filter(function(x){return x.id!==id;});schoolInfoSave();renderSchoolInfoView();}
+function schoolInfoSetDetail(key,value){SCHOOL_INFO_STATE.details[key]=String(value==null?'':value);schoolInfoSave();if(key==='specialEducation')renderSchoolInfoBody();}
+function schoolInfoDetailInput(key,value){SCHOOL_INFO_STATE.details[key]=String(value==null?'':value);schoolInfoSave();}
+function schoolInfoStatsHtml(){
+  const rows=SCHOOL_INFO_STATE.items.map(function(it,i){const id=schoolInfoJs(it.id);return '<tr><td class="si-seq">'+toArabicDigits(String(i+1))+'</td><td contenteditable="true" class="si-item-name" onblur="schoolInfoSetItemName(\''+id+'\',this.textContent)">'+escapeHtml(it.item||'')+'</td><td><input class="si-count" type="number" min="0" inputmode="numeric" value="'+Number(it.count||0)+'" onchange="schoolInfoSetCount(\''+id+'\',this.value)"></td><td>'+(it.fixed?'':'<button type="button" class="si-delete" onclick="schoolInfoDeleteItem(\''+id+'\')" title="حذف المادة">✕</button>')+'</td></tr>';}).join('');
+  const total=SCHOOL_INFO_STATE.items.reduce(function(n,x){return n+(Number(x.count)||0);},0);
+  return '<div class="school-info-panel"><div class="school-info-panel-head"><div><h3>📊 إحصاء ممتلكات ومرافق المدرسة</h3><p>أدخل العدد أمام كل مادة، ويمكنك إضافة مادة جديدة في نهاية الجدول.</p></div><div class="school-info-total"><small>الإجمالي</small><strong id="schoolInfoTotal">'+toArabicDigits(String(total))+'</strong></div></div><div class="school-info-actions"><button type="button" class="material-btn secondary" onclick="schoolInfoPrint(\'stats\')">🖨️ طباعة الإحصاء</button><button type="button" class="material-btn" onclick="schoolInfoPdf(\'stats\')">📄 تصدير PDF</button></div><div class="school-info-table-wrap"><table id="schoolInfoStatsTable" class="school-info-table"><thead><tr><th>ت</th><th>المادة</th><th>العدد</th><th>إجراء</th></tr></thead><tbody>'+rows+'</tbody><tfoot><tr><th colspan="2">إجمالي الأعداد</th><th>'+toArabicDigits(String(total))+'</th><th>—</th></tr></tfoot></table></div><div class="school-info-add-bottom"><button type="button" class="material-btn accent" onclick="schoolInfoAddItem()">＋ إضافة مادة</button></div></div>';
+}
+function schoolInfoFormHtml(){
+  const d=SCHOOL_INFO_STATE.details;
+  return '<div class="school-info-panel"><div class="school-info-panel-head"><div><h3>📝 استمارة معلومات المدرسة</h3><p>املأ الحقول الرسمية ثم احفظها محلياً على هذا الجهاز.</p></div><span class="school-info-badge">بيانات المدرسة</span></div><div class="school-info-form-grid">'+
+    '<label class="si-field"><span>مادة البناء</span><select onchange="schoolInfoSetDetail(\'buildingMaterial\',this.value)">'+schoolInfoOptions(['طابوق','بلوك','حجر','كرفان'],d.buildingMaterial)+'</select></label>'+
+    '<label class="si-field"><span>مساحة المدرسة</span><input type="text" inputmode="decimal" placeholder="مثال: 2500 م²" value="'+escapeHtml(d.schoolArea||'')+'" oninput="schoolInfoDetailInput(\'schoolArea\',this.value)"></label>'+
+    '<div class="si-field si-location"><span>موقع المدرسة</span><div class="si-location-grid"><label>خط الطول<input type="text" dir="ltr" inputmode="decimal" placeholder="Longitude" value="'+escapeHtml(d.longitude||'')+'" oninput="schoolInfoDetailInput(\'longitude\',this.value)"></label><label>دوائر العرض<input type="text" dir="ltr" inputmode="decimal" placeholder="Latitude" value="'+escapeHtml(d.latitude||'')+'" oninput="schoolInfoDetailInput(\'latitude\',this.value)"></label></div></div>'+
+    '<label class="si-field"><span>ملكية المدرسة</span><select onchange="schoolInfoSetDetail(\'ownership\',this.value)">'+schoolInfoOptions(['عائدة لوزارة التربية','مستأجرة','هبة'],d.ownership)+'</select></label>'+
+    '<label class="si-field"><span>عدد المعلمين/المدرسين/المعلمات/المدرسات</span><select onchange="schoolInfoSetDetail(\'totalTeachers\',this.value)">'+schoolInfoNumbers(1,100,d.totalTeachers)+'</select></label>'+
+    '<label class="si-field"><span>الرقم الإحصائي للمدرسة</span><input type="text" dir="ltr" value="'+escapeHtml(d.statisticalNumber||'')+'" placeholder="اكتب الرقم الإحصائي" oninput="schoolInfoDetailInput(\'statisticalNumber\',this.value)"></label>'+
+    '<label class="si-field"><span>عدد معلمي الملاك الدائم</span><select onchange="schoolInfoSetDetail(\'permanentTeachers\',this.value)">'+schoolInfoNumbers(1,100,d.permanentTeachers)+'</select></label>'+
+    '<label class="si-field"><span>عدد معلمي العقد</span><select onchange="schoolInfoSetDetail(\'contractTeachers\',this.value)">'+schoolInfoNumbers(1,100,d.contractTeachers)+'</select></label>'+
+    '<label class="si-field"><span>هل توجد تربية خاصة؟</span><select onchange="schoolInfoSetDetail(\'specialEducation\',this.value)">'+schoolInfoOptions(['نعم','لا'],d.specialEducation)+'</select></label>'+
+    '<label class="si-field"><span>عدد صفوف التربية الخاصة</span><select onchange="schoolInfoSetDetail(\'specialClasses\',this.value)">'+schoolInfoNumbers(1,100,d.specialClasses)+'</select></label>'+
+    '<label class="si-field"><span>عدد المعاونين</span><select onchange="schoolInfoSetDetail(\'deputies\',this.value)">'+schoolInfoNumbers(1,10,d.deputies)+'</select></label>'+
+    '<label class="si-field"><span>عدد طوابق المدرسة</span><select onchange="schoolInfoSetDetail(\'floors\',this.value)">'+schoolInfoNumbers(1,6,d.floors)+'</select></label>'+
+    '</div><div class="school-info-form-actions"><button type="button" class="material-btn secondary" onclick="schoolInfoPrint(\'form\')">🖨️ طباعة الاستمارة</button><button type="button" class="material-btn" onclick="schoolInfoPdf(\'form\')">📄 تصدير الاستمارة PDF</button><span class="si-save-note">✅ تُحفظ التغييرات تلقائياً على الجهاز</span></div></div>';
+}
+function renderSchoolInfoBody(){const el=document.getElementById('schoolInfoBody');if(el)el.innerHTML=SCHOOL_INFO_TAB==='form'?schoolInfoFormHtml():schoolInfoStatsHtml();}
+function renderSchoolInfoView(){
+  const el=document.getElementById('view-schoolinfo');if(!el)return;
+  el.innerHTML='<div class="module-shell school-info-shell"><div class="module-head"><div class="module-title"><span class="mi">🏛️</span><div><h2>معلومات عن المدرسة</h2><p>إحصاء المدرسة واستمارتها الرسمية في مكان واحد</p></div></div><button class="material-btn secondary" onclick="appGoBack()">رجوع خطوة</button></div><div class="school-info-tabs"><button type="button" class="'+(SCHOOL_INFO_TAB==='stats'?'active':'')+'" onclick="schoolInfoSetTab(\'stats\')">📊 الإحصاء</button><button type="button" class="'+(SCHOOL_INFO_TAB==='form'?'active':'')+'" onclick="schoolInfoSetTab(\'form\')">📝 استمارة معلومات المدرسة</button></div><div id="schoolInfoBody"></div></div>';
+  renderSchoolInfoBody();
+}
+function schoolInfoPrintableHtml(kind){
+  const logo=APP.school.logo?'<img src="'+escapeHtml(APP.school.logo)+'" alt="">':'<span class="print-logo-text">شعار المدرسة</span>';
+  const head='<header class="si-print-head"><div class="si-print-logo">'+logo+'</div><div><h1>'+escapeHtml(APP.school.name||'المدرسة')+'</h1><h2>معلومات عن المدرسة</h2><small>'+escapeHtml(APP.school.principal?'مدير المدرسة: '+APP.school.principal:'')+'</small></div><div class="si-print-mark">🏛️</div></header><div class="si-print-gold"></div>';
+  if(kind==='stats'){
+    const rows=SCHOOL_INFO_STATE.items.map(function(it,i){return '<tr><td>'+toArabicDigits(String(i+1))+'</td><td>'+escapeHtml(it.item||'')+'</td><td>'+toArabicDigits(String(Number(it.count)||0))+'</td></tr>';}).join('');
+    const total=SCHOOL_INFO_STATE.items.reduce(function(n,x){return n+(Number(x.count)||0);},0);
+    return '<section class="si-print-page">'+head+'<div class="si-print-subtitle">إحصاء ممتلكات ومرافق المدرسة</div><table class="si-print-table"><thead><tr><th>التسلسل</th><th>المادة</th><th>العدد</th></tr></thead><tbody>'+rows+'</tbody><tfoot><tr><th colspan="2">إجمالي الأعداد</th><th>'+toArabicDigits(String(total))+'</th></tr></tfoot></table><div class="si-print-sign"><span>مسؤول الإحصاء: __________________</span><span>مدير المدرسة: __________________</span></div></section>';
+  }
+  const d=SCHOOL_INFO_STATE.details, row=function(label,value){return '<div class="si-print-row"><b>'+escapeHtml(label)+'</b><span>'+escapeHtml(String(value==null||value===''?'—':value))+'</span></div>';};
+  return '<section class="si-print-page">'+head+'<div class="si-print-subtitle">استمارة معلومات المدرسة</div><div class="si-print-form">'+row('مادة البناء',d.buildingMaterial)+row('مساحة المدرسة',d.schoolArea?d.schoolArea+' م²':'—')+row('خط الطول',d.longitude)+row('دوائر العرض',d.latitude)+row('ملكية المدرسة',d.ownership)+row('عدد المعلمين/المدرسين/المعلمات/المدرسات',d.totalTeachers)+row('الرقم الإحصائي للمدرسة',d.statisticalNumber)+row('عدد معلمي الملاك الدائم',d.permanentTeachers)+row('عدد معلمي العقد',d.contractTeachers)+row('هل توجد تربية خاصة؟',d.specialEducation)+row('عدد صفوف التربية الخاصة',d.specialEducation==='لا'?'—':d.specialClasses)+row('عدد المعاونين',d.deputies)+row('عدد طوابق المدرسة',d.floors)+'</div><div class="si-print-sign"><span>مسؤول المعلومات: __________________</span><span>مدير المدرسة: __________________</span></div></section>';
+}
+function schoolInfoCreatePrintFrame(kind){
+  const frame=document.createElement('iframe');frame.style.cssText='position:fixed;left:-10000px;top:0;width:210mm;height:297mm;border:0;background:#fff';document.body.appendChild(frame);
+  const css=(typeof printThemeRootCss==='function'?printThemeRootCss():'')+'@page{size:A4 portrait;margin:9mm}*{box-sizing:border-box;-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}html,body{margin:0;padding:0;background:#fff;color:#321521;font-family:Tahoma,"Arial",sans-serif;direction:rtl}.si-print-page{width:100%;min-height:277mm;border:1.2mm double var(--list-accent);padding:0 7mm 18mm;position:relative}.si-print-head{min-height:30mm;margin:0 -7mm;display:grid;grid-template-columns:25mm 1fr 25mm;align-items:center;gap:5mm;padding:4mm 7mm;background:linear-gradient(125deg,var(--list-dark),var(--list-mid) 58%,var(--list-accent));color:#fff;text-align:center}.si-print-logo{width:20mm;height:20mm;border-radius:50%;background:#fff;overflow:hidden;display:flex;align-items:center;justify-content:center;margin:auto}.si-print-logo img{width:100%;height:100%;object-fit:cover}.print-logo-text{color:#7a0e2e;font-size:9px;font-weight:900}.si-print-head h1{font-size:21px;margin:0 0 2mm;font-weight:900}.si-print-head h2{font-size:16px;margin:0;color:#ffe39a}.si-print-head small{font-size:10px}.si-print-mark{font-size:27px}.si-print-gold{height:2mm;margin:0 -7mm;background:linear-gradient(90deg,#d4af37,#fff3b0,#d4af37)}.si-print-subtitle{text-align:center;color:#7a0e2e;font-size:17px;font-weight:900;margin:7mm 0 4mm}.si-print-table{width:100%;border-collapse:collapse;font-size:13px}.si-print-table th,.si-print-table td{border:.35mm solid var(--list-accent);padding:3mm;text-align:center}.si-print-table thead th{background:linear-gradient(135deg,var(--list-dark),var(--list-mid));color:#fff}.si-print-table tbody tr:nth-child(even) td{background:#fff8e6}.si-print-table tfoot th{background:#f3dda0;color:#4a2d08}.si-print-form{display:grid;grid-template-columns:1fr 1fr;border:1px solid #c9a13b;border-radius:8px;overflow:hidden}.si-print-row{display:grid;grid-template-columns:45% 55%;min-height:16mm;border-bottom:1px solid #e0cf9b}.si-print-row:nth-child(odd){background:#fff8e6}.si-print-row b,.si-print-row span{padding:4mm 3mm}.si-print-row b{color:#7a0e2e;border-left:1px solid #e0cf9b}.si-print-row span{font-weight:800}.si-print-sign{position:absolute;bottom:9mm;right:7mm;left:7mm;display:flex;justify-content:space-between;gap:10mm;border-top:1px solid #d4af37;padding-top:4mm;font-size:11px;font-weight:800}.si-print-page:after{content:"ادارة المدرسه والامتحانات";position:absolute;bottom:3mm;left:0;right:0;text-align:center;color:#9a7b2b;font-size:9px}@media print{.si-print-page{page-break-after:always}.si-print-page:last-child{page-break-after:auto}}';
+  const doc=frame.contentDocument||frame.contentWindow.document;doc.open();doc.write('<!DOCTYPE html><html lang="ar" dir="rtl"><head><meta charset="UTF-8"><title>معلومات عن المدرسة</title><style>'+css+'</style></head><body class="exam-theme-'+getPrintTheme()+'">'+schoolInfoPrintableHtml(kind)+'</body></html>');doc.close();return frame;
+}
+function schoolInfoPrint(kind){const frame=schoolInfoCreatePrintFrame(kind);setTimeout(function(){try{if(window.printIframeNow)window.printIframeNow(frame);else frame.contentWindow.print();}catch(e){alert('تعذرت الطباعة.');}},600);setTimeout(function(){if(frame.parentNode)frame.remove();},120000);}
+function schoolInfoPdf(kind){const frame=schoolInfoCreatePrintFrame(kind);const name=kind==='stats'?'إحصاء-معلومات-المدرسة.pdf':'استمارة-معلومات-المدرسة.pdf';setTimeout(function(){if(typeof window.downloadPdfFromPrintFrame!=='function'){alert('تصدير PDF غير جاهز بعد. حاول مرة أخرى.');if(frame.parentNode)frame.remove();return;}window.downloadPdfFromPrintFrame(frame,name).catch(function(){alert('تعذر إنشاء ملف PDF.');}).finally(function(){if(frame.parentNode)frame.remove();});},650);}
 
 // ================= Care and orphans module =================
 const CARE_STORAGE_KEY='schoolResultsCare_v1';
@@ -18012,7 +18107,7 @@ if(document.readyState==='loading'){
 <!-- ===== AUTO UPDATE NOTIFICATION (small icon in topbar) ===== -->
 <script>
 (function(){
-  const APP_VERSION = "1.11.0";
+  const APP_VERSION = "1.12.0";
   const CHECK_EVERY_MINUTES = 30;
   const LS_ACCEPTED = "daragat_accepted_version";
   const LS_SNOOZE   = "daragat_update_snooze";
