@@ -427,13 +427,21 @@ function approve(email, plan, amount){
   }).then(()=>alert("✅ تم تفعيل الاشتراك: "+planLabel(selected)))
     .catch(e=>alert("❌ تعذر حفظ التفعيل: "+e.message));
 }
-function changePlan(email, plan, amount){
-  const k=emailKey(email);
+function resolveAccountKey(ref){
+  const raw=String(ref||"");
+  // The table already knows Firebase's exact key. Prefer it; only encode an email
+  // when the caller supplied an email address. This prevents a plan update from
+  // accidentally targeting a second key and leaving the visible account monthly.
+  return Object.prototype.hasOwnProperty.call(allAccounts,raw)?raw:emailKey(raw);
+}
+function changePlan(accountRef, plan, amount){
+  const k=resolveAccountKey(accountRef);
   const selected=normalizePlan(plan);
   if(!selected||!planDays(selected)){alert("اختر مدة اشتراك صحيحة");return;}
   const current=allAccounts[k]||{};
   const oldPlan=normalizePlan(current.plan||current.planCode)||"monthly";
   const oldExpiry=current.expiresAt||0;
+  const displayEmail=current.email||String(accountRef||"").replace(/,/g,".");
   if(oldPlan===selected && selected!=="permanent" && oldExpiry>Date.now()){
     if(!confirm("الاشتراك مضبوط حالياً على "+planLabel(selected)+". هل تريد إعادة بدء مدته من الآن؟"))return;
   }else if(!confirm("تغيير اشتراك العميل من "+planLabel(oldPlan)+" إلى "+planLabel(selected)+"؟\nستبدأ المدة الجديدة من الآن، ويمكن تغييرها لاحقاً في أي وقت."))return;
@@ -445,9 +453,19 @@ function changePlan(email, plan, amount){
     previousPlan:oldPlan,previousExpiresAt:oldExpiry
   };
   if(amount!==undefined && String(amount).trim()!=="")patch.paidAmount=amount;
-  db.ref("activation/accounts/"+k).update(patch)
-    .then(()=>alert("✅ تم تغيير مدة الاشتراك إلى: "+planLabel(selected)))
-    .catch(e=>alert("❌ تعذر تغيير مدة الاشتراك: "+e.message));
+  const ref=db.ref("activation/accounts/"+k);
+  ref.update(patch)
+    .then(()=>ref.once("value"))
+    .then(snap=>{
+      const saved=snap.val()||{};
+      const savedPlan=normalizePlan(saved.plan||saved.planCode);
+      if(savedPlan!==selected){
+        throw new Error("Firebase أعاد الخطة "+planLabel(savedPlan||"غير معروفة")+" بدلاً من "+planLabel(selected));
+      }
+      alert("✅ تم تغيير مدة اشتراك "+displayEmail+" إلى: "+planLabel(selected));
+      renderAll();
+    })
+    .catch(e=>alert("❌ لم يتم تغيير مدة الاشتراك: "+e.message));
 }
 function approveTransfer(email){
   if(!confirm("✅ الموافقة على نقل الاشتراك للجهاز الجديد؟\nسيتم إيقاف الجهاز القديم."))return;
@@ -648,6 +666,7 @@ function renderTable(list,title){
     const cls=statusClass(r);
     const email=esc(r.email);
     const emEsc=email.replace(/'/g,"\\'");
+    const keyEsc=esc(r.emailKey).replace(/'/g,"\\'");
     const pw = r.password || "";
     const schoolInfo=[esc(r.schoolStage?stageLabel(r.schoolStage):""),esc(r.schoolGender?genderLabel(r.schoolGender):""),esc(r.schoolName||"")].filter(Boolean).join(" - ");
     const phone=normIraqPhone(r.phone||"");
@@ -680,7 +699,7 @@ function renderTable(list,title){
          <option value="yearly" ${currentPlan==="yearly"?"selected":""}>سنة</option>
          <option value="permanent" ${currentPlan==="permanent"?"selected":""}>دائم</option>
        </select>
-       <button class="btn warn small" onclick="changePlan('${emEsc}',document.getElementById('chg-${esc(r.emailKey)}').value,document.getElementById('pa-${esc(r.emailKey)}').value)">⏱ تغيير المدة</button>`:"";
+       <button class="btn warn small" onclick="changePlan('${keyEsc}',document.getElementById('chg-${esc(r.emailKey)}').value,document.getElementById('pa-${esc(r.emailKey)}').value)">⏱ تغيير المدة</button>`:"";
 
     const pwCell = pw
       ? `<span class="code" dir="ltr" onclick="navigator.clipboard&&navigator.clipboard.writeText('${esc(pw).replace(/'/g,"\\'")}').then(()=>this.textContent='✅ تم النسخ',()=>{});this.style.background='#c8e6c9';setTimeout(()=>{this.style.background='#f6f8fa';this.textContent='${esc(pw).replace(/'/g,"\\'")}'},1200)" style="cursor:pointer" title="اضغط للنسخ">${esc(pw)}</span>`
@@ -719,6 +738,7 @@ function renderTable(list,title){
     const cls=statusClass(r);
     const email=esc(r.email);
     const emEsc=email.replace(/'/g,"\\'");
+    const keyEsc=esc(r.emailKey).replace(/'/g,"\\'");
     const schoolInfo=[esc(r.schoolStage?stageLabel(r.schoolStage):""),esc(r.schoolGender?genderLabel(r.schoolGender):""),esc(r.schoolName||"")].filter(Boolean).join(" - ");
     const phone=normIraqPhone(r.phone||"");
     const isApproved=r.status==="approved";
@@ -734,7 +754,7 @@ function renderTable(list,title){
             <option value="weekly" ${currentPlan==="weekly"?"selected":""}>أسبوع</option><option value="monthly" ${currentPlan==="monthly"?"selected":""}>شهر</option>
             <option value="yearly" ${currentPlan==="yearly"?"selected":""}>سنة</option><option value="permanent" ${currentPlan==="permanent"?"selected":""}>دائم</option>
           </select>
-          <button class="btn warn small" onclick="changePlan('${emEsc}',document.getElementById('chgm-${esc(r.emailKey)}').value,document.getElementById('pam-${esc(r.emailKey)}').value)">⏱ تطبيق</button>
+          <button class="btn warn small" onclick="changePlan('${keyEsc}',document.getElementById('chgm-${esc(r.emailKey)}').value,document.getElementById('pam-${esc(r.emailKey)}').value)">⏱ تطبيق</button>
         </span>`;
     }else{
       planBlock=`<b>التفعيل:</b><span>
