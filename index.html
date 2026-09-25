@@ -17930,7 +17930,7 @@ if(document.readyState==='loading'){
   });
   window.__actResume=resume;
   window.__actReady=true;
-  window.__actGetInfo=function(){ const v=canOpenApp(); return {valid:v.ok,reason:v.reason||"",status:v.account&&v.account.status,trial:!!v.trial,daysLeft:v.daysLeft||0,plan:v.account&&v.account.plan,expiresAt:v.account&&v.account.expiresAt,registeredAt:v.account&&v.account.registeredAt,deviceId:deviceId(),email:state.activeEmail}; };
+  window.__actGetInfo=function(){ const v=canOpenApp(); return {valid:v.ok,trial:!!v.trial,plan:v.account&&v.account.plan,expiresAt:v.account&&v.account.expiresAt,deviceId:deviceId(),email:state.activeEmail}; };
   window.__actOpenOffline=screenOfflineKey;
 
   if(document.readyState==="loading") document.addEventListener("DOMContentLoaded",resume);
@@ -18287,50 +18287,6 @@ function waSupportLink(){
 function openAboutModule(){ navigateTo('view-about'); renderAboutView(); }
 window.openAboutModule = openAboutModule;
 
-function aboutTrialRemainingText(){
-  try{
-    var info=typeof window.__actGetInfo==='function'?window.__actGetInfo():null;
-    if(info&&info.trial){
-      var ms=Number(info.expiresAt||0)-Date.now();
-      if(ms>0){
-        var days=Math.floor(ms/86400000);
-        var hours=Math.ceil((ms-days*86400000)/3600000);
-        if(days>0)return 'المتبقي: '+toArabicDigits(String(days))+' '+(days===1?'يوم':'أيام');
-        return 'المتبقي: '+toArabicDigits(String(Math.max(1,hours)))+' ساعة';
-      }
-      if(Number(info.daysLeft||0)>0)return 'المتبقي: '+toArabicDigits(String(info.daysLeft))+' '+(Number(info.daysLeft)===1?'يوم':'أيام');
-      return 'انتهت الفترة التجريبية';
-    }
-    if(info&&info.valid){
-      if(info.plan==='permanent')return 'الحساب مفعل بشكل دائم';
-      var left=Math.ceil((Number(info.expiresAt||0)-Date.now())/86400000);
-      if(left>0)return 'الحساب مفعل — متبقي '+toArabicDigits(String(left))+' '+(left===1?'يوم':'أيام');
-    }
-    if(info&&info.reason==='trial_ended')return 'الفترة التجريبية منتهية';
-    if(info&&info.reason==='expired')return 'الاشتراك منتهٍ';
-    if(info&&info.reason==='pending')return 'طلب التفعيل قيد المراجعة';
-  }catch(e){}
-  return 'عرض حالة التفعيل';
-}
-function aboutRefreshTrialTime(){
-  var b=document.getElementById('aboutTrialButton');
-  if(!b)return;
-  b.innerHTML='⏳ وقت الفترة التجريبية <span>'+aboutTrialRemainingText()+'</span>';
-}
-function aboutOpenActivation(){
-  try{
-    if(typeof window.__actOpen==='function'){
-      window.__actOpen({preventDefault:function(){},stopPropagation:function(){},stopImmediatePropagation:function(){}});
-      return false;
-    }
-    if(typeof window.__actResume==='function'){window.__actResume();return false;}
-  }catch(e){console.error('Activation panel could not open',e);}
-  alert('لوحة التفعيل غير جاهزة بعد. حاول مرة أخرى.');
-  return false;
-}
-window.aboutOpenActivation=aboutOpenActivation;
-window.aboutRefreshTrialTime=aboutRefreshTrialTime;
-
 function renderAboutView(){
   var el=document.getElementById('view-about');
   if(!el)return;
@@ -18343,9 +18299,6 @@ function renderAboutView(){
     '.about-hero h1{margin:0 0 6px;font-size:26px;font-weight:900;position:relative;z-index:1}'+
     '.about-hero p{margin:0;opacity:.92;font-size:14px;position:relative;z-index:1}'+
     '.about-hero .ver{display:inline-block;margin-top:10px;background:#ffffff25;padding:3px 12px;border-radius:20px;font-size:11.5px;font-weight:700;position:relative;z-index:1}'+
-    '.about-trial-button{width:100%;border:1px solid #ffe082;border-radius:12px;padding:12px 16px;background:linear-gradient(135deg,#fff8e1,#ffe082);color:#5d4037;font:900 14px Tahoma,Arial,sans-serif;cursor:pointer;box-shadow:0 4px 12px #00000018;display:flex;align-items:center;justify-content:center;gap:8px;flex-wrap:wrap}'+
-    '.about-trial-button:hover{filter:brightness(1.03);transform:translateY(-1px)}'+
-    '.about-trial-button span{font-weight:800;color:#7a0e2e}'+
     '.about-cta{background:linear-gradient(135deg,#0d7c3f,#25d366);color:#fff;border-radius:14px;padding:20px;margin-bottom:16px;display:flex;flex-wrap:wrap;align-items:center;gap:14px;box-shadow:0 6px 20px #25d36640}'+
     '.about-cta .txt{flex:1;min-width:200px}'+
     '.about-cta h3{margin:0 0 4px;font-size:18px;font-weight:900}'+
@@ -18383,7 +18336,6 @@ function renderAboutView(){
         '<h1>ادارة المدرسه والامتحانات</h1>'+
         '<p>نظام متكامل لإدارة الدرجات والامتحانات والطلاب بدون إنترنت</p>'+
         '<div class="ver">الإصدار '+(APP_VERSION||"1")+'</div>'+
-        '<button type="button" id="aboutTrialButton" class="about-trial-button" onclick="aboutOpenActivation()">⏳ وقت الفترة التجريبية <span>جارٍ حساب المدة...</span></button>'+
       '</div>'+
 
       '<div class="about-cta">'+
@@ -18451,8 +18403,6 @@ function renderAboutView(){
         '<span style="color:#aaa">جميع الحقوق محفوظة © '+new Date().getFullYear()+'</span>'+
       '</div>'+
       '</div>';
-  aboutRefreshTrialTime();
-  if(!window.__aboutTrialTimer)window.__aboutTrialTimer=setInterval(aboutRefreshTrialTime,60000);
 }
 window.renderAboutView = renderAboutView;
 window.waSupportLink = waSupportLink;
@@ -19695,6 +19645,95 @@ window.ABOUT_SUPPORT_PHONE = ABOUT_SUPPORT_PHONE;
     document.head.appendChild(st);
   }
 
+  function installToolMenuStyles(){
+    if(document.getElementById('daragatToolMenuStyles')) return;
+    var st = document.createElement('style'); st.id = 'daragatToolMenuStyles';
+    st.textContent = '.txe-menu{position:relative;display:inline-block;margin:4px 0}'+
+      '.txe-menu-btn{display:inline-flex;align-items:center;gap:6px;min-height:38px;padding:9px 14px;border:1px solid #7a0e2e;border-radius:10px;background:linear-gradient(135deg,#9c1238,#7a0e2e);color:#fff;font:800 13.5px Tahoma,Arial,sans-serif;cursor:pointer;box-shadow:0 2px 0 rgba(0,0,0,.15)}'+
+      '.txe-menu-btn:hover{filter:brightness(1.08)} .txe-menu-btn:active{transform:scale(.97)}'+
+      '.txe-caret{font-size:11px;opacity:.85}'+
+      '.txe-menu-panel{position:absolute;z-index:5000;top:calc(100% + 6px);right:0;min-width:220px;max-width:min(320px,90vw);background:#fff;border:1px solid #e0d8c8;border-radius:12px;box-shadow:0 10px 30px rgba(0,0,0,.22);padding:6px;display:flex;flex-direction:column;gap:3px}'+
+      '.txe-menu-panel[hidden]{display:none}'+
+      '.txe-menu-item{display:block;width:100%;text-align:right;padding:9px 12px;border:0;border-radius:8px;background:transparent;color:#3a2a1a;font:700 13px Tahoma,Arial,sans-serif;cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}'+
+      '.txe-menu-item:hover{background:#f5eee0}'+
+      '.txe-menu-item-pdf{color:#7a5b00}'+
+      '.txe-menu-item-ie{color:#1565c0}'+
+      '.txe-menu-sep{height:1px;background:#eee;margin:3px 4px}'+
+      '@media print{.txe-menu{display:none!important}}';
+    document.head.appendChild(st);
+  }
+  // Groups every print / PDF-export / import-export button found anywhere inside a rendered
+  // view into ONE "🖨️ طباعة وتصدير" button with a dropdown, instead of leaving them scattered
+  // across the screen. This never changes what any button DOES — it only hides the original
+  // buttons (kept fully intact in the DOM, data and all) and triggers their existing click
+  // handler from the dropdown, so every safety check / confirmation dialog they already have
+  // still runs exactly as before.
+  function classifyToolButton(btn){
+    if(btn.closest('.txe-menu')) return null;
+    if(btn.disabled) return null;
+    if(btn.classList.contains('pdf-download-btn')) return 'pdf';
+    var attr = btn.getAttribute('onclick') || '';
+    var text = (btn.textContent || '').trim();
+    if(!text) return null;
+    if(/\bprint[A-Za-z]*\s*\(|window\.print\s*\(/.test(attr)) return 'print';
+    if(/\bexport[A-Za-z]*PDF\s*\(|downloadCurrentCardsPDF|downloadPdfFromPrintButton/.test(attr)) return 'pdf';
+    if(/استيراد|تصدير/.test(text)) return 'ie';
+    if(/\bimport[A-Za-z]*\(|\bbackupExport[A-Za-z]*\(|\bexport[A-Za-z]*Excel\s*\(|\brestore[A-Za-z]*\(/i.test(attr)) return 'ie';
+    return null;
+  }
+  var TXE_ICON = {print: '🖨️', pdf: '📄', ie: '📑'};
+  function closeAllToolMenus(except){
+    document.querySelectorAll('.txe-menu-panel').forEach(function(p){ if(p !== except) p.hidden = true; });
+  }
+  function consolidateToolButtons(root){
+    (root || document).querySelectorAll('.view').forEach(function(view){
+      if(getComputedStyle(view).display === 'none') return;
+      var candidates = [].slice.call(view.querySelectorAll('button')).filter(function(b){ return !b.closest('.txe-menu'); });
+      var groups = [];
+      candidates.forEach(function(b){
+        if(b.dataset.txeGrouped === '1') return;
+        var kind = classifyToolButton(b);
+        if(kind) groups.push({btn: b, kind: kind});
+      });
+      if(groups.length < 2) return;
+      var anchor = groups[0].btn;
+      var menu = document.createElement('span');
+      menu.className = 'txe-menu';
+      var toggle = document.createElement('button');
+      toggle.type = 'button';
+      toggle.className = 'txe-menu-btn';
+      toggle.innerHTML = '🖨️ طباعة وتصدير <span class="txe-caret">▾</span>';
+      var panel = document.createElement('div');
+      panel.className = 'txe-menu-panel';
+      panel.hidden = true;
+      groups.forEach(function(g, i){
+        if(i > 0 && g.kind !== groups[i - 1].kind){
+          var sep = document.createElement('div'); sep.className = 'txe-menu-sep'; panel.appendChild(sep);
+        }
+        var item = document.createElement('button');
+        item.type = 'button';
+        item.className = 'txe-menu-item txe-menu-item-' + g.kind;
+        var label = (g.btn.textContent || '').trim().replace(/^[^\wأ-ي]+/u, '').trim();
+        item.textContent = (TXE_ICON[g.kind] || '') + ' ' + label;
+        item.onclick = function(){ panel.hidden = true; g.btn.click(); };
+        panel.appendChild(item);
+        g.btn.dataset.txeGrouped = '1';
+        g.btn.style.display = 'none';
+      });
+      toggle.onclick = function(e){
+        e.stopPropagation();
+        var willOpen = panel.hidden;
+        closeAllToolMenus();
+        panel.hidden = !willOpen;
+      };
+      menu.appendChild(toggle);
+      menu.appendChild(panel);
+      anchor.insertAdjacentElement('beforebegin', menu);
+    });
+  }
+  document.addEventListener('click', function(){ closeAllToolMenus(); });
+  document.addEventListener('keydown', function(e){ if(e.key === 'Escape') closeAllToolMenus(); });
+
   function installPdfFeature(){
     installPdfStyles();
     if(window.__daragatPdfFeatureInstalled) return;
@@ -19753,13 +19792,15 @@ window.ABOUT_SUPPORT_PHONE = ABOUT_SUPPORT_PHONE;
       }catch(e){ try{ if(typeof originalPrint === 'function') return originalPrint(frame); }catch(ignore){} }
     };
     decoratePdfButtons();
+    installToolMenuStyles();
+    consolidateToolButtons();
     var observer = new MutationObserver(function(){
       if(PDF_DECORATE_TIMER) return;
-      PDF_DECORATE_TIMER = setTimeout(function(){ PDF_DECORATE_TIMER = null; decoratePdfButtons(); }, 80);
+      PDF_DECORATE_TIMER = setTimeout(function(){ PDF_DECORATE_TIMER = null; decoratePdfButtons(); consolidateToolButtons(); }, 80);
     });
     if(document.body) observer.observe(document.body, {childList: true, subtree: true});
-    setTimeout(decoratePdfButtons, 500);
-    setTimeout(decoratePdfButtons, 1500);
+    setTimeout(function(){ decoratePdfButtons(); consolidateToolButtons(); }, 500);
+    setTimeout(function(){ decoratePdfButtons(); consolidateToolButtons(); }, 1500);
   }
 
   if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', installPdfFeature);
