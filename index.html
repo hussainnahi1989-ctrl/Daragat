@@ -5967,6 +5967,11 @@ if (typeof module !== 'undefined' && module.exports) { module.exports = QRCodeLi
 <meta name="apple-mobile-web-app-title" content="ادارة المدرسه والامتحانات">
 <link rel="apple-touch-icon" href="icon-192.png">
 <meta name="theme-color" content="#571127">
+<style id="attachmentPrepStyles">
+.attachment-top-btn{background:linear-gradient(135deg,#5e174f,#8e2d77)!important;border-color:#f3c86b!important;color:#fff!important;position:relative}.attachment-top-btn:hover{filter:brightness(1.1)}
+.about-attachment-btn{border:1px solid #b68a24;background:linear-gradient(135deg,#7a0e2e,#a8234d);color:#fff;border-radius:10px;padding:10px 13px;font:800 12px Tahoma,Arial,sans-serif;cursor:pointer;box-shadow:0 4px 12px #7a0e2e22}.about-attachment-btn:hover{transform:translateY(-1px)}
+.attachment-overlay{position:fixed;inset:0;z-index:2147483000;background:rgba(24,7,15,.72);display:flex;align-items:center;justify-content:center;padding:16px;direction:rtl;font-family:Tahoma,Arial,sans-serif}.attachment-modal{width:min(560px,100%);max-height:92vh;overflow:auto;background:var(--surface,#fff);color:var(--text,#321521);border:1px solid #d4af37;border-radius:20px;padding:20px;box-shadow:0 24px 80px #0008}.attachment-modal-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;border-bottom:1px solid #ead9c9;padding-bottom:12px;margin-bottom:14px}.attachment-modal-head h2{margin:0;color:#7a0e2e;font-size:20px}.attachment-modal-head p{margin:5px 0 0;color:#765f66;font-size:12px;line-height:1.7}.attachment-close{border:0;background:#f5e9e9;color:#7a0e2e;border-radius:9px;width:34px;height:34px;cursor:pointer;font-size:18px}.attachment-steps{margin:0 0 14px;padding:11px 14px 11px 28px;background:#fff8e1;border-right:4px solid #d4af37;border-radius:10px;color:#654b18;font-size:12.5px;line-height:1.9}.attachment-qr-wrap{display:flex;justify-content:center;align-items:center;min-height:220px;background:#fff;border:1px solid #ead9c9;border-radius:14px;padding:15px;margin:12px 0}.attachment-qr-wrap canvas{width:min(300px,72vw);height:min(300px,72vw);image-rendering:pixelated}.attachment-token{width:100%;min-height:84px;box-sizing:border-box;direction:ltr;text-align:left;border:1px solid #d8c9b8;border-radius:10px;padding:9px;font:11px monospace;background:#fffdf8;color:#3b2630}.attachment-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}.attachment-actions button{flex:1;min-width:145px}.attachment-btn{border:0;border-radius:10px;padding:11px 13px;background:#7a0e2e;color:#fff;font:800 12px Tahoma,Arial,sans-serif;cursor:pointer}.attachment-btn.secondary{background:#f0e6da;color:#5e174f;border:1px solid #d7bea3}.attachment-camera{display:none;width:100%;max-height:270px;background:#111;border-radius:12px;margin:12px 0;object-fit:cover}.attachment-input{width:100%;box-sizing:border-box;min-height:82px;direction:ltr;text-align:left;border:1px solid #d8c9b8;border-radius:10px;padding:10px;font:12px monospace;background:#fff;color:#321521}.attachment-status{margin-top:12px;padding:10px 12px;border-radius:10px;background:#f6f1ea;color:#654b18;font-size:12px;line-height:1.7}.attachment-status.ok{background:#e9f7ed;color:#22633b}.attachment-status.warn{background:#fff8e1;color:#795548}@media(max-width:600px){.attachment-modal{padding:14px;border-radius:16px}.attachment-modal-head h2{font-size:17px}.attachment-actions{display:grid;grid-template-columns:1fr}.attachment-actions button{width:100%}}
+</style>
 <script>if('serviceWorker' in navigator){window.addEventListener('load',function(){navigator.serviceWorker.register('sw.js').catch(function(){});});}</script>
 </head>
 <body>
@@ -6000,6 +6005,7 @@ if (typeof module !== 'undefined' && module.exports) { module.exports = QRCodeLi
     <button type="button" class="top-search-btn" onclick="openStudentSearch()" title="بحث عن طالب" aria-label="بحث عن طالب">🔍</button>
     <button type="button" class="quick-theme-btn" onclick="toggleUiTheme()" title="تبديل الوضع" aria-label="تبديل الوضع"><span class="ui-theme-icon">🌙</span></button>
     <button type="button" id="btnWifi" class="top-search-btn" onclick="typeof openWifiFromBar==='function'&&openWifiFromBar()" title="المزامنة">📡<span id="wifiDot" style="display:none;position:absolute;top:2px;left:2px;width:8px;height:8px;border-radius:50%;background:#e53935"></span></button>
+    <button type="button" id="btnAttachmentTop" class="top-search-btn attachment-top-btn" onclick="openAttachmentJoin()" title="الدخول كجهاز ملحق" aria-label="الدخول كجهاز ملحق">🔗</button>
     <button type="button" id="btnNotif" class="top-search-btn" onclick="openNotifPanel();event.stopPropagation();" title="الإشعارات">🔔<i id="notifDot" class="notif-red-dot" hidden></i></button>
     <a id="btnFacebook" class="logout-top-btn portal-fb-top" href="#" target="_blank" rel="noopener noreferrer" hidden>فيسبوك</a>
     
@@ -11157,6 +11163,109 @@ function updateProperty(id,field,value){const item=PROPERTIES_STATE.items.find(f
 function deleteProperty(id){if(!confirm('حذف هذه المادة؟'))return;PROPERTIES_STATE.items=PROPERTIES_STATE.items.filter(function(x){return x.id!==id;});savePropertiesState();renderPropertiesView();}
 function printProfessionalTable(table,title,subtitle,landscape){if(!table)return;const clone=table.cloneNode(true);clone.querySelectorAll('select').forEach(function(sel){const span=document.createElement('span');span.textContent=sel.value;span.className=sel.value==='تالف'||sel.value==='لا'?'status-absent':'status-leave';sel.replaceWith(span);});const lastHead=clone.querySelector('thead th:last-child');if(lastHead&&/حذف|أدوات/.test(lastHead.textContent)){clone.querySelectorAll('tr').forEach(function(row){if(row.cells.length)row.deleteCell(row.cells.length-1);});}const logo=APP.school.logo?'<img src="'+APP.school.logo+'">':'شعار المدرسة',frame=document.createElement('iframe'),pw=landscape?'297mm':'210mm',ph=landscape?'210mm':'297mm';frame.style.cssText='position:fixed;left:-10000px;top:0;width:'+pw+';height:'+ph+';border:0';document.body.appendChild(frame);const doc=frame.contentDocument;doc.open();doc.write('<html dir="rtl"><head><meta charset="UTF-8"><style>'+printThemeRootCss()+'@page{size:'+pw+' '+ph+';margin:8mm}*{box-sizing:border-box;-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}body{margin:0;font-family:Tahoma}.page{position:relative;min-height:'+(landscape?'194mm':'279mm')+';border:1mm double var(--list-accent);padding:3mm 3mm 14mm}.head{display:grid;grid-template-columns:25mm 1fr 25mm;align-items:center;background:linear-gradient(125deg,var(--list-dark),var(--list-mid),var(--list-accent));color:#fff;padding:4mm 6mm;border-bottom:1.5mm solid var(--list-accent)}.logo{width:20mm;height:20mm;border-radius:50%;background:#fff;overflow:hidden}.logo img{width:100%;height:100%;object-fit:cover}.title{text-align:center}.title h1{margin:0;font-size:18px}.title h2{margin:1mm 0;font-size:14px}table{width:100%;border-collapse:collapse;margin-top:3mm;font-size:'+(landscape?'9':'12')+'px}thead{display:table-header-group}th,td{border:.3mm solid #8fa0aa;padding:2mm;text-align:center}th{background:#00695c;color:#fff;font-weight:900}.status-absent{color:#d00000;font-weight:900}.status-leave{color:#16823b;font-weight:900}.footer{position:absolute;right:0;left:0;bottom:0;padding:3mm 6mm;background:#fff3b8;border-top:.6mm solid #d4af37;display:flex;justify-content:space-between;font-weight:900;font-size:10px}</style><style>'+printThemeRootCss()+'</style></head><body><main class="page"><header class="head"><div class="logo">'+logo+'</div><div class="title"><h1>'+escapeHtml(APP.school.name)+'</h1><h2>'+escapeHtml(title)+'</h2><div>'+escapeHtml(subtitle||'')+'</div></div><div></div></header>'+clone.outerHTML+'<footer class="footer"><span>مدير المدرسة: '+escapeHtml(APP.school.principal||'—')+'</span><span>'+escapeHtml(title)+'</span></footer></main></body></html>');doc.close();setTimeout(function(){printIframeNow(frame);},650);setTimeout(function(){frame.remove();},120000);}
 function printProperties(){printProfessionalTable(document.querySelector('.properties-table'),'سجل الممتلكات','المواد والأجهزة المدرسية',false);}
+
+// ================= Attachment pairing preparation =================
+// Web-side preparation for the future Flutter/Native attachment bridge.
+// This module intentionally does not alter activation, login, or grade data.
+const ATTACHMENT_PAIR_KEY='daragatAttachmentPair_v1';
+const ATTACHMENT_DEVICE_KEY='daragatAttachmentDevice_v1';
+let ATTACHMENT_CAMERA_STREAM=null, ATTACHMENT_SCAN_TIMER=null;
+function attachmentSafeRead(key,fallback){try{const v=JSON.parse(localStorage.getItem(key)||'null');return v==null?fallback:v;}catch(e){return fallback;}}
+function attachmentSafeWrite(key,value){try{localStorage.setItem(key,JSON.stringify(value));return true;}catch(e){return false;}}
+function attachmentRandomId(prefix){
+  try{if(window.crypto&&crypto.randomUUID)return prefix+'_'+crypto.randomUUID().replace(/-/g,'');}catch(e){}
+  let out='';try{const a=new Uint32Array(4);crypto.getRandomValues(a);out=Array.from(a).map(function(x){return x.toString(36);}).join('');}catch(e){out=String(Date.now())+Math.random().toString(36).slice(2);}
+  return prefix+'_'+out;
+}
+function attachmentDeviceId(){let id='';try{id=localStorage.getItem(ATTACHMENT_DEVICE_KEY)||'';}catch(e){}if(!id){id=attachmentRandomId('device');try{localStorage.setItem(ATTACHMENT_DEVICE_KEY,id);}catch(e){}}return id;}
+function attachmentPairState(){return attachmentSafeRead(ATTACHMENT_PAIR_KEY,{paired:false});}
+function attachmentSetPairState(state){return attachmentSafeWrite(ATTACHMENT_PAIR_KEY,state);}
+function attachmentSiteUrl(){try{return String(location.href||'').split('?')[0].split('#')[0];}catch(e){return 'index.html';}}
+function attachmentMainPayload(){
+  let state=attachmentPairState();
+  if(!state.hostId||!state.pairToken){
+    state=Object.assign({},state,{hostId:attachmentDeviceId(),pairToken:attachmentRandomId('pair'),createdAt:Date.now(),paired:false});
+    attachmentSetPairState(state);
+  }
+  return {protocol:'daragat-attachment',protocolVersion:1,siteUrl:attachmentSiteUrl(),appVersion:typeof APP_VERSION!=='undefined'?APP_VERSION:'1.11.0',hostId:state.hostId,pairToken:state.pairToken,schoolName:(APP&&APP.school&&APP.school.name)||'المدرسة',issuedAt:Date.now(),wifiOnly:true};
+}
+function attachmentDecodeRaw(raw){
+  if(raw&&typeof raw==='object')return raw;
+  let text=String(raw||'').trim();
+  if(!text)return null;
+  try{return JSON.parse(text);}catch(e){}
+  try{return JSON.parse(decodeURIComponent(escape(atob(text))));}catch(e){}
+  return null;
+}
+function attachmentValidatePayload(raw){
+  const p=attachmentDecodeRaw(raw);
+  if(!p||p.protocol!=='daragat-attachment'||Number(p.protocolVersion)!==1||!p.hostId||!p.pairToken)return null;
+  return p;
+}
+function attachmentQrDraw(text,box){
+  if(!box)return;
+  box.innerHTML='';
+  if(typeof QRCodeLib==='undefined'){box.textContent='مولد QR غير جاهز.';return;}
+  try{
+    const qr=new QRCodeLib(-1,1);qr.addData(typeof utf8ByteString==='function'?utf8ByteString(text):text);qr.make();
+    const n=qr.getModuleCount(),scale=5,quiet=4,size=(n+quiet*2)*scale;
+    const c=document.createElement('canvas');c.width=size;c.height=size;c.setAttribute('aria-label','رمز ربط الجهاز الملحق');
+    const ctx=c.getContext('2d');ctx.fillStyle='#fff';ctx.fillRect(0,0,size,size);ctx.fillStyle='#000';
+    for(let r=0;r<n;r++)for(let col=0;col<n;col++)if(qr.isDark(r,col))ctx.fillRect((col+quiet)*scale,(r+quiet)*scale,scale,scale);
+    box.appendChild(c);
+  }catch(e){box.textContent='تعذر إنشاء رمز QR.';}
+}
+function attachmentCloseModal(){attachmentStopCamera();const el=document.getElementById('attachmentOverlay');if(el)el.remove();}
+function attachmentSetStatus(text,kind){const el=document.getElementById('attachmentStatus');if(!el)return;el.className='attachment-status '+(kind||'');el.textContent=text;}
+function attachmentModalShell(title,subtitle,body){
+  attachmentCloseModal();
+  const el=document.createElement('div');el.id='attachmentOverlay';el.className='attachment-overlay';el.onclick=function(e){if(e.target===el)attachmentCloseModal();};
+  el.innerHTML='<div class="attachment-modal" role="dialog" aria-modal="true"><div class="attachment-modal-head"><div><h2>'+escapeHtml(title)+'</h2><p>'+escapeHtml(subtitle)+'</p></div><button type="button" class="attachment-close" onclick="attachmentCloseModal()" aria-label="إغلاق">✕</button></div>'+body+'</div>';
+  document.body.appendChild(el);return el;
+}
+function openAttachmentQr(){
+  if(typeof authRole==='function'&&authRole()&&!authIsAnyAdmin())return alert('عرض رمز الربط متاح من حساب المدير الرئيسي فقط.');
+  const payload=attachmentMainPayload(),text=JSON.stringify(payload);
+  const body='<div class="attachment-steps"><b>على الجهاز الملحق:</b> اضغط أيقونة 🔗 في أعلى الصفحة، ثم اختر قراءة QR ووجّه الكاميرا إلى هذا الرمز. يجب أن يكون الجهازان على نفس شبكة Wi‑Fi.</div><div class="attachment-qr-wrap"><div id="attachmentQrBox"></div></div><textarea class="attachment-token" readonly>'+escapeHtml(text)+'</textarea><div class="attachment-actions"><button type="button" class="attachment-btn secondary" onclick="attachmentCopyPayload()">📋 نسخ الرمز النصي</button><button type="button" class="attachment-btn secondary" onclick="attachmentRotateToken()">♻️ إنشاء رمز جديد</button><button type="button" class="attachment-btn" onclick="attachmentCloseModal()">تم</button></div><div id="attachmentStatus" class="attachment-status warn">هذا الرمز يهيئ عملية الربط فقط. المزامنة الفعلية عبر Wi‑Fi تُنفذ لاحقاً بواسطة تطبيق Flutter/Native.</div>';
+  attachmentModalShell('ربط جهاز ملحق','رمز خاص بالجهاز الرئيسي — لا تشاركه خارج جهاز المدرسة.',body);attachmentQrDraw(text,document.getElementById('attachmentQrBox'));
+}
+function attachmentCopyPayload(){const el=document.querySelector('#attachmentOverlay .attachment-token');if(!el)return;el.select();try{navigator.clipboard&&navigator.clipboard.writeText(el.value).then(function(){attachmentSetStatus('تم نسخ رمز الربط.','ok');}).catch(function(){document.execCommand('copy');attachmentSetStatus('تم نسخ رمز الربط.','ok');});}catch(e){try{document.execCommand('copy');}catch(e2){}attachmentSetStatus('حدد النص وانسخه يدوياً.','warn');}}
+function attachmentRotateToken(){if(!confirm('إنشاء رمز جديد سيجعل الرمز القديم غير صالح للربط الجديد. متابعة؟'))return;const state=attachmentPairState();state.pairToken=attachmentRandomId('pair');state.createdAt=Date.now();attachmentSetPairState(state);openAttachmentQr();}
+function attachmentExistingPairText(){const state=attachmentPairState();if(!state.paired)return '';return 'مرتبط بالجهاز الرئيسي: '+(state.schoolName||'المدرسة')+' — تم الربط بتاريخ '+new Date(state.pairedAt||Date.now()).toLocaleDateString('ar-IQ');}
+function openAttachmentJoin(){
+  const existing=attachmentPairState();
+  const body='<div class="attachment-steps"><b>طريقة الربط:</b> افتح «حول التطبيق» في الجهاز الرئيسي، اعرض رمز الربط، ثم اضغط «فتح الكاميرا» هنا. يجب أن يكون الجهازان على نفس شبكة Wi‑Fi. لا يُطلب تسجيل دخول أو إنشاء حساب للجهاز الملحق.</div><video id="attachmentCamera" class="attachment-camera" autoplay muted playsinline></video><textarea id="attachmentPairInput" class="attachment-input" placeholder="يمكنك لصق رمز QR النصي هنا إذا لم يدعم المتصفح الكاميرا"></textarea><div class="attachment-actions"><button type="button" class="attachment-btn" onclick="attachmentStartCamera()">📷 فتح الكاميرا</button><button type="button" class="attachment-btn secondary" onclick="attachmentAcceptInput()">🔗 اعتماد الرمز</button><button type="button" class="attachment-btn secondary" onclick="attachmentCloseModal()">إلغاء</button></div><div id="attachmentStatus" class="attachment-status '+(existing.paired?'ok':'warn')+'">'+escapeHtml(existing.paired?attachmentExistingPairText():'لم يتم ربط هذا الجهاز بعد.')+'</div>';
+  attachmentModalShell(existing.paired?'الجهاز الملحق':'الدخول كجهاز ملحق','الربط محفوظ محلياً، وتبقى المزامنة الفعلية مؤجلة إلى تطبيق Flutter/Native.',body);
+  if(existing.paired)attachmentSetStatus(attachmentExistingPairText(),'ok');
+}
+async function attachmentStartCamera(){
+  const native=window.DaragatNative;
+  if(native&&typeof native.scanAttachmentQr==='function'){
+    try{const raw=await Promise.resolve(native.scanAttachmentQr());if(raw)attachmentAcceptRaw(raw);return;}catch(e){attachmentSetStatus('تعذر فتح قارئ الكاميرا الأصلي. يمكنك استخدام قارئ المتصفح أو لصق الرمز.','warn');}
+  }
+  if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia){attachmentSetStatus('الكاميرا غير متاحة في هذا المتصفح. الصق رمز QR النصي بدلاً منها.','warn');return;}
+  if(typeof BarcodeDetector==='undefined'){attachmentSetStatus('هذا المتصفح لا يوفر قارئ QR مدمجاً. استخدم تطبيق Flutter لاحقاً أو الصق النص أسفل QR.','warn');return;}
+  try{
+    attachmentStopCamera();
+    const video=document.getElementById('attachmentCamera');if(!video)return;
+    ATTACHMENT_CAMERA_STREAM=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:'environment'}},audio:false});video.srcObject=ATTACHMENT_CAMERA_STREAM;video.style.display='block';await video.play();
+    const detector=new BarcodeDetector({formats:['qr_code']});attachmentSetStatus('وجّه الكاميرا إلى رمز الجهاز الرئيسي…','warn');
+    const scan=async function(){if(!ATTACHMENT_CAMERA_STREAM)return;try{const codes=await detector.detect(video);if(codes&&codes[0]&&codes[0].rawValue){attachmentStopCamera();attachmentAcceptRaw(codes[0].rawValue);return;}}catch(e){}ATTACHMENT_SCAN_TIMER=setTimeout(scan,350);};scan();
+  }catch(e){attachmentSetStatus('تعذر الوصول إلى الكاميرا. تحقق من الإذن أو الصق رمز QR النصي.','warn');}
+}
+function attachmentStopCamera(){if(ATTACHMENT_SCAN_TIMER){clearTimeout(ATTACHMENT_SCAN_TIMER);ATTACHMENT_SCAN_TIMER=null;}if(ATTACHMENT_CAMERA_STREAM){ATTACHMENT_CAMERA_STREAM.getTracks().forEach(function(t){try{t.stop();}catch(e){}});ATTACHMENT_CAMERA_STREAM=null;}const v=document.getElementById('attachmentCamera');if(v){v.pause();v.srcObject=null;v.style.display='none';}}
+function attachmentAcceptInput(){const el=document.getElementById('attachmentPairInput');attachmentAcceptRaw(el&&el.value);}
+async function attachmentAcceptRaw(raw){
+  const payload=attachmentValidatePayload(raw);if(!payload){attachmentSetStatus('رمز غير صالح. استخدم رمز الربط الظاهر من «حول التطبيق» في الجهاز الرئيسي.','warn');return;}
+  const state={paired:true,hostId:payload.hostId,pairToken:payload.pairToken,schoolName:payload.schoolName||'المدرسة',siteUrl:payload.siteUrl||'',appVersion:payload.appVersion||'',pairedAt:Date.now(),syncStatus:'awaiting-native'};attachmentSetPairState(state);
+  const native=window.DaragatNative;let nativeDone=false;
+  try{if(native&&typeof native.applyAttachmentPairing==='function'){await Promise.resolve(native.applyAttachmentPairing(payload));nativeDone=true;}}catch(e){}
+  attachmentSetStatus(nativeDone?'تم الربط مع التطبيق الأصلي. سيبدأ نقل البيانات عند تشغيل خدمة Wi‑Fi.':'تم التعرف على الجهاز الرئيسي وحُفظ الربط محلياً. المزامنة الفعلية ستُفعّل عند ربط تطبيق Flutter/Native.','ok');
+}
+function attachmentResetLocalPair(){if(!confirm('إلغاء ارتباط هذا الجهاز؟'))return;attachmentSetPairState({paired:false});openAttachmentJoin();}
+function attachmentExportPairing(){return attachmentMainPayload();}
+function attachmentGetSyncManifest(){return {protocol:'daragat-attachment',version:1,appVersion:typeof APP_VERSION!=='undefined'?APP_VERSION:'',storageKey:typeof STORAGE_KEY!=='undefined'?STORAGE_KEY:'schoolResultsApp_v1',paired:attachmentPairState().paired,siteUrl:attachmentSiteUrl()};}
+window.DaragatAttachmentBridge={protocol:'daragat-attachment',version:1,getPairingPayload:attachmentExportPairing,receivePairingPayload:attachmentAcceptRaw,getPairingState:attachmentPairState,getSyncManifest:attachmentGetSyncManifest,resetPairing:attachmentResetLocalPair};
 
 // ================= Care and orphans module =================
 const CARE_STORAGE_KEY='schoolResultsCare_v1';
@@ -16951,6 +17060,7 @@ if(document.readyState==='loading'){
 
 <!-- ============== ACTIVATION SYSTEM v2 (account-based) ============== -->
 <div id="actOverlay" dir="rtl" style="display:none;position:fixed;inset:0;z-index:999999;background:linear-gradient(135deg,#0f2027,#203a43,#2c5364);color:#fff;font-family:Tahoma,'Segoe UI',Arial,sans-serif;overflow:auto">
+  <button id="actAttachmentTop" type="button" onclick="openAttachmentJoin()" title="الدخول كجهاز ملحق" style="position:fixed;top:max(14px,env(safe-area-inset-top));left:14px;z-index:1000001;border:1px solid #f3c86b;background:linear-gradient(135deg,#5e174f,#8e2d77);color:#fff;border-radius:12px;padding:9px 12px;font:800 12px Tahoma,Arial,sans-serif;cursor:pointer;box-shadow:0 5px 16px #0006">🔗 جهاز ملحق</button>
   <div style="max-width:520px;margin:30px auto;background:#ffffff12;backdrop-filter:blur(12px);padding:26px 24px;border-radius:18px;border:1px solid #ffffff22;box-shadow:0 20px 60px #000a">
     <div style="text-align:center;font-size:40px;margin-bottom:6px" id="actLogo">🎓</div>
     <h2 id="actTitle" style="text-align:center;margin:0 0 6px;font-size:22px;color:#ffd54f">نظام الاداره المدرسيه</h2>
@@ -18012,7 +18122,7 @@ if(document.readyState==='loading'){
 <!-- ===== AUTO UPDATE NOTIFICATION (small icon in topbar) ===== -->
 <script>
 (function(){
-  const APP_VERSION = "1.11.0";
+  const APP_VERSION = "1.11.1";
   const CHECK_EVERY_MINUTES = 30;
   const LS_ACCEPTED = "daragat_accepted_version";
   const LS_SNOOZE   = "daragat_update_snooze";
@@ -18503,6 +18613,7 @@ function renderAboutView(){
         '<div class="about-account-item"><div class="ai-icon">📡</div><span class="ai-label">حالة البيانات</span><strong class="ai-value">محفوظة محلياً</strong></div>'+
         '<div class="about-account-actions">'+
           '<button type="button" id="aboutSubscriptionButton" class="about-subscribe-btn" onclick="aboutOpenSubscription()">🔑 الانتقال إلى التفعيل</button>'+
+          '<button type="button" id="aboutAttachmentButton" class="about-attachment-btn" onclick="openAttachmentQr()">🔗 ربط جهاز ملحق</button>'+
           '<button type="button" id="aboutUpdateButton" class="about-update-btn" onclick="aboutCheckForUpdate()">🔄 البحث عن تحديث</button>'+
           '<div id="aboutUpdateStatus" class="about-update-status" aria-live="polite">اضغط «البحث عن تحديث» للتحقق من النسخة الأخيرة.</div>'+
         '</div>'+      '</div>'+

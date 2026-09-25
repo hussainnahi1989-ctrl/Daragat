@@ -1,3 +1,32 @@
+# الربط مع تطبيق الأندرويد وتطبيق سطح المكتب (اختياري) — v1.11.1
+
+## تهيئة الجهاز الملحق
+
+أصبح في نسخة الويب زر 🔗 للدخول كجهاز ملحق، وزر داخل «حول التطبيق» يعرض رمز QR من الجهاز الرئيسي. رمز QR يحتوي على بروتوكول الربط وإصدار البروتوكول ورابط الموقع وهوية الجهاز الرئيسي ورمز pairing عشوائي. لا يحتوي على كلمة مرور أو بيانات تفعيل.
+
+تتوفر الواجهة التالية لتطبيق Flutter/Native:
+
+```js
+window.DaragatAttachmentBridge.getPairingPayload();
+window.DaragatAttachmentBridge.receivePairingPayload(payload);
+window.DaragatAttachmentBridge.getPairingState();
+window.DaragatAttachmentBridge.getSyncManifest();
+window.DaragatAttachmentBridge.resetPairing();
+```
+
+ويمكن لتطبيق Native توفير الدوال الاختيارية التالية:
+
+```js
+window.DaragatNative = {
+  scanAttachmentQr: async function(){ /* أعد نص QR المقروء بالكاميرا */ },
+  applyAttachmentPairing: async function(payload){ /* أكمل الربط الأصلي */ }
+};
+```
+
+المزامنة التلقائية الفعلية عبر Wi‑Fi، والعمل عند انقطاع الإنترنت، وخدمة الخلفية تحتاج إلى تنفيذ Native داخل تطبيق Flutter؛ ملف HTML يجهز QR والجسر فقط ولا يدّعي توفير هذه المزامنة وحده.
+
+---
+
 # الربط مع تطبيق الأندرويد وتطبيق سطح المكتب (اختياري) — v1.10.3
 
 هذا الموقع (`index.html`) يعمل حالياً بشكل كامل داخل أي متصفح، وأيضاً

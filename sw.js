@@ -1,4 +1,4 @@
-const CACHE = "daragat-v1.11.0";
+const CACHE = "daragat-v1.11.1";
 const CORE = ["./", "./index.html", "./admin.html", "./manifest.json", "./icon-192.png", "./icon-512.png"];
 self.addEventListener("install", e => {
   // Fetch fresh copies (bypass the browser HTTP cache) so a new version never installs stale files.
