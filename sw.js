@@ -16,6 +16,8 @@ self.addEventListener("activate", e => {
 // Network first (so updates arrive immediately), cache fallback (so the app still works offline).
 self.addEventListener("fetch", e => {
   if(e.request.method !== "GET") return;
+  // local Wi-Fi sync signalling mailbox: always straight to the network, never cached or answered from cache
+  if(e.request.url.indexOf("/lanpair/") !== -1) return;
   const sameOrigin = new URL(e.request.url).origin === self.location.origin;
   const req = sameOrigin ? new Request(e.request.url, {cache: "no-cache"}) : e.request;
   e.respondWith(

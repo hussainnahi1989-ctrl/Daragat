@@ -4,8 +4,17 @@
       "accounts": {
         ".read": true,
         ".write": true,
-        ".indexOn": ["status","registeredAt","phone","schoolStage"]
+        ".indexOn": [
+          "status",
+          "registeredAt",
+          "phone",
+          "schoolStage"
+        ]
       }
+    },
+    "lanpair": {
+      ".read": true,
+      ".write": true
     }
   }
 }
