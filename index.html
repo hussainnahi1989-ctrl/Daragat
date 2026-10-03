@@ -20809,7 +20809,8 @@ function descToText(d){ return JSON.stringify({t: d.type, s: d.sdp}); }
 function textToDesc(t){ var o = JSON.parse(t); return {type: o.t, sdp: o.s}; }
 
 /* A link wraps one data channel: JSON messages, chunking for large ones, heartbeat and backpressure. */
-function Link(pc, dc, onMsg, onClose){
+function Link(pc, dc, onMsg, onClose, opts){
+  var deadMs = (opts && opts.tolerant) ? 45000 : DEAD_MS, graceMs = (opts && opts.tolerant) ? 30000 : 6000;
   var self = this, chunks = {}, closed = false, lastRx = now(), queue = [], pumping = false;
   this.pc = pc; this.dc = dc; this.rtt = null; this.rx = 0;
   dc.bufferedAmountLowThreshold = 256 * 1024;
@@ -20851,11 +20852,11 @@ function Link(pc, dc, onMsg, onClose){
   function fin(why){ if(closed) return; closed = true; clearInterval(hb); try{ dc.close(); }catch(e){} try{ pc.close(); }catch(e){} onClose(why); }
   dc.addEventListener('open', function(){ lastRx = now(); });
   dc.onclose = function(){ fin('closed'); };
-  pc.addEventListener('connectionstatechange', function(){ if(pc.connectionState === 'failed' || pc.connectionState === 'closed') fin(pc.connectionState); if(pc.connectionState === 'disconnected') setTimeout(function(){ if(pc.connectionState === 'disconnected') fin('disconnected'); }, 6000); });
+  pc.addEventListener('connectionstatechange', function(){ if(pc.connectionState === 'failed' || pc.connectionState === 'closed') fin(pc.connectionState); if(pc.connectionState === 'disconnected') setTimeout(function(){ if(pc.connectionState === 'disconnected') fin('disconnected'); }, graceMs); });
   var pn = 0;
   var hb = setInterval(function(){
     if(closed) return;
-    if(dc.readyState === 'open' && now() - lastRx > DEAD_MS){ fin('timeout'); return; }
+    if(dc.readyState === 'open' && now() - lastRx > deadMs){ fin('timeout'); return; }
     if(dc.readyState === 'open'){ self._pingN = ++pn; self._pingAt = now(); self.send({t: 'ping', n: pn}); }
   }, PING_MS);
   this.close = function(why){ fin(why || 'closed'); };
@@ -20917,7 +20918,7 @@ var H = (function(){
 
   function adopt(pc, dc, via){
     var peer = {pid: 'p' + rid(8), via: via, state: 'connecting', ready: false, devId: null, name: '', perm: 'rw', tx: 0, lastOp: 0, since: now(), link: null};
-    peer.link = new Link(pc, dc, function(m){ onMsg(peer, m); }, function(why){ onClose(peer, why); });
+    peer.link = new Link(pc, dc, function(m){ onMsg(peer, m); }, function(why){ onClose(peer, why); }, {tolerant: via === 'manual'});
     peers[peer.pid] = peer;
     function startT(){ peer.helloT = setTimeout(function(){ if(peer.state === 'connecting') peer.link.close('no-hello'); }, 30000); }
     if(dc.readyState === 'open') startT(); else dc.addEventListener('open', startT);
@@ -20946,7 +20947,7 @@ var H = (function(){
     peer.devId = id; peer.name = name; peer.sums = (m.sums && typeof m.sums === 'object') ? m.sums : null;
     if(cfg.blocked[id]){ peer.link.send({t: 'deny', r: 'blocked'}); setTimeout(function(){ peer.link.close('kicked'); }, 400); return; }
     var tr = cfg.trusted[id];
-    if(tr && m.token && tr.token === m.token){ peer.perm = tr.perm || 'rw'; tr.last = now(); tr.name = name; save(); welcome(peer); return; }
+    if(tr && m.token && tr.token === m.token){ peer.perm = tr.perm || 'rw'; tr.last = now(); tr.name = name; tr.via = peer.via; save(); welcome(peer); return; }
     peer.state = 'pending'; pending[peer.pid] = peer;
     peer.link.send({t: 'wait'}); emit(); try{ UI.approval(peer); }catch(e){}
     peer.waitT = setTimeout(function(){ if(pending[peer.pid]) reject(peer.pid); }, 180000);
@@ -20997,7 +20998,7 @@ var H = (function(){
   function approve(pid, perm){
     var p = pending[pid]; if(!p) return;
     clearTimeout(p.waitT); delete pending[pid];
-    cfg.trusted[p.devId] = {name: p.name, token: rid(24), perm: perm || 'rw', added: now(), last: now()}; save();
+    cfg.trusted[p.devId] = {name: p.name, token: rid(24), perm: perm || 'rw', added: now(), last: now(), via: p.via}; save();
     p.perm = perm || 'rw'; welcome(p);
   }
   function reject(pid){
@@ -21007,12 +21008,18 @@ var H = (function(){
   }
   function kick(pid){ var p = peers[pid]; if(!p) return; p.link.send({t: 'bye', r: 'kicked'}); setTimeout(function(){ p.link.close('kicked'); }, 300); }
   function kickAll(){ Object.keys(peers).forEach(kick); }
+  function unlinkPeers(devId){
+    // tell a connected device it was unlinked: it leaves guest mode (its own earlier data comes back) instead of retrying forever
+    list().forEach(function(p){ if(p.devId === devId){ try{ p.link.send({t: 'unlinked'}); }catch(e){} setTimeout(function(){ p.link.close('kicked'); }, 400); } });
+  }
   function block(devId){
-    var name = (cfg.trusted[devId] && cfg.trusted[devId].name) || ''; list().forEach(function(p){ if(p.devId === devId){ name = p.name; kick(p.pid); } });
+    var name = (cfg.trusted[devId] && cfg.trusted[devId].name) || ''; list().forEach(function(p){ if(p.devId === devId) name = p.name; });
+    unlinkPeers(devId);
     cfg.blocked[devId] = name || 'جهاز'; delete cfg.trusted[devId]; save(); emit();
   }
   function unblock(devId){ delete cfg.blocked[devId]; save(); emit(); }
-  function forget(devId){ delete cfg.trusted[devId]; list().forEach(function(p){ if(p.devId === devId) kick(p.pid); }); save(); emit(); }
+  function forget(devId){ unlinkPeers(devId); delete cfg.trusted[devId]; save(); emit(); }
+  function forgetAll(){ Object.keys(cfg.trusted).forEach(forget); }
   function setPerm(devId, perm){
     if(!cfg.trusted[devId]) return; cfg.trusted[devId].perm = perm; save();
     list().forEach(function(p){ if(p.devId === devId){ p.perm = perm; p.link.send({t: 'perm', perm: perm}); } });
@@ -21081,11 +21088,11 @@ var H = (function(){
       on: !!cfg.on, code: cfg.code, id: cfg.id, online: online, err: lastErr, name: hostName(),
       peers: list().filter(function(p){ return p.state === 'ready'; }).map(function(p){ return {pid: p.pid, devId: p.devId, name: p.name, perm: p.perm, rtt: p.link.rtt, via: p.via, since: p.since, repairs: p.repairs || 0}; }),
       pending: Object.keys(pending).map(function(k){ var p = pending[k]; return {pid: p.pid, devId: p.devId, name: p.name}; }),
-      trusted: Object.keys(cfg.trusted).map(function(id){ var t = cfg.trusted[id]; return {devId: id, name: t.name, perm: t.perm, last: t.last, connected: list().some(function(p){ return p.devId === id && p.state === 'ready'; })}; }),
+      trusted: Object.keys(cfg.trusted).map(function(id){ var t = cfg.trusted[id], pr = list().filter(function(p){ return p.devId === id && p.state === 'ready'; })[0]; return {devId: id, pid: pr ? pr.pid : null, name: t.name, perm: t.perm || 'rw', last: pr ? now() : t.last, added: t.added, via: (pr ? pr.via : t.via) || 'online', connected: !!pr, rtt: pr ? pr.link.rtt : null, repairs: pr ? (pr.repairs || 0) : 0}; }),
       blocked: Object.keys(cfg.blocked).map(function(id){ return {devId: id, name: cfg.blocked[id]}; })
     };
   }
-  return {enable: enable, disable: disable, renewCode: renewCode, approve: approve, reject: reject, kick: kick, kickAll: kickAll, block: block, unblock: unblock, forget: forget, setPerm: setPerm, manualOffer: manualOffer, view: view, onLocalRemove: onLocalRemove, cfg: cfg, isOn: function(){ return !!cfg.on; }, peers: function(){ return peers; }};
+  return {enable: enable, disable: disable, renewCode: renewCode, approve: approve, reject: reject, kick: kick, kickAll: kickAll, block: block, unblock: unblock, forget: forget, forgetAll: forgetAll, setPerm: setPerm, manualOffer: manualOffer, view: view, onLocalRemove: onLocalRemove, cfg: cfg, isOn: function(){ return !!cfg.on; }, peers: function(){ return peers; }};
 })();
 
 /* ================================================================= GUEST (الجهاز الملحق) */
@@ -21113,7 +21120,7 @@ var G = (function(){
   }
 
   /* ---- one live connection (either signalling route ends here) */
-  function attach(pc, dc, code, name, full){
+  function attach(pc, dc, code, name, full, tolerant){
     return new Promise(function(resolve, reject){
       var settled = false;
       function done(e, v){ if(settled) return; settled = true; if(e) reject(e); else resolve(v); }
@@ -21143,9 +21150,10 @@ var G = (function(){
           case 'ack': pend = pend.filter(function(p){ return p.id !== m.id; }); break;
           case 'perm': perm = m.perm; if(cfg){ cfg.perm = perm; save(); } toast(perm === 'ro' ? 'أصبح هذا الجهاز للقراءة فقط' : 'تم السماح بالتعديل من هذا الجهاز'); try{ UI.changed(); }catch(e){} break;
           case 'ro': toast('هذا الجهاز للقراءة فقط: لا تُحفظ تعديلاته', true); break;
+          case 'unlinked': toast('أُلغي ربط هذا الجهاز من الجهاز الرئيسي. ستعود بياناتك السابقة.', true); setTimeout(function(){ leave(); }, 1200); break;
           case 'bye': try{ link.close('bye'); }catch(e){} break;
         }
-      }, function(why){ onClosed(why); done(err('انقطع الاتصال قبل اكتمال المزامنة.')); });
+      }, function(why){ onClosed(why); done(err('انقطع الاتصال قبل اكتمال المزامنة.')); }, {tolerant: !!tolerant});
       link.send({t: 'hello', v: 1, id: deviceId(), name: name || (cfg && cfg.name) || 'جهاز ملحق', token: (cfg && cfg.token) || null, sums: ((first || full) ? null : ownSums())});
       setSt('waiting', 'تم الاتصال، جاري المزامنة…');
       setTimeout(function(){ if(!settled){ done(err('لم تكتمل المزامنة. حاول مرة أخرى.')); try{ link.close('timeout'); }catch(e){} } }, 180000);
@@ -21203,7 +21211,7 @@ var G = (function(){
     await pc.setLocalDescription(await pc.createAnswer()); await waitIce(pc, 2500);
     return {
       text: packText('a', pc.localDescription),
-      done: dcp.then(function(dc){ return waitOpen(dc, 180000).then(function(){ return attach(pc, dc, (cfg && cfg.code) || '', name, full); }); }),
+      done: dcp.then(function(dc){ return waitOpen(dc, 180000).then(function(){ return attach(pc, dc, (cfg && cfg.code) || '', name, full, true); }); }),
       cancel: function(){ try{ pc.close(); }catch(e){} }
     };
   }
@@ -21352,23 +21360,22 @@ function renderHostPanel(){
       h += '<div style="border:1px solid #ffcc80;background:#fff8e1;border-radius:12px;padding:10px;margin-bottom:6px"><b>' + esc(p.name) + '</b><div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px"><button type="button" data-a="approve" data-pid="' + p.pid + '" data-perm="rw" style="' + BTN + ';background:#2e7d32;padding:8px 12px">قبول (تعديل)</button><button type="button" data-a="approve" data-pid="' + p.pid + '" data-perm="ro" style="' + BTN + ';background:#1565c0;padding:8px 12px">قبول (قراءة فقط)</button><button type="button" data-a="reject" data-pid="' + p.pid + '" style="' + BTN + ';background:#b71c1c;padding:8px 12px">رفض</button></div></div>';
     });
   }
-  h += '<h4 style="margin:14px 0 6px">🟢 المتصلة الآن (' + v.peers.length + ')</h4>';
-  if(!v.peers.length) h += '<div style="color:#78909c;font-size:12.5px">لا توجد أجهزة متصلة.</div>';
-  v.peers.forEach(function(p){
-    h += '<div style="border:1px solid #cfd8dc;border-radius:12px;padding:10px;margin-bottom:6px"><div style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap"><b>' + esc(p.name) + '</b><span style="color:#546e7a;font-size:12px">' + (p.rtt != null ? p.rtt + ' م.ث' : '') + (p.via === 'manual' ? ' · بلا إنترنت' : '') + '</span></div>' +
-      '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:7px"><select data-a="perm" data-dev="' + esc(p.devId) + '" style="' + LINK_BTN + '"><option value="rw"' + (p.perm === 'rw' ? ' selected' : '') + '>تعديل</option><option value="ro"' + (p.perm === 'ro' ? ' selected' : '') + '>قراءة فقط</option></select>' +
-      '<button type="button" data-a="kick" data-pid="' + p.pid + '" style="' + LINK_BTN + '">قطع الاتصال</button><button type="button" data-a="block" data-dev="' + esc(p.devId) + '" style="' + LINK_BTN + ';color:#b71c1c">حظر</button></div></div>';
+  var online = v.trusted.filter(function(t){ return t.connected; }).length;
+  h += '<h4 style="margin:14px 0 6px">📋 الأجهزة المرتبطة (' + v.trusted.length + ') <small style="color:#00796b;font-weight:800">· ' + online + ' متصل الآن</small></h4>';
+  if(!v.trusted.length) h += '<div style="color:#78909c;font-size:12.5px">لا توجد أجهزة مرتبطة بعد.</div>';
+  v.trusted.sort(function(x, y){ return (y.connected - x.connected) || ((y.last || 0) - (x.last || 0)); }).forEach(function(t){
+    var st = t.connected ? '<span style="color:#00796b;font-weight:800">🟢 متصل' + (t.rtt != null ? ' · ' + t.rtt + ' م.ث' : '') + '</span>' : '<span style="color:#78909c;font-weight:700">⚪ غير متصل · ' + (fmtAgo(t.last) || '—') + '</span>';
+    h += '<div style="border:1px solid ' + (t.connected ? '#80cbc4' : '#cfd8dc') + ';background:' + (t.connected ? '#f1fbf9' : '#fff') + ';border-radius:12px;padding:10px;margin-bottom:6px">' +
+      '<div style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;align-items:center"><b>' + esc(t.name) + '</b><span style="font-size:12px">' + st + '</span></div>' +
+      '<div style="color:#78909c;font-size:11.5px;margin-top:2px">' + (t.via === 'manual' ? '📴 رُبط بلا إنترنت' : '🌐 رُبط بالرمز') + '</div>' +
+      '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:7px;align-items:center"><label style="font-size:12px;color:#546e7a">الصلاحية:</label><select data-a="perm" data-dev="' + esc(t.devId) + '" style="' + LINK_BTN + '"><option value="rw"' + (t.perm === 'rw' ? ' selected' : '') + '>تعديل (قراءة وكتابة)</option><option value="ro"' + (t.perm === 'ro' ? ' selected' : '') + '>قراءة فقط</option></select>' +
+      '<button type="button" data-a="forget" data-dev="' + esc(t.devId) + '" style="' + LINK_BTN + '">إلغاء الربط</button><button type="button" data-a="block" data-dev="' + esc(t.devId) + '" style="' + LINK_BTN + ';color:#b71c1c">حظر</button></div></div>';
   });
-  var off = v.trusted.filter(function(t){ return !t.connected; });
-  if(off.length){
-    h += '<h4 style="margin:14px 0 6px">📋 أجهزة موثوقة غير متصلة</h4>';
-    off.forEach(function(t){ h += '<div style="display:flex;justify-content:space-between;align-items:center;gap:6px;border:1px dashed #cfd8dc;border-radius:10px;padding:8px 10px;margin-bottom:5px"><span><b>' + esc(t.name) + '</b> <small style="color:#78909c">' + (t.perm === 'ro' ? 'قراءة فقط' : 'تعديل') + ' · ' + fmtAgo(t.last) + '</small></span><span><button type="button" data-a="forget" data-dev="' + esc(t.devId) + '" style="' + LINK_BTN + '">إزالة</button> <button type="button" data-a="block" data-dev="' + esc(t.devId) + '" style="' + LINK_BTN + ';color:#b71c1c">حظر</button></span></div>'; });
-  }
   if(v.blocked.length){
     h += '<h4 style="margin:14px 0 6px">⛔ المحظورة</h4>';
     v.blocked.forEach(function(b){ h += '<div style="display:flex;justify-content:space-between;align-items:center;border:1px dashed #ef9a9a;border-radius:10px;padding:8px 10px;margin-bottom:5px"><b>' + esc(b.name) + '</b><button type="button" data-a="unblock" data-dev="' + esc(b.devId) + '" style="' + LINK_BTN + '">إلغاء الحظر</button></div>'; });
   }
-  h += '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:14px"><button type="button" data-a="offline" style="' + BTN + ';background:#37474f;flex:1">📴 إضافة جهاز بدون إنترنت</button>' + (v.peers.length ? '<button type="button" data-a="kickall" style="' + BTN + ';background:#b71c1c">قطع الجميع</button>' : '') + '</div>';
+  h += '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:14px"><button type="button" data-a="offline" style="' + BTN + ';background:#37474f;flex:1">📴 إضافة جهاز بدون إنترنت</button>' + (v.trusted.length ? '<button type="button" data-a="forgetall" style="' + BTN + ';background:#b71c1c">إلغاء ربط الجميع</button>' : '') + '</div>';
   var qrNeeded = v.on, prevCode = box._code;
   box.innerHTML = h;
   if(qrNeeded){ var qb = q('[data-qr]', box); if(qb) drawQr(qb, 'DLSCODE:' + v.code); }
@@ -21385,10 +21392,10 @@ function hostPanelClick(e){
   else if(a === 'approve') H.approve(pid, t.getAttribute('data-perm'));
   else if(a === 'reject') H.reject(pid);
   else if(a === 'kick') H.kick(pid);
-  else if(a === 'kickall'){ if(confirm('قطع جميع الأجهزة الملحقة؟')) H.kickAll(); }
-  else if(a === 'block'){ if(confirm('حظر هذا الجهاز؟ لن يستطيع الاتصال حتى تلغي الحظر.')) H.block(dev); }
+  else if(a === 'forgetall'){ if(confirm('إلغاء ربط جميع الأجهزة؟ ستخرج من وضع الملحق وتعود بياناتها السابقة.')) H.forgetAll(); }
+  else if(a === 'block'){ if(confirm('حظر هذا الجهاز؟ سيخرج من وضع الملحق ولن يستطيع الاتصال حتى تلغي الحظر.')) H.block(dev); }
   else if(a === 'unblock') H.unblock(dev);
-  else if(a === 'forget'){ if(confirm('إزالة الجهاز؟ سيحتاج إلى موافقة جديدة للاتصال.')) H.forget(dev); }
+  else if(a === 'forget'){ if(confirm('إلغاء ربط هذا الجهاز؟ سيخرج من وضع الملحق وتعود بياناته السابقة، وللعودة يحتاج ربطًا جديدًا وموافقتك.')) H.forget(dev); }
   else if(a === 'offline') openOfflineHost();
 }
 document.addEventListener('change', function(e){
