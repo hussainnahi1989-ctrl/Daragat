@@ -1,3 +1,69 @@
+# النسخ الاحتياطي التلقائي إلى مجلد يختاره المستخدم — v1.12
+
+قسم «النسخ الاحتياطي» فيه الآن نسخ تلقائي دوري (كل أسبوع / أسبوعين / شهر / شهرين / 3 أشهر / 6 أشهر) مع الاحتفاظ بآخر 3 أو 5 أو 10 أو 20 نسخة.
+
+أماكن الحفظ حسب ما يدعمه الجهاز:
+- **مجلد يختاره المستخدم مرة واحدة** ثم يُحفظ فيه تلقائياً بدون أي سؤال: يعمل في Chrome/Edge على الحاسوب مباشرة، وعلى الأندرويد عند إضافة الجسر أدناه داخل الـAPK.
+- **مجلد التنزيلات (Download)**: تنزيل تلقائي للملف عند موعد النسخة.
+- **داخل التطبيق**: تُحفظ دائماً نسخ داخلية (IndexedDB) كشبكة أمان مهما كانت الوجهة.
+
+الملفات بصيغة `نسخة-تلقائية-<اسم المدرسة>-YYYY-MM-DD-HHMM.json` وتُستعاد من زر «استيراد النسخة الاحتياطية». لا تحتوي على بيانات التفعيل.
+
+## الجسر المطلوب في تطبيق الأندرويد (اختياري لكن ضروري لاختيار مجلد على الأندرويد)
+
+WebView في أندرويد لا يسمح لصفحة HTML بالكتابة في مجلد دون تدخل المستخدم. الحل الرسمي هو Storage Access Framework: المستخدم يختار المجلد مرة واحدة، والتطبيق يحتفظ بإذن دائم عليه. يكفي أن يوفّر الـAPK:
+
+```js
+window.DaragatNative = window.DaragatNative || {};
+DaragatNative.pickBackupFolder = async () => ({ name: 'اسم المجلد' });   // أو 'cancel'
+DaragatNative.writeBackupFile  = async (fileName, jsonText) => 'ok';    // أو 'error'
+DaragatNative.pruneBackups     = (prefix, keep) => {};                  // اختياري: حذف الأقدم
+```
+
+مثال Kotlin مختصر:
+
+```kotlin
+// 1) اختيار المجلد مرة واحدة + حفظ الإذن الدائم
+val pickTree = registerForActivityResult(ActivityResultContracts.OpenDocumentTree()) { uri ->
+    if (uri != null) {
+        contentResolver.takePersistableUriPermission(uri,
+            Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION)
+        prefs.edit().putString("backupTree", uri.toString()).apply()
+        val name = DocumentFile.fromTreeUri(this, uri)?.name ?: "المجلد"
+        webView.evaluateJavascript("window.__nbabPicked && window.__nbabPicked(${JSONObject.quote(name)})", null)
+    } else webView.evaluateJavascript("window.__nbabPicked && window.__nbabPicked(null)", null)
+}
+
+inner class BackupBridge {
+    @JavascriptInterface fun pick() = runOnUiThread { pickTree.launch(null) }
+    @JavascriptInterface fun write(fileName: String, text: String): String = try {
+        val tree = DocumentFile.fromTreeUri(this@MainActivity, Uri.parse(prefs.getString("backupTree", null)))!!
+        val f = tree.findFile(fileName) ?: tree.createFile("application/json", fileName)!!
+        contentResolver.openOutputStream(f.uri, "wt")!!.use { it.write(text.toByteArray(Charsets.UTF_8)) }
+        "ok"
+    } catch (e: Exception) { "error" }
+    @JavascriptInterface fun prune(prefix: String, keep: Int) {
+        val tree = DocumentFile.fromTreeUri(this@MainActivity, Uri.parse(prefs.getString("backupTree", null) ?: return)) ?: return
+        tree.listFiles().filter { it.name?.startsWith(prefix) == true }
+            .sortedByDescending { it.name }.drop(keep).forEach { it.delete() }
+    }
+}
+webView.addJavascriptInterface(BackupBridge(), "AndroidBackup")
+```
+
+ثم حقن هذا الغلاف بعد تحميل الصفحة (onPageFinished):
+
+```js
+window.DaragatNative = window.DaragatNative || {};
+DaragatNative.pickBackupFolder = () => new Promise(res => { window.__nbabPicked = n => res(n ? {name:n} : 'cancel'); AndroidBackup.pick(); });
+DaragatNative.writeBackupFile  = (n, t) => AndroidBackup.write(n, t);
+DaragatNative.pruneBackups     = (p, k) => AndroidBackup.prune(p, k);
+```
+
+بدون هذا الجسر يبقى كل شيء يعمل: زر «اختيار مجلد الحفظ» يختفي على الأندرويد ويُستخدم مجلد التنزيلات أو الحفظ الداخلي.
+
+---
+
 # الربط مع تطبيق الأندرويد وتطبيق سطح المكتب (اختياري) — v1.11.2
 
 ## تهيئة الجهاز الملحق

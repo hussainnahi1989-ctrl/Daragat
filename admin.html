@@ -147,6 +147,52 @@ input.inline,select.inline{width:auto;display:inline-block;padding:4px 8px;font-
   .stat .num{font-size:20px}
 }
 
+
+/* ========== جدول الحسابات (موحّد للحاسوب والهاتف) ========== */
+.acct-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch;border-radius:10px;border:1px solid #e7eaf0}
+table.acct-tbl{min-width:1000px;table-layout:auto}
+table.acct-tbl th{position:sticky;top:0;z-index:1}
+table.acct-tbl td{vertical-align:top}
+table.acct-tbl th:nth-child(1){min-width:170px}
+table.acct-tbl th:nth-child(7){min-width:190px}
+.at-school{font-weight:800;color:#1a237e;font-size:13px}
+.at-strong{font-weight:700}
+.at-sub{font-size:10.5px;color:#777;margin-top:3px}
+.at-num{font-weight:800;color:#999;margin-left:4px}
+.at-ltr{direction:ltr;unicode-bidi:plaintext}
+.at-copy{cursor:pointer;background:#fff3e0!important;color:#bf360c}
+.at-warn{font-size:10.5px;color:#e65100;font-weight:700}
+.at-bad{color:#c62828;font-weight:700}
+.at-in{width:130px!important;max-width:100%;margin-top:5px;display:block!important}
+.at-plan{display:flex;gap:4px;flex-wrap:wrap;margin-top:5px}
+.at-amt{width:90px!important;flex:0 0 auto}
+.at-plan select{width:auto!important;flex:0 0 auto}
+.at-actions{display:flex;flex-wrap:wrap;gap:4px}
+.at-v{min-width:0}
+.at-v .badge-plan{display:inline-block}
+@media(max-width:760px){
+  .acct-wrap{border:0;overflow:visible}
+  table.acct-tbl,table.acct-tbl tbody{display:block;min-width:0;width:100%}
+  table.acct-tbl thead{display:none}
+  table.acct-tbl tr{display:block;border:1px solid #e7eaf0;border-radius:12px;margin-bottom:10px;padding:4px 10px;box-shadow:0 1px 3px #00000010}
+  table.acct-tbl td{display:grid;grid-template-columns:96px 1fr;gap:8px;align-items:start;padding:7px 0;font-size:12px;border-bottom:1px dashed #e7eaf0}
+  table.acct-tbl td:last-child{border-bottom:0}
+  table.acct-tbl td::before{content:attr(data-label);font-weight:800;color:#5c6b80;font-size:11.5px;padding-top:2px}
+  table.acct-tbl td.at-head{grid-template-columns:1fr;border-bottom:1px solid #e7eaf0}
+  table.acct-tbl td.at-head::before{display:none}
+  table.acct-tbl td.at-head .at-school{font-size:14.5px}
+  table.acct-tbl td.at-act{grid-template-columns:1fr}
+  table.acct-tbl td.at-act::before{display:none}
+  .code.at-ltr{word-break:break-all}
+  .at-in{width:100%!important;max-width:200px}
+}
+body.admin-dark table.acct-tbl tr{border-color:#2c394d}
+body.admin-dark .at-school{color:#90caf9}
+body.admin-dark .at-sub{color:#aab7c9}
+body.admin-dark table.acct-tbl td::before{color:#b9c6d8}
+body.admin-dark .at-copy{background:#3a2a1b!important;color:#ffcc80}
+body.admin-dark .acct-wrap{border-color:#2c394d}
+
 /* ========== Admin night mode ========== */
 body.admin-dark{background:#101522;color:#e6edf7}
 body.admin-dark .card,body.admin-dark .stat,body.admin-dark .acct-card{background:#182131;color:#e6edf7;border-color:#2c394d}
@@ -575,7 +621,18 @@ function renderStats(all,trial,pending,approved,transfers,resets){
     <div class="stat ok"><div class="num">${approved.length}</div><div class="lbl">مُفعّلة</div></div>`;
 }
 
+function pickIn(btn,id){
+  // نفس الحساب يظهر في أكثر من تبويب (الكل/الطلبات/المفعّلة) بنفس المعرّف،
+  // لذلك نقرأ القيمة من نفس الصف/البطاقة التي ضُغط فيها الزر وليس أول عنصر في الصفحة.
+  const box=(btn&&btn.closest&&btn.closest("tr,.acct-card"))||document;
+  const el=Array.from(box.querySelectorAll("select,input")).find(e=>e.id===id)||document.getElementById(id);
+  return el||{value:""};
+}
 function renderAll(){
+  const keep={};
+  document.querySelectorAll('[id^="tab-"] select[id]').forEach(el=>{
+    const tab=el.closest('[id^="tab-"]');keep[(tab?tab.id:"")+"|"+el.id]=el.value;
+  });
   const recs=Object.entries(allAccounts).map(([k,v])=>({emailKey:k,email:(v.email||k.replace(/,/g,".")),...v}));
   recs.sort((a,b)=>{const ta=a.registeredAt||0,tb=b.registeredAt||0;return tb-ta;});
   const all=[],trial=[],pending=[],approved=[],transfers=[],resets=[];
@@ -601,6 +658,10 @@ function renderAll(){
   $("tab-approved").innerHTML=renderTable(approved,"الحسابات المُفعّلة");
   $("tab-transfers").innerHTML=renderTransfersTable(transfers,"طلبات نقل الأجهزة");
   $("tab-reset").innerHTML=renderTable(resets,"🔑 طلبات استعادة كلمة السر");
+  document.querySelectorAll('[id^="tab-"] select[id]').forEach(el=>{
+    const tab=el.closest('[id^="tab-"]');const v=keep[(tab?tab.id:"")+"|"+el.id];
+    if(v!==undefined && Array.from(el.options).some(o=>o.value===v))el.value=v;
+  });
   document.querySelectorAll("input[data-paid-for]").forEach(inp=>{
     inp.addEventListener("change",()=>setPaid(inp.dataset.paidFor,inp.value));
   });
@@ -660,139 +721,86 @@ function renderTable(list,title){
     if(["suspended","disabled","deleted","cancelled"].includes(r.status))return "rejected";
     return "trial";
   };
+  const planOptions=sel=>[["weekly","أسبوع"],["monthly","شهر"],["yearly","سنة"],["permanent","دائم"]]
+    .map(([v,l])=>`<option value="${v}" ${sel===v?"selected":""}>${l}</option>`).join("");
 
-  /* ---------- Desktop table ---------- */
-  const tblRows=list.map((r,i)=>{
+  const rows=list.map((r,i)=>{
     const cls=statusClass(r);
     const email=esc(r.email);
     const emEsc=email.replace(/'/g,"\\'");
     const keyEsc=esc(r.emailKey).replace(/'/g,"\\'");
-    const pw = r.password || "";
-    const schoolInfo=[esc(r.schoolStage?stageLabel(r.schoolStage):""),esc(r.schoolGender?genderLabel(r.schoolGender):""),esc(r.schoolName||"")].filter(Boolean).join(" - ");
+    const k=esc(r.emailKey);
+    const pw=r.password||"";
+    const pwEsc=esc(pw).replace(/'/g,"\\'");
     const phone=normIraqPhone(r.phone||"");
     const isApproved=r.status==="approved";
     const isReset=r.passwordResetRequestedAt;
+    const isStopped=["suspended","disabled","deleted","cancelled"].includes(r.status);
+    const currentPlan=normalizePlan(r.plan||r.planCode)||"monthly";
+    const schoolSub=[r.schoolStage?stageLabel(r.schoolStage):"",r.schoolGender?genderLabel(r.schoolGender):""].filter(Boolean).map(esc).join(" - ");
 
+    /* 1) المدرسة */
+    const schoolCell=`<div class="at-school">${esc(r.schoolName||"—")}</div>
+      ${schoolSub?`<div class="at-sub">${schoolSub}</div>`:""}
+      <div class="at-sub"><span class="at-num">#${i+1}</span>
+        <span class="badge-status s-${r.status||"trial"}">${statusLabel(r.status)}</span>${isReset?' <span class="badge-status s-reset-pw">🔑 استعادة</span>':""}
+      </div>`;
+
+    /* 2) المدير */
+    const principalCell=`<div class="at-strong">${esc(r.principalName||r.name||"—")}</div>
+      ${r.principalName&&r.name&&r.name!==r.principalName?`<div class="at-sub">${esc(r.name)}</div>`:""}`;
+
+    /* 3) الإيميل */
+    const emailCell=`<span class="code at-ltr">${email}</span>`;
+
+    /* 4) كلمة السر */
+    const pwCell=pw
+      ? `<span class="code at-ltr at-copy" title="اضغط للنسخ" onclick="navigator.clipboard&&navigator.clipboard.writeText('${pwEsc}').then(()=>{this.textContent='✅ تم النسخ';setTimeout(()=>{this.textContent='${pwEsc}'},1200)},()=>{})">${esc(pw)}</span>`
+      : '<span class="muted at-sub">غير محفوظ</span>';
+
+    /* 5) الموبايل */
+    const phoneOk=/^07[0-9]{9}$/.test(phone);
+    const phoneCell=`${phoneOk?`<a href="${waLink(phone)}" target="_blank" class="btn whatsapp small">💬 ${esc(phone)}</a>`:'<div class="at-warn">⚠️ لم يُدخل الهاتف</div>'}
+      <input type="tel" data-phone-for="${email}" value="${phoneOk?esc(phone):esc(r.phone||"")}" placeholder="07xxxxxxxxx" class="inline at-ltr at-in" maxlength="11" />`;
+
+    /* 6) مدة التفعيل */
     let planCell;
     if(isApproved){
-      planCell='<span class="badge-plan">'+planLabel(r.plan||r.planCode)+'</span>';
-      if(normalizePlan(r.plan||r.planCode)!=="permanent"&&r.expiresAt){
-        const exp=new Date(r.expiresAt);
-        const days=Math.ceil((exp-Date.now())/86400000);
-        const expCls=days<0?"rejected":days<=7?"warn":"approved";
-        planCell+='<div style="font-size:10px;color:#666;margin-top:2px">ينتهي: '+fmtDate(r.expiresAt)+'</div>';
+      let exp="";
+      if(currentPlan!=="permanent"&&r.expiresAt){
+        const d=Math.ceil((r.expiresAt-Date.now())/86400000);
+        exp=`<div class="at-sub ${d<0?"at-bad":d<=7?"at-warn":""}">ينتهي: ${fmtDate(r.expiresAt)} (${d<0?"منتهي":"باقي "+d+" يوم"})</div>`;
       }
+      planCell=`<span class="badge-plan">${planLabel(r.plan||r.planCode)}</span>${exp}
+        <div class="at-plan"><select class="inline" id="chg-${k}">${planOptions(currentPlan)}</select>
+        <input type="text" id="pa-${k}" data-paid-for="${email}" value="${esc(r.paidAmount||"")}" placeholder="المبلغ" class="inline at-ltr at-amt" /></div>`;
     }else{
-      planCell=`<select class="inline" id="pl-${esc(r.emailKey)}">
-          <option value="weekly">أسبوع</option>
-          <option value="monthly" selected>شهر</option>
-          <option value="yearly">سنة</option>
-          <option value="permanent">دائم</option>
-        </select>
-        <button class="btn success small" onclick="approve('${emEsc}',document.getElementById('pl-${esc(r.emailKey)}').value,document.getElementById('pa-${esc(r.emailKey)}').value)">✔ فعّل</button>`;
+      planCell=`<div class="at-plan"><select class="inline" id="pl-${k}">${planOptions("monthly")}</select>
+        <input type="text" id="pa-${k}" data-paid-for="${email}" value="${esc(r.paidAmount||"")}" placeholder="المبلغ" class="inline at-ltr at-amt" /></div>`;
     }
 
-    const currentPlan=normalizePlan(r.plan||r.planCode)||"monthly";
-    const extendCell=isApproved?
-      `<select class="inline" id="chg-${esc(r.emailKey)}">
-         <option value="weekly" ${currentPlan==="weekly"?"selected":""}>أسبوع</option><option value="monthly" ${currentPlan==="monthly"?"selected":""}>شهر</option>
-         <option value="yearly" ${currentPlan==="yearly"?"selected":""}>سنة</option>
-         <option value="permanent" ${currentPlan==="permanent"?"selected":""}>دائم</option>
-       </select>
-       <button class="btn warn small" onclick="changePlan('${keyEsc}',document.getElementById('chg-${esc(r.emailKey)}').value,document.getElementById('pa-${esc(r.emailKey)}').value)">⏱ تغيير المدة</button>`:"";
-
-    const pwCell = pw
-      ? `<span class="code" dir="ltr" onclick="navigator.clipboard&&navigator.clipboard.writeText('${esc(pw).replace(/'/g,"\\'")}').then(()=>this.textContent='✅ تم النسخ',()=>{});this.style.background='#c8e6c9';setTimeout(()=>{this.style.background='#f6f8fa';this.textContent='${esc(pw).replace(/'/g,"\\'")}'},1200)" style="cursor:pointer" title="اضغط للنسخ">${esc(pw)}</span>`
-      : '<span class="muted" style="font-size:11px">غير محفوظ</span>';
+    /* 7) الإجراءات */
+    const actions=`<div class="actions at-actions">
+      ${isApproved
+        ?`<button class="btn warn small" onclick="changePlan('${keyEsc}',pickIn(this,'chg-${k}').value,pickIn(this,'pa-${k}').value)">⏱ تغيير المدة</button>`
+        :`<button class="btn success small" onclick="approve('${emEsc}',pickIn(this,'pl-${k}').value,pickIn(this,'pa-${k}').value)">✔ فعّل</button>`}
+      ${r.status!=="rejected"&&!isReset?`<button class="btn ghost small" onclick="reject('${emEsc}')">رفض</button>`:""}
+      ${isReset
+        ?`<button class="btn violet small" onclick="resetPassword('${emEsc}')">🔑 إرسال الرمز</button><button class="btn ghost small" onclick="clearReset('${emEsc}')" title="إلغاء الطلب">✕</button>`
+        :`<button class="btn violet small" onclick="resetPassword('${emEsc}')" title="استعادة كلمة السر">🔑</button>`}
+      ${!isStopped?`<button class="btn warn small" onclick="stopAccount('${emEsc}')">⏹ إيقاف</button>`:""}
+      <button class="btn danger small" onclick="del('${emEsc}')">🗑 حذف</button>
+    </div>`;
 
     return `<tr class="${cls}">
-      <td style="text-align:center;font-weight:800;color:#888">${i+1}</td>
-      <td><span class="code">${email}</span></td>
-      <td>${pwCell}</td>
-      <td><div style="font-weight:700">${esc(r.name||"-")}</div><div style="font-size:10.5px;color:#777">${schoolInfo}</div>${r.principalName?`<div style="font-size:10px;color:#999">👤 ${esc(r.principalName)}</div>`:""}</td>
-      <td>
-        <div class="phone-input">
-          ${phone?`<a href="${waLink(phone)}" target="_blank" class="btn whatsapp small">💬 ${esc(phone)}</a>`:'<span class="muted">—</span>'}
-        </div>
-        <input type="tel" data-phone-for="${email}" value="${esc(phone)}" placeholder="07xxxxxxxxx" class="inline" dir="ltr" style="width:120px" maxlength="11" />
-        ${!phone?'<div style="font-size:10px;color:#c62828;font-weight:700;margin-top:2px">⚠️ لم يُدخل الهاتف</div>':""}
-      </td>
-      <td>${deviceBadges(r)}<div style="margin-top:3px"><span class="code" style="font-size:10px">${esc(lastDevId(r).slice(0,10))}…</span></div></td>
-      <td style="white-space:nowrap;font-size:11px">${fmtTime(r.registeredAt)}</td>
-      <td><span class="badge-status s-${r.status||"trial"}">${statusLabel(r.status)}</span>${isReset?' <span class="badge-status s-reset-pw">🔑 استعادة</span>':""}</td>
-      <td>${planCell}</td>
-      <td><input type="text" id="pa-${esc(r.emailKey)}" data-paid-for="${email}" value="${esc(r.paidAmount||"")}" placeholder="المبلغ" class="inline" dir="ltr" style="width:80px" />${extendCell}</td>
-      <td><div class="actions">
-        ${r.status!=="rejected"&&!isReset?`<button class="btn ghost small" onclick="reject('${emEsc}')">رفض</button>`:""}
-        ${isReset?`<button class="btn violet small" onclick="resetPassword('${emEsc}')">🔑 إرسال الرمز</button>
-          <button class="btn ghost small" onclick="clearReset('${emEsc}')" title="إلغاء الطلب">✕</button>`:
-          `<button class="btn violet small" onclick="resetPassword('${emEsc}')">🔑</button>`}
-        ${!["suspended","disabled","deleted","cancelled"].includes(r.status)?`<button class="btn warn small" onclick="stopAccount('${emEsc}')">⏹ إيقاف</button>`:""}
-        <button class="btn danger small" onclick="del('${emEsc}')">🗑 حذف</button>
-      </div></td>
+      <td data-label="اسم المدرسة" class="at-head"><div class="at-v">${schoolCell}</div></td>
+      <td data-label="اسم المدير"><div class="at-v">${principalCell}</div></td>
+      <td data-label="الإيميل"><div class="at-v">${emailCell}</div></td>
+      <td data-label="الرقم السري"><div class="at-v">${pwCell}</div></td>
+      <td data-label="رقم الموبايل"><div class="at-v">${phoneCell}</div></td>
+      <td data-label="مدة التفعيل"><div class="at-v">${planCell}</div></td>
+      <td data-label="الإجراءات" class="at-act"><div class="at-v">${actions}</div></td>
     </tr>`;
-  }).join("");
-
-  /* ---------- Mobile cards ---------- */
-  const cards=list.map((r,i)=>{
-    const cls=statusClass(r);
-    const email=esc(r.email);
-    const emEsc=email.replace(/'/g,"\\'");
-    const keyEsc=esc(r.emailKey).replace(/'/g,"\\'");
-    const schoolInfo=[esc(r.schoolStage?stageLabel(r.schoolStage):""),esc(r.schoolGender?genderLabel(r.schoolGender):""),esc(r.schoolName||"")].filter(Boolean).join(" - ");
-    const phone=normIraqPhone(r.phone||"");
-    const isApproved=r.status==="approved";
-    const currentPlan=normalizePlan(r.plan||r.planCode)||"monthly";
-    const isReset=r.passwordResetRequestedAt;
-    const pw = r.password || "";
-
-    let planBlock;
-    if(isApproved){
-      planBlock=`<b>الخطة الحالية:</b><span><span class="badge-plan">${planLabel(r.plan||r.planCode)}</span></span>
-        <b>تغيير المدة:</b><span>
-          <select class="inline" id="chgm-${esc(r.emailKey)}">
-            <option value="weekly" ${currentPlan==="weekly"?"selected":""}>أسبوع</option><option value="monthly" ${currentPlan==="monthly"?"selected":""}>شهر</option>
-            <option value="yearly" ${currentPlan==="yearly"?"selected":""}>سنة</option><option value="permanent" ${currentPlan==="permanent"?"selected":""}>دائم</option>
-          </select>
-          <button class="btn warn small" onclick="changePlan('${keyEsc}',document.getElementById('chgm-${esc(r.emailKey)}').value,document.getElementById('pam-${esc(r.emailKey)}').value)">⏱ تطبيق</button>
-        </span>`;
-    }else{
-      planBlock=`<b>التفعيل:</b><span>
-        <select class="inline" id="plm-${esc(r.emailKey)}">
-          <option value="weekly">أسبوع</option><option value="monthly" selected>شهر</option>
-          <option value="yearly">سنة</option><option value="permanent">دائم</option>
-        </select>
-        <button class="btn success small" onclick="approve('${emEsc}',document.getElementById('plm-${esc(r.emailKey)}').value,document.getElementById('pam-${esc(r.emailKey)}').value)">✔ فعّل</button>
-      </span>`;
-    }
-
-    return `<div class="acct-card ${cls}">
-      <div class="top">
-        <div><div class="name">#${i+1} - ${esc(r.name||"-")}</div><span class="email">${email}</span></div>
-        <span class="badge-status s-${r.status||"trial"}">${statusLabel(r.status)}</span>
-      </div>
-      ${schoolInfo?`<div style="font-size:11.5px;color:#555;margin-bottom:4px">🏫 ${schoolInfo}</div>`:""}
-      ${r.principalName?`<div style="font-size:11px;color:#666">👤 ${esc(r.principalName)}</div>`:""}
-      <div class="meta">
-        <b>كلمة السر:</b><span><span class="code" dir="ltr" onclick="navigator.clipboard&&navigator.clipboard.writeText('${esc(pw).replace(/'/g,"\\'")}')" style="cursor:pointer;background:#fff3e0;color:#bf360c">${pw?esc(pw):'<span class="muted" style="color:#999">غير محفوظ</span>'}</span> <small style="color:#666">اضغط للنسخ</small></span>
-        <b>الهاتف:</b><span class="phone-input">
-          ${phone?`<a href="${waLink(phone)}" target="_blank" class="btn whatsapp small">💬 ${esc(phone)}</a>`:'<span class="muted" style="color:#c62828;font-weight:700">⚠️ لم يُدخل</span>'}
-          <input type="tel" data-phone-for="${email}" value="${esc(phone)}" placeholder="07xxxxxxxxx" class="inline" dir="ltr" style="width:120px" maxlength="11" />
-        </span>
-        <b>الجهاز:</b><span>${deviceBadges(r)}</span>
-        <b>سُجّل:</b><span>${fmtDate(r.registeredAt)}</span>
-        ${planBlock}
-        <b>المبلغ:</b><span><input type="text" id="pam-${esc(r.emailKey)}" data-paid-for="${email}" value="${esc(r.paidAmount||"")}" placeholder="المبلغ" class="inline" dir="ltr" style="width:90px" /></span>
-      </div>
-      <div class="actions">
-        ${isReset?`<button class="btn violet" onclick="resetPassword('${emEsc}')">🔑 إرسال رمز الاستعادة</button>`:
-          `<button class="btn violet small" onclick="resetPassword('${emEsc}')">🔑 استعادة</button>`}
-        ${r.status!=="rejected"&&!isReset?`<button class="btn ghost" onclick="reject('${emEsc}')">رفض</button>`:""}
-        ${isReset?`<button class="btn ghost small" onclick="clearReset('${emEsc}')">✕ إلغاء الطلب</button>`:""}
-        ${!["suspended","disabled","deleted","cancelled"].includes(r.status)?`<button class="btn warn" onclick="stopAccount('${emEsc}')">⏹ إيقاف</button>`:""}
-        <button class="btn danger" onclick="del('${emEsc}')">🗑 حذف</button>
-      </div>
-    </div>`;
   }).join("");
 
   return `<div class="card">
@@ -801,13 +809,12 @@ function renderTable(list,title){
       <div class="grow"></div>
       <button class="btn ghost small" onclick="exportCSV()">⬇ CSV</button>
     </div>
-      <div class="tbl-wrap"><table>
+    <div class="acct-wrap"><table class="acct-tbl">
       <thead><tr>
-        <th>#</th><th>البريد</th><th>كلمة السر</th><th>الاسم / المدرسة</th><th>الهاتف</th><th>الجهاز</th><th>التسجيل</th><th>الحالة</th><th>الخطة</th><th>المبلغ / تجديد</th><th>إجراءات</th>
+        <th>اسم المدرسة</th><th>اسم المدير</th><th>الإيميل</th><th>الرقم السري</th><th>رقم الموبايل</th><th>مدة التفعيل</th><th>الإجراءات</th>
       </tr></thead>
-      <tbody>${tblRows}</tbody>
+      <tbody>${rows}</tbody>
     </table></div>
-    <div class="cards-view">${cards}</div>
   </div>`;
 }
 
