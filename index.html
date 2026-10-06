@@ -22049,6 +22049,7 @@ function ensureTargetSection(gradeLabel,secLabel,cache){
 }
 function clearObj(o){ Object.keys(o||{}).forEach(function(k){ delete o[k]; }); }
 function applyNewYear(items,opts,newYear){
+  APP.nbYearArchived={at:Date.now(),year:PLAN.year};
   var moves=[], grads=[];
   items.forEach(function(it){ if(it.action!=='stay') (it.action==='grad'?grads:moves).push(it); });
   // 1) سحب الطلاب المنتقلين والمتخرجين من شعبهم (نحتفظ بكائن الطالب كما هو: نفس المعرّف والصورة والبيانات)
@@ -22479,6 +22480,96 @@ setTimeout(check,8000);
 setInterval(check,30*60000);
 document.addEventListener('visibilitychange',function(){ if(document.visibilityState==='visible') setTimeout(check,1500); });
 window.__nbAutoBackup={run:runBackup,check:check,cfg:cfg};
+})();
+</script>
+
+<script>
+/* ===== nb-secondary-lower + unlimited-sections =====
+   1) صفوف الأول/الثاني/الثالث في المدرسة الثانوية تعمل بنفس نظام الإعدادية:
+      سجل الدرجات الشهري، بطاقة الدرجات الرسمية، الدرجة من 100 والنجاح من 50، قوائم الامتحان.
+      (المتوسطة والأساسية-المتوسط تعمل أصلاً بنفس نظام الإعدادية.)
+   2) إضافة شعب بلا حد لكل صف وفي كل مرحلة.
+   رقعة إضافية فقط: لا تعدّل الكود السابق. */
+(function(){
+function stage(){ return (typeof currentStage==='function'&&currentStage())||''; }
+function clean(l){ return String(l||'').replace(/^\s*الصف\s+/,'').replace(/\s+/g,' ').trim(); }
+function isSecLower(label){ return stage()==='secondary' && /^(الأول|الاول|الثاني|الثالث)$/.test(clean(label)); }
+window.nbIsSecondaryLowerGrade=isSecLower;
+
+function wrap(name,fn){
+  if(typeof window[name]!=='function') return;
+  var orig=window[name];
+  window[name]=function(){ return fn.call(this,orig,arguments); };
+}
+wrap('usesSixthGradeLayout',function(orig,a){ return isSecLower(a[0]) ? true : orig.apply(this,a); });
+wrap('gradeToType',function(orig,a){ return isSecLower(a[0]) ? 'secondary' : orig.apply(this,a); });
+wrap('isPrimaryTenMarkGrade',function(orig,a){ return isSecLower(a[0]) ? false : orig.apply(this,a); });
+/* قوائم الامتحان: نفس القائمة البسيطة المستخدمة للمتوسطة والإعدادية */
+['isIslamicExamList','isIslamicUpperExamList','isArabicExamList','isArabicFourthExamList','isArabicUpperExamList',
+ 'isEnglishPrimaryExamList','isEnglishUpperExamList','isMathFourthExamList','isSportPrimaryExamList','isSportUpperExamList',
+ 'isMoralPrimaryExamList','isArtPrimaryExamList','isUnifiedPrimaryExamList'].forEach(function(n){
+  wrap(n,function(orig,a){ return isSecLower(a[0]) ? false : orig.apply(this,a); });
+});
+wrap('isSimplePrimaryExamList',function(orig,a){ return isSecLower(a[0]) ? true : orig.apply(this,a); });
+/* اختيار نوع البطاقة يدوياً في الأساسية: إضافة بطاقة الصفوف المتوسطة الرسمية */
+wrap('cardTypeOptionsHtml',function(orig,a){
+  if(stage()!=='basic') return orig.apply(this,a);
+  var opts=[['lower','الأساسية — الأول إلى الرابع'],['upper','الأساسية — الخامس والسادس'],['secondary','الأساسية — الصفوف المتوسطة']];
+  var sel=a[0]||'lower';
+  return opts.map(function(o){ return '<option value="'+o[0]+'"'+(o[0]===sel?' selected':'')+'>'+o[1]+'</option>'; }).join('');
+});
+
+/* ---------- الشعب بلا حد ---------- */
+var LETTERS=['أ','ب','ج','د','هـ','و','ز','ح','ط','ي','ك','ل','م','ن','س','ع','ف','ص','ق','ر','ش','ت','ث','خ','ذ','ض','ظ','غ'];
+function usedLabels(label){
+  var g=(APP.grades||[]).find(function(x){return x.label===label;}), used={};
+  ((g&&g.sections)||[]).forEach(function(s){ used[String(s.label).trim()]=1; });
+  return used;
+}
+function freeNames(label,max){
+  var used=usedLabels(label), out=LETTERS.filter(function(l){return !used[l];});
+  var n=1; while(out.length<max){ if(!used[String(n)]) out.push(String(n)); n++; if(n>5000) break; }
+  return out.slice(0,Math.max(max,out.length));
+}
+function fillSelect(label){
+  var key=(typeof gradeKey==='function')?gradeKey(label):label;
+  var sel=document.getElementById('newSection-'+key);
+  if(!sel || sel.tagName!=='SELECT') return;
+  var names=freeNames(label,LETTERS.length);
+  sel.innerHTML='<option value="">اختر الشعبة</option>'+
+    names.map(function(v){ return '<option value="'+escapeHtml(v)+'">شعبة '+escapeHtml(v)+'</option>'; }).join('')+
+    '<option value="__nb_custom">✏️ اسم آخر…</option>';
+  sel.onchange=function(){
+    if(sel.value!=='__nb_custom') return;
+    var v=prompt('اكتب اسم الشعبة (مثال: أ2 أو 11 أو المتميزين):','');
+    v=String(v||'').trim();
+    if(!v){ sel.value=''; return; }
+    var o=document.createElement('option'); o.value=v; o.textContent='شعبة '+v;
+    sel.insertBefore(o,sel.options[1]); sel.value=v;
+  };
+  var host=sel.parentNode;
+  if(host && !host.querySelector('.nb-sec-next')){
+    var b=document.createElement('button'); b.type='button'; b.className='nb-sec-next';
+    b.textContent='＋ الشعبة التالية'; b.title='إضافة أول شعبة غير مستخدمة مباشرة';
+    b.onclick=function(){ window.nbAddNextSection(label); };
+    host.appendChild(b);
+  }
+}
+window.nbAddNextSection=function(label){
+  fillSelect(label);
+  var key=(typeof gradeKey==='function')?gradeKey(label):label;
+  var sel=document.getElementById('newSection-'+key); if(!sel) return;
+  var next=freeNames(label,1)[0]; if(!next) return;
+  if(![].some.call(sel.options,function(o){return o.value===next;})){ var o=document.createElement('option'); o.value=next; o.textContent='شعبة '+next; sel.appendChild(o); }
+  sel.value=next;
+  addSection(label);
+};
+wrap('renderChips',function(orig,a){ var r=orig.apply(this,a); try{ fillSelect(a[0]); }catch(e){} return r; });
+wrap('renderGradesView',function(orig,a){
+  var r=orig.apply(this,a);
+  try{ visibleGradeGroups().forEach(function(g){ g.labels.forEach(fillSelect); }); }catch(e){}
+  return r;
+});
 })();
 </script>
 
