@@ -22237,7 +22237,8 @@ function fmt(ts){ if(!ts) return '—'; try{ return new Date(ts).toLocaleString(
 /* ---------- القدرات ---------- */
 function nat(){ var n=window.DaragatNative; return (n && typeof n.writeBackupFile==='function')?n:null; }
 function canNativePick(){ var n=nat(); return !!(n && typeof n.pickBackupFolder==='function'); }
-function canFolder(){ return typeof window.showDirectoryPicker==='function'; }
+function isWrapper(){ var n=window.DaragatNative; return !!(n && typeof n.writeBackupFile!=='function'); }
+function canFolder(){ return typeof window.showDirectoryPicker==='function' && !isWrapper(); }
 
 /* ---------- الجدولة ---------- */
 function freqOf(k){ return FREQS.find(function(f){return f[0]===k;})||FREQS[2]; }
@@ -22312,7 +22313,10 @@ function pruneFolder(h,keep){
     for(var i=keep;i<names.length;i++){ try{ await h.removeEntry(names[i]); }catch(e){} }
   })();
 }
+function b64utf8(text){ try{ return btoa(unescape(encodeURIComponent(text))); }catch(e){ return ''; } }
 function download(name,text){
+  var n=window.DaragatNative;
+  if(n && typeof n.saveFile==='function'){ try{ return Promise.resolve(n.saveFile(b64utf8(text),name)); }catch(e){} }
   var a=document.createElement('a'); a.href=URL.createObjectURL(new Blob([text],{type:'application/json'})); a.download=name;
   document.body.appendChild(a); a.click(); setTimeout(function(){ a.remove(); try{URL.revokeObjectURL(a.href);}catch(e){} },1500);
 }
@@ -22339,21 +22343,24 @@ function runBackup(fromUser){
         return writeFolder(h,name,text,keep);
       });
     });
+  else if(c.dest==='downloads' && isWrapper() && !fromUser){ var pe=new Error('need-file-tap'); pe.needFileTap=true; ext=Promise.reject(pe); }
   else if(c.dest==='downloads'){ try{ download(name,text); ext=Promise.resolve('downloads'); }catch(e){ ext=Promise.reject(e); } }
   else ext=Promise.resolve('internal');
+  if(ext&&ext.catch) ext.catch(function(){});
   return internal.then(function(){ return ext; }).then(function(where){
     c=cfg(); c.lastAt=Date.now(); c.lastStatus='ok'; c.lastWhere=where; c.lastName=name; c.pending=false; saveCfg(c);
     toast('✅ تم حفظ النسخة الاحتياطية'+(where==='internal'?' داخل التطبيق':where==='downloads'?' في التنزيلات':' في المجلد المحدد'));
     hideBanner(); refreshUi(); busy=false; return where;
   },function(err){
     c=cfg();
-    if(err&&err.needTap){ c.pending=true; c.lastStatus='need-permission'; saveCfg(c); showBanner(); }
+    if(err&&err.needFileTap){ c.lastAt=Date.now(); c.lastStatus='ok'; c.lastWhere='internal'; c.pendingFile=true; saveCfg(c); showBanner(true); toast('✅ أُخذت النسخة الدورية داخل التطبيق'); }
+    else if(err&&err.needTap){ c.pending=true; c.lastStatus='need-permission'; saveCfg(c); showBanner(); }
     else { c.lastAt=Date.now(); c.lastStatus='error: '+((err&&err.message)||err); c.lastWhere='internal'; saveCfg(c);
       toast('⚠️ تعذر الحفظ في الوجهة المحددة — حُفظت النسخة داخل التطبيق'); }
     refreshUi(); busy=false; return null;
   });
 }
-function check(){ var c=cfg(); if(isDue(c)) runBackup(false); else if(c.pending) showBanner(); }
+function check(){ var c=cfg(); if(isDue(c)) runBackup(false); else if(c.pending) showBanner(); else if(c.pendingFile) showBanner(true); }
 
 /* ---------- تنبيهات صغيرة ---------- */
 function toast(msg){
@@ -22361,12 +22368,15 @@ function toast(msg){
   t.style.cssText='position:fixed;left:50%;bottom:22px;transform:translateX(-50%);z-index:2147483000;background:#1b5e20;color:#fff;padding:10px 16px;border-radius:22px;font:800 13px inherit;font-family:inherit;box-shadow:0 6px 18px rgba(0,0,0,.35);direction:rtl;max-width:90vw;text-align:center';
   document.body.appendChild(t); setTimeout(function(){ t.remove(); },3500);
 }
-function showBanner(){
+function showBanner(fileMode){
   if(document.getElementById('nbabBanner')) return;
   var b=document.createElement('button'); b.id='nbabBanner'; b.type='button';
-  b.textContent='💾 النسخة الاحتياطية الدورية مستحقة — اضغط للحفظ في المجلد';
+  b.textContent=fileMode?'💾 النسخة الدورية جاهزة — اضغط لحفظها في ملف':'💾 النسخة الاحتياطية الدورية مستحقة — اضغط للحفظ في المجلد';
   b.style.cssText='position:fixed;left:50%;bottom:70px;transform:translateX(-50%);z-index:2147482900;border:0;border-radius:22px;padding:11px 18px;background:#e65100;color:#fff;font:800 13px inherit;font-family:inherit;box-shadow:0 6px 18px rgba(0,0,0,.35);direction:rtl;cursor:pointer;max-width:92vw';
-  b.onclick=function(){ runBackup(true); };
+  b.onclick=function(){
+    if(fileMode){ listCopies().then(function(l){ var r=l[0]; if(!r) return; Promise.resolve(download(r.name,r.data)).then(function(){ var c=cfg(); c.pendingFile=false; saveCfg(c); hideBanner(); }); }); return; }
+    runBackup(true);
+  };
   document.body.appendChild(b);
 }
 function hideBanner(){ var b=document.getElementById('nbabBanner'); if(b) b.remove(); }
@@ -22375,7 +22385,7 @@ function hideBanner(){ var b=document.getElementById('nbabBanner'); if(b) b.remo
 function destLabel(c){
   if(c.dest==='native') return '📂 '+(c.folderName||'المجلد المحدد في الجهاز');
   if(c.dest==='folder') return '📂 '+(c.folderName||'مجلد محدد');
-  if(c.dest==='downloads') return '⬇️ مجلد التنزيلات (Download)';
+  if(c.dest==='downloads') return isWrapper()?'💾 ملف تختار مكانه (مع تذكير عند كل موعد)':'⬇️ مجلد التنزيلات (Download)';
   return '📱 داخل التطبيق فقط';
 }
 function sectionHtml(){
@@ -22388,16 +22398,16 @@ function sectionHtml(){
     '<p class="empty-hint">يأخذ التطبيق نسخة كاملة تلقائياً حسب المدة التي تختارها ويحفظها في المكان الذي تحدده مرة واحدة فقط. النسخة تُستعاد من زر «استيراد النسخة الاحتياطية».</p>'+
     '<label style="display:flex;gap:8px;align-items:center;font-weight:800;margin:6px 0"><input type="checkbox" '+(c.enabled?'checked':'')+' onchange="nbabSet(\'enabled\',this.checked)"> تفعيل النسخ التلقائي</label>'+
     '<div style="display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin:6px 0">'+
-      '<label>المدة: <select class="inline" onchange="nbabSet(\'freq\',this.value)">'+freqOpts+'</select></label>'+
-      '<label>الاحتفاظ بـ: <select class="inline" onchange="nbabSet(\'keep\',Number(this.value))">'+keepOpts+'</select></label>'+
+      '<label>المدة: <select class="inline" style="min-height:38px;font-size:14px;padding:6px 10px" onchange="nbabSet(\'freq\',this.value)">'+freqOpts+'</select></label>'+
+      '<label>الاحتفاظ بـ: <select class="inline" style="min-height:38px;font-size:14px;padding:6px 10px" onchange="nbabSet(\'keep\',Number(this.value))">'+keepOpts+'</select></label>'+
     '</div>'+
     '<div style="margin:8px 0"><b>مكان الحفظ:</b> '+esc(destLabel(c))+'</div>'+
     '<div style="display:flex;flex-wrap:wrap;gap:8px">'+
       (canPick?'<button class="material-btn" onclick="nbabPickFolder()">📂 اختيار مجلد الحفظ</button>':'')+
-      '<button class="material-btn secondary" onclick="nbabSet(\'dest\',\'downloads\')">⬇️ مجلد التنزيلات</button>'+
+      '<button class="material-btn secondary" onclick="nbabSet(\'dest\',\'downloads\')">'+(isWrapper()?'💾 حفظ في ملف':'⬇️ مجلد التنزيلات')+'</button>'+
       '<button class="material-btn secondary" onclick="nbabSet(\'dest\',\'internal\')">📱 داخل التطبيق فقط</button>'+
     '</div>'+
-    (!canPick?'<p class="empty-hint" style="margin-top:6px">اختيار مجلد خاص يحتاج دعماً من تطبيق الأندرويد (الجسر DaragatNative) أو متصفح حاسوب حديث (Chrome/Edge). حالياً يمكن الحفظ في مجلد التنزيلات تلقائياً.</p>':'')+
+    (isWrapper()?'<p class="empty-hint" style="margin-top:6px">داخل تطبيق الحاسوب والأندرويد: تُؤخذ النسخة تلقائياً داخل التطبيق في موعدها، وإذا اخترت «حفظ في ملف» يظهر زر لحفظها في المكان الذي تختاره بضغطة واحدة.</p>':(!canPick?'<p class="empty-hint" style="margin-top:6px">اختيار مجلد خاص يحتاج متصفح حاسوب حديث (Chrome/Edge). حالياً يمكن الحفظ في مجلد التنزيلات تلقائياً.</p>':''))+
     '<div style="display:grid;grid-template-columns:auto 1fr;gap:4px 10px;font-size:12.5px;margin:10px 0">'+
       '<b>آخر نسخة:</b><span>'+esc(fmt(c.lastAt))+'</span>'+
       '<b>الحالة:</b><span>'+status+'</span>'+
@@ -22422,7 +22432,7 @@ function fillCopies(){ listCopies().then(function(l){ var el=document.getElement
 window.nbabSet=function(k,v){
   var c=cfg(); c[k]=v;
   if(k==='enabled' && v && !c.lastAt){ saveCfg(c); refreshUi(); runBackup(true); return; }
-  if(k==='dest'){ c.pending=false; hideBanner(); }
+  if(k==='dest'){ c.pending=false; c.pendingFile=false; hideBanner(); }
   saveCfg(c); refreshUi();
 };
 window.nbabPickFolder=function(){
@@ -22570,6 +22580,367 @@ wrap('renderGradesView',function(orig,a){
   try{ visibleGradeGroups().forEach(function(g){ g.labels.forEach(fillSelect); }); }catch(e){}
   return r;
 });
+})();
+</script>
+
+<script>
+/* ===== nb-central-record-table: السجل الوسطي كجدول للشعبة حسب المادة =====
+   الأعمدة: ت | رقم القيد | اسم الطالب | معدل الفصل الأول | نصف السنة | معدل الفصل الثاني | السعي السنوي |
+            الامتحان النهائي | الدرجة النهائية | الدور الثاني | الدرجة النهائية د٢ | النتيجة | الملاحظات
+   رقعة إضافية: بطاقات الطلاب الفردية باقية كما هي في تبويب ثانٍ. */
+(function(){
+if(typeof window.openCentralRecordSection!=='function') return;
+var CTX={grade:'',sid:'',subject:''};
+function esc(t){ return escapeHtml(String(t==null?'':t)); }
+function num(v){ if(v===''||v==null) return null; var n=Number(typeof toWesternDigits==='function'?toWesternDigits(v):v); return isFinite(n)?n:null; }
+function show(v){ return (v===''||v==null)?'—':toArabicDigits(String(v)); }
+function rowFor(grade,sid,sub,stId){
+  var rec=gbRecord(grade,sid,sub,false), r=rec&&rec.rows?rec.rows[stId]:null;
+  r=r||{};
+  if(usesSixthGradeLayout(grade)&&typeof gbCompute56==='function') gbCompute56(r,rec);
+  return r;
+}
+function calc(grade,r){
+  var upper=usesSixthGradeLayout(grade), pass=resultPassMark(grade);
+  var t1=upper?(r.term1!=null?r.term1:''):'', t2=upper?(r.term2!=null?r.term2:''):'';
+  var cw=upper?(r.coursework!=null?r.coursework:''):'';
+  var fe=(r.finalExam!=null&&r.finalExam!=='')?r.finalExam:(upper?(r.result!=null?r.result:''):'');
+  var fg=(r.finalGrade!=null&&r.finalGrade!=='')?r.finalGrade:(upper?'':fe);
+  var sr=(r.completion!=null&&r.completion!=='')?r.completion:(r.makeup||r.completionExam||'');
+  var f2=(r.finalAfterCompletion!=null&&r.finalAfterCompletion!=='')?r.finalAfterCompletion:'';
+  var srN=num(sr), cwN=num(cw);
+  if(srN!=null && f2===''){ f2 = cwN!=null ? Math.round((cwN+srN)/2) : srN; }
+  var fgN=num(fg), f2N=num(f2), res='';
+  if(f2N!=null) res = f2N>=pass?'ناجح':'راسب';
+  else if(fgN!=null) res = fgN>=pass?'ناجح':'مكمل';
+  return {t1:t1,mid:r.mid,t2:t2,cw:cw,fe:fe,fg:fg,sr:sr,f2:f2,res:res,remarks:r.remarks||'',failFg:fgN!=null&&fgN<pass,failF2:f2N!=null&&f2N<pass};
+}
+function students(grade,sid){
+  var sec=gbSectionsForGrade(grade).find(function(s){return s.id===sid;});
+  return {sec:sec,list:sec?(sec.students||[]).filter(function(s){return String(s.name||'').trim();}):[]};
+}
+var CSS='<style id="nbcrCss">'+
+'.nbcr-tabs{display:flex;gap:8px;flex-wrap:wrap;margin:8px 0}'+
+'.nbcr-tab{border:1px solid rgba(127,127,127,.45);border-radius:20px;padding:8px 14px;font-weight:800;font-size:13px;background:transparent;color:inherit;cursor:pointer;font-family:inherit}'+
+'.nbcr-tab.on{background:#1b5e20;color:#fff;border-color:#1b5e20}'+
+'.nbcr-subs{display:flex;gap:6px;flex-wrap:wrap;margin:8px 0}'+
+'.nbcr-sub{border:1px solid rgba(127,127,127,.4);border-radius:10px;padding:7px 11px;font-size:12.5px;font-weight:700;background:rgba(127,127,127,.08);color:inherit;cursor:pointer;font-family:inherit}'+
+'.nbcr-sub.on{background:#0d47a1;color:#fff;border-color:#0d47a1}'+
+'.nbcr-wrap{overflow:auto;-webkit-overflow-scrolling:touch;border:1px solid rgba(127,127,127,.35);border-radius:10px}'+
+'table.nbcr{border-collapse:collapse;min-width:1080px;width:100%;font-size:12.5px}'+
+'table.nbcr th{background:#1a237e;color:#fff;padding:7px 4px;border:1px solid rgba(255,255,255,.25);font-weight:800;position:sticky;top:0;z-index:1}'+
+'table.nbcr td{border:1px solid rgba(127,127,127,.35);padding:4px;text-align:center}'+
+'table.nbcr td.nm{text-align:right;font-weight:700;white-space:nowrap}'+
+'table.nbcr td.bad{color:#c62828;font-weight:800}'+
+'table.nbcr input{width:100%;min-width:56px;box-sizing:border-box;padding:5px;border:1px solid rgba(127,127,127,.45);border-radius:6px;background:transparent;color:inherit;font-family:inherit;font-size:12.5px;text-align:center;margin:0}'+
+'table.nbcr input.rm{min-width:140px;text-align:right}'+'table.nbcr td,table.nbcr th{white-space:nowrap}'+'table.nbcr th{white-space:normal;min-width:62px}'+'table.nbcr th:nth-child(1),table.nbcr td:nth-child(1){min-width:34px;width:34px}'+'table.nbcr td:nth-child(2) input{width:92px;min-width:92px}'+'table.nbcr td:nth-child(10) input{width:70px;min-width:70px}'+'table.nbcr td:nth-child(12){min-width:64px}'+
+'.nbcr-res-ok{color:#2e7d32;font-weight:800}.nbcr-res-bad{color:#c62828;font-weight:800}.nbcr-res-mid{color:#e65100;font-weight:800}'+
+'.nbcr-actions{display:flex;gap:8px;flex-wrap:wrap;margin:8px 0}'+
+'</style>';
+var HEAD=['ت','رقم القيد','اسم الطالب','معدل الفصل الأول','امتحان نصف السنة','معدل الفصل الثاني','درجة السعي السنوي','الامتحان النهائي','الدرجة النهائية','امتحان الدور الثاني','الدرجة النهائية الدور ٢','النتيجة','الملاحظات'];
+function resClass(t){ return t==='ناجح'?'nbcr-res-ok':(t==='راسب'?'nbcr-res-bad':(t?'nbcr-res-mid':'')); }
+function tableHtml(grade,sid,sub){
+  var s=students(grade,sid);
+  var rows=s.list.map(function(st,i){
+    var c=calc(grade,rowFor(grade,sid,sub,st.id));
+    var k='data-st="'+esc(st.id)+'"';
+    return '<tr '+k+'><td>'+toArabicDigits(String(i+1))+'</td>'+
+      '<td><input '+k+' data-f="reg" value="'+esc(st.registrationNo||st.recordNo||st.registrationNumber||'')+'" onchange="nbcrSave(this)"></td>'+
+      '<td class="nm">'+esc(st.name)+'</td>'+
+      '<td>'+show(c.t1)+'</td><td>'+show(c.mid)+'</td><td>'+show(c.t2)+'</td><td>'+show(c.cw)+'</td>'+
+      '<td>'+show(c.fe)+'</td><td class="'+(c.failFg?'bad':'')+'">'+show(c.fg)+'</td>'+
+      '<td><input '+k+' data-f="sr" inputmode="decimal" value="'+esc(c.sr===''?'':toArabicDigits(String(c.sr)))+'" onchange="nbcrSave(this)"></td>'+
+      '<td class="'+(c.failF2?'bad':'')+'" data-cell="f2">'+show(c.f2)+'</td>'+
+      '<td class="'+resClass(c.res)+'" data-cell="res">'+esc(c.res||'—')+'</td>'+
+      '<td><input class="rm" '+k+' data-f="rm" value="'+esc(c.remarks)+'" onchange="nbcrSave(this)"></td></tr>';
+  }).join('');
+  return '<div class="nbcr-wrap"><table class="nbcr"><thead><tr>'+HEAD.map(function(h){return '<th>'+h+'</th>';}).join('')+'</tr></thead><tbody>'+
+    (rows||'<tr><td colspan="13">لا يوجد طلاب في هذه الشعبة.</td></tr>')+'</tbody></table></div>';
+}
+function panelHtml(){
+  var subs=gbSubjects(CTX.grade);
+  if(!CTX.subject || subs.indexOf(CTX.subject)<0) CTX.subject=subs[0]||'';
+  return '<div class="nbcr-subs">'+subs.map(function(n){ return '<button type="button" class="nbcr-sub'+(n===CTX.subject?' on':'')+'" data-sub="'+esc(n)+'" onclick="nbcrPick(this.dataset.sub)">'+esc(n)+'</button>'; }).join('')+'</div>'+
+    '<div class="nbcr-actions"><button type="button" class="material-btn" onclick="nbcrPrint(false,false)">🖨️ طباعة المادة</button><button type="button" class="material-btn" onclick="nbcrPrint(true,false)">📄 PDF المادة</button>'+
+    '<button type="button" class="material-btn secondary" onclick="nbcrPrint(false,true)">🖨️ طباعة كل المواد</button><button type="button" class="material-btn secondary" onclick="nbcrPrint(true,true)">📄 PDF كل المواد</button></div>'+
+    '<div id="nbcrTable">'+tableHtml(CTX.grade,CTX.sid,CTX.subject)+'</div>'+
+    '<p style="font-size:11.5px;opacity:.75;margin:6px 0">الدرجات مأخوذة مباشرة من سجل الدرجات. رقم القيد ودرجة الدور الثاني والملاحظات تُحفظ تلقائياً، والدرجة النهائية للدور الثاني = (السعي السنوي + امتحان الدور الثاني) ÷ ٢.</p>';
+}
+window.nbcrPick=function(sub){ CTX.subject=sub; var p=document.getElementById('nbcrPanel'); if(p) p.innerHTML=panelHtml(); };
+window.nbcrTab=function(which){
+  var p=document.getElementById('nbcrPanel'), c=document.getElementById('nbcrCards');
+  if(p) p.style.display=which==='table'?'':'none';
+  if(c) c.style.display=which==='cards'?'':'none';
+  document.querySelectorAll('.nbcr-tab').forEach(function(b){ b.classList.toggle('on',b.dataset.tab===which); });
+};
+window.nbcrSave=function(inp){
+  var f=inp.dataset.f, stId=inp.dataset.st, s=students(CTX.grade,CTX.sid), st=s.list.find(function(x){return x.id===stId;});
+  if(!st) return;
+  var v=String(inp.value||'').trim();
+  if(f==='reg'){ st.registrationNo=v; if(typeof saveApp==='function') saveApp(); return; }
+  var rec=gbRecord(CTX.grade,CTX.sid,CTX.subject,true); if(!rec.rows[stId]) rec.rows[stId]={};
+  var r=rec.rows[stId];
+  if(f==='rm'){ r.remarks=v; }
+  if(f==='sr'){
+    var n=num(v);
+    if(v!=='' && (n==null||n<0||n>100)){ alert('أدخل درجة صحيحة من ٠ إلى ١٠٠'); inp.value=r.completion!=null?r.completion:''; return; }
+    r.completion=v===''?'':n;
+    delete r.finalAfterCompletion;
+    var c=calc(CTX.grade,rowFor(CTX.grade,CTX.sid,CTX.subject,stId));
+    r.finalAfterCompletion=c.f2===''?'':c.f2;
+    var tr=inp.closest('tr');
+    if(tr){ var a=tr.querySelector('[data-cell="f2"]'), b=tr.querySelector('[data-cell="res"]');
+      if(a){ a.textContent=show(c.f2); a.className=c.failF2?'bad':''; }
+      if(b){ b.textContent=c.res||'—'; b.className=resClass(c.res); } }
+  }
+  if(typeof saveGradebook==='function') saveGradebook(GRADEBOOK);
+};
+function printDoc(subjects){
+  var s=students(CTX.grade,CTX.sid); if(!s.sec) return '';
+  var theme=(typeof getPrintTheme==='function')?getPrintTheme():'';
+  var logo=APP.school&&APP.school.logo?'<img src="'+APP.school.logo+'">':'';
+  var pages=subjects.map(function(sub){
+    var body=s.list.map(function(st,i){
+      var c=calc(CTX.grade,rowFor(CTX.grade,CTX.sid,sub,st.id));
+      return '<tr><td>'+toArabicDigits(String(i+1))+'</td><td>'+esc(st.registrationNo||st.recordNo||'')+'</td><td class="nm">'+esc(st.name)+'</td><td>'+show(c.t1)+'</td><td>'+show(c.mid)+'</td><td>'+show(c.t2)+'</td><td>'+show(c.cw)+'</td><td>'+show(c.fe)+'</td><td class="'+(c.failFg?'bad':'')+'">'+show(c.fg)+'</td><td>'+show(c.sr)+'</td><td class="'+(c.failF2?'bad':'')+'">'+show(c.f2)+'</td><td>'+esc(c.res||'')+'</td><td class="rm">'+esc(c.remarks)+'</td></tr>';
+    }).join('');
+    return '<section class="pg"><header><div class="lg">'+logo+'</div><div class="tt"><h1>السجل الوسطي</h1><p>'+esc(APP.school&&APP.school.name||'')+' — العام الدراسي '+esc(APP.school&&(APP.school.academicYear||APP.school.year)||'')+'</p></div>'+
+      '<div class="mt"><div><b>الصف:</b> '+esc(CTX.grade)+'</div><div><b>الشعبة:</b> '+esc(s.sec.label)+'</div><div><b>المادة:</b> '+esc(sub)+'</div></div></header>'+
+      '<table><thead><tr>'+HEAD.map(function(h){return '<th>'+h+'</th>';}).join('')+'</tr></thead><tbody>'+body+'</tbody></table>'+
+      '<footer><span>مدرس المادة: ............................</span><span>مدير المدرسة: '+esc(APP.school&&APP.school.principal||'............................')+'</span></footer></section>';
+  }).join('');
+  return '<!doctype html><html lang="ar" dir="rtl" class="exam-theme-'+theme+'"><head><meta charset="utf-8"><title>السجل الوسطي - '+esc(CTX.grade)+' - '+esc(s.sec.label)+'</title>'+
+    '<style>'+(typeof printThemeRootCss==='function'?printThemeRootCss():'')+'</style><style>@page{size:A4 landscape;margin:8mm}*{box-sizing:border-box;-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}'+
+    'html,body{margin:0;background:#fff;color:#111;font-family:Tahoma,Arial,sans-serif}.pg{width:281mm;page-break-after:always;padding:2mm}.pg:last-child{page-break-after:auto}'+
+    'header{display:grid;grid-template-columns:22mm 1fr 62mm;gap:4mm;align-items:center;padding:3mm 4mm;border-radius:2mm;color:#fff;background:linear-gradient(125deg,var(--list-dark,#1a237e),var(--list-mid,#3949ab));margin-bottom:3mm}'+
+    '.lg{width:18mm;height:18mm;border-radius:50%;background:#fff;overflow:hidden}.lg img{width:100%;height:100%;object-fit:cover}.tt{text-align:center}.tt h1{margin:0;font-size:17pt}.tt p{margin:1mm 0 0;font-size:10pt}.mt{font-size:10pt;line-height:1.6}'+
+    'table{width:100%;border-collapse:collapse;font-size:9pt}th{background:var(--list-dark,#1a237e);color:#fff;padding:1.6mm .8mm;border:.2mm solid #555;font-size:8.3pt}td{border:.2mm solid #555;padding:1.2mm .8mm;text-align:center}td.nm{text-align:right;white-space:nowrap;font-weight:700}td.rm{text-align:right;min-width:24mm}td.bad{color:#c62828;font-weight:800}tbody tr:nth-child(even) td{background:#f4f6fb}'+
+    'footer{display:flex;justify-content:space-between;margin-top:6mm;font-size:10pt;font-weight:700}</style></head><body>'+pages+'</body></html>';
+}
+window.nbcrPrint=function(asPdf,all){
+  if(!CTX.grade) return;
+  var subs=all?gbSubjects(CTX.grade):[CTX.subject];
+  var html=printDoc(subs); if(!html) return;
+  var frame=document.createElement('iframe');
+  frame.style.cssText='position:fixed;left:-10000px;top:0;width:297mm;height:210mm;border:0;background:#fff';
+  document.body.appendChild(frame);
+  var doc=frame.contentDocument||frame.contentWindow.document; doc.open(); doc.write(html); doc.close();
+  try{ if(typeof applyDigitsToPrintDoc==='function') applyDigitsToPrintDoc(doc); }catch(e){}
+  var name='السجل-الوسطي-'+CTX.grade+'-'+(all?'كل-المواد':CTX.subject)+'.pdf';
+  setTimeout(function(){
+    if(asPdf){
+      if(typeof downloadPdfFromPrintFrame==='function'){
+        Promise.resolve(downloadPdfFromPrintFrame(frame,name,null)).then(function(){ setTimeout(function(){ if(frame.parentNode) frame.remove(); },800); });
+      } else { alert('تعذر تجهيز ملف PDF.'); frame.remove(); }
+    } else {
+      if(typeof printIframeNow==='function') printIframeNow(frame);
+      else { try{ frame.contentWindow.focus(); frame.contentWindow.print(); }catch(e){} }
+      setTimeout(function(){ if(frame.parentNode) frame.remove(); },120000);
+    }
+  },350);
+};
+window.openCentralRecordSection=(function(orig){
+  return function(grade,sid){
+    var r=orig.apply(this,arguments);
+    try{
+      var el=document.getElementById('view-central-record'); if(!el) return r;
+      var shell=el.querySelector('.module-shell'), head=shell&&shell.querySelector('.module-head'); if(!head) return r;
+      if(CTX.grade!==grade) CTX.subject='';
+      CTX.grade=grade; CTX.sid=sid;
+      var cards=document.createElement('div'); cards.id='nbcrCards'; cards.style.display='none';
+      Array.prototype.slice.call(shell.children).forEach(function(ch){ if(ch!==head) cards.appendChild(ch); });
+      var tabs=document.createElement('div'); tabs.className='nbcr-tabs';
+      tabs.innerHTML=CSS+'<button type="button" class="nbcr-tab on" data-tab="table" onclick="nbcrTab(\'table\')">📋 جدول الشعبة حسب المادة</button><button type="button" class="nbcr-tab" data-tab="cards" onclick="nbcrTab(\'cards\')">👤 بطاقات الطلاب</button>';
+      var panel=document.createElement('div'); panel.id='nbcrPanel'; panel.innerHTML=panelHtml();
+      shell.appendChild(tabs); shell.appendChild(panel); shell.appendChild(cards);
+      if(typeof keepTableHScroll==='function') keepTableHScroll(el);
+    }catch(e){ try{console.warn('nbcr',e);}catch(_){} }
+    return r;
+  };
+})(window.openCentralRecordSection);
+})();
+</script>
+
+<script>
+/* ===== nb-select-picker: نافذة اختيار بديلة للقوائم المنسدلة داخل تطبيق الأندرويد =====
+   بعض نسخ WebView في أندرويد لا تفتح قائمة <select> الأصلية. هنا تُفتح نافذة اختيار من داخل الصفحة
+   تعمل مع كل القوائم في كل الأقسام (ومنها التي تُنشأ لاحقاً)، وتطلق نفس أحداث input/change.
+   تعمل تلقائياً في تطبيق الأندرويد فقط. للتحكم يدوياً: localStorage nbSelectPicker = on | off */
+(function(){
+var UA=navigator.userAgent||'';
+function mode(){ try{ return localStorage.getItem('nbSelectPicker')||'auto'; }catch(e){ return 'auto'; } }
+function isAndroidWebView(){ return /Android/i.test(UA) && (/;\s*wv\)/.test(UA) || /Version\/\d+(\.\d+)?\s+Chrome/i.test(UA) || !!window.DaragatNative); }
+function enabled(){ var m=mode(); if(m==='on') return true; if(m==='off') return false; return isAndroidWebView(); }
+window.nbSelectPickerEnabled=enabled;
+var lastOpen=0, current=null;
+
+function css(){
+  if(document.getElementById('nbspCss')) return;
+  var st=document.createElement('style'); st.id='nbspCss';
+  st.textContent=
+  '#nbspBack{position:fixed;top:0;left:0;right:0;bottom:0;z-index:2147483600;background:rgba(0,0,0,.45);display:flex;align-items:flex-end;justify-content:center}'+
+  '#nbspSheet{background:#fff;color:#1f2933;width:100%;max-width:560px;max-height:78vh;border-radius:16px 16px 0 0;box-shadow:0 -8px 30px rgba(0,0,0,.35);display:flex;flex-direction:column;direction:rtl;font-family:Tahoma,Arial,sans-serif}'+
+  '@media(min-width:700px){#nbspBack{align-items:center}#nbspSheet{border-radius:16px}}'+
+  '#nbspHead{display:flex;align-items:center;gap:8px;padding:12px 14px;border-bottom:1px solid #e3e7ee;font-weight:800;font-size:15px}'+
+  '#nbspHead span{flex:1}#nbspClose{border:0;background:#eef1f6;color:#333;border-radius:50%;width:34px;height:34px;font-size:18px;cursor:pointer}'+
+  '#nbspSearch{margin:10px 14px 4px;padding:10px 12px;border:1px solid #cfd6e0;border-radius:10px;font:14px Tahoma,Arial,sans-serif;color:#1f2933;background:#fff}'+
+  '#nbspList{overflow:auto;-webkit-overflow-scrolling:touch;padding:6px 8px 12px}'+
+  '.nbsp-g{font-size:12px;font-weight:800;color:#6b7785;padding:10px 10px 4px}'+
+  '.nbsp-o{display:flex;align-items:center;gap:10px;width:100%;text-align:right;border:0;background:transparent;color:#1f2933;padding:13px 12px;border-radius:10px;font:15px Tahoma,Arial,sans-serif;cursor:pointer;border-bottom:1px solid #f0f2f6}'+
+  '.nbsp-o:active{background:#e8eefc}.nbsp-o.on{background:#e3ecff;color:#0d47a1;font-weight:800}.nbsp-o[disabled]{opacity:.4}'+
+  '.nbsp-o i{font-style:normal;width:22px;text-align:center}'+
+  '#nbspFoot{padding:10px 14px;border-top:1px solid #e3e7ee}#nbspDone{width:100%;padding:12px;border:0;border-radius:10px;background:#1b5e20;color:#fff;font:800 15px Tahoma,Arial,sans-serif}';
+  document.head.appendChild(st);
+}
+function labelFor(s){
+  try{
+    if(s.getAttribute('aria-label')) return s.getAttribute('aria-label');
+    if(s.id){ var l=document.querySelector('label[for="'+s.id.replace(/"/g,'')+'"]'); if(l&&l.textContent.trim()) return l.textContent.trim(); }
+    var p=s.closest('label'); if(p){ var t=p.textContent.replace(s.textContent,'').trim(); if(t) return t.slice(0,60); }
+    var prev=s.previousElementSibling; if(prev&&prev.textContent&&prev.textContent.trim().length<60&&!/^(SELECT|INPUT|BUTTON)$/.test(prev.tagName)) return prev.textContent.trim();
+  }catch(e){}
+  var first=s.options[0]; if(first&&first.value==='') return first.text;
+  return 'اختر';
+}
+function fire(s){
+  try{ s.dispatchEvent(new Event('input',{bubbles:true})); }catch(e){}
+  try{ s.dispatchEvent(new Event('change',{bubbles:true})); }catch(e){}
+}
+function close(){ var b=document.getElementById('nbspBack'); if(b) b.remove(); current=null; }
+function open(s){
+  css(); close(); current=s; lastOpen=Date.now();
+  try{ s.blur(); }catch(e){}
+  var multi=s.multiple, picked={};
+  [].forEach.call(s.options,function(o,i){ if(o.selected) picked[i]=1; });
+  var back=document.createElement('div'); back.id='nbspBack';
+  var sheet=document.createElement('div'); sheet.id='nbspSheet';
+  var head=document.createElement('div'); head.id='nbspHead';
+  var title=document.createElement('span'); title.textContent=labelFor(s);
+  var x=document.createElement('button'); x.id='nbspClose'; x.type='button'; x.textContent='✕'; x.onclick=close;
+  head.appendChild(title); head.appendChild(x); sheet.appendChild(head);
+  var search=null;
+  if(s.options.length>12){ search=document.createElement('input'); search.id='nbspSearch'; search.type='search'; search.placeholder='🔍 بحث…'; sheet.appendChild(search); }
+  var list=document.createElement('div'); list.id='nbspList'; sheet.appendChild(list);
+  var lastGroup=null, btns=[];
+  [].forEach.call(s.options,function(o,i){
+    if(o.hidden) return;
+    var g=o.parentNode&&o.parentNode.tagName==='OPTGROUP'?o.parentNode:null;
+    if(g&&g!==lastGroup){ var gh=document.createElement('div'); gh.className='nbsp-g'; gh.textContent=g.label||''; list.appendChild(gh); lastGroup=g; }
+    var b=document.createElement('button'); b.type='button'; b.className='nbsp-o'+(picked[i]?' on':'');
+    if(o.disabled||(g&&g.disabled)) b.disabled=true;
+    var ic=document.createElement('i'); ic.textContent=picked[i]?(multi?'☑':'✔'):(multi?'☐':'');
+    var tx=document.createElement('span'); tx.textContent=o.text;
+    b.appendChild(ic); b.appendChild(tx);
+    b.onclick=function(){
+      if(multi){ picked[i]=!picked[i]; b.classList.toggle('on',!!picked[i]); ic.textContent=picked[i]?'☑':'☐'; return; }
+      var changed=s.selectedIndex!==i;
+      s.selectedIndex=i; close();
+      if(changed) fire(s);
+    };
+    btns.push({b:b,t:(o.text||'').toLowerCase()});
+    list.appendChild(b);
+  });
+  if(multi){
+    var foot=document.createElement('div'); foot.id='nbspFoot';
+    var done=document.createElement('button'); done.id='nbspDone'; done.type='button'; done.textContent='تم';
+    done.onclick=function(){ var ch=false; [].forEach.call(s.options,function(o,i){ var v=!!picked[i]; if(o.selected!==v){ o.selected=v; ch=true; } }); close(); if(ch) fire(s); };
+    foot.appendChild(done); sheet.appendChild(foot);
+  }
+  if(search){ search.oninput=function(){ var q=search.value.trim().toLowerCase(); btns.forEach(function(x){ x.b.style.display=(!q||x.t.indexOf(q)>=0)?'':'none'; }); }; }
+  back.appendChild(sheet);
+  back.addEventListener('click',function(e){ if(e.target===back) close(); });
+  document.body.appendChild(back);
+  var on=list.querySelector('.nbsp-o.on'); if(on&&on.scrollIntoView){ try{ on.scrollIntoView({block:'center'}); }catch(e){} }
+}
+function targetSelect(e){
+  var t=e.target; if(!t||!t.closest) return null;
+  var s=t.tagName==='SELECT'?t:t.closest('select');
+  if(!s||s.disabled||s.getAttribute('data-native')==='1') return null;
+  return s;
+}
+var tStart=null;
+document.addEventListener('touchstart',function(e){ var t=e.touches&&e.touches[0]; tStart=t?{x:t.clientX,y:t.clientY,at:Date.now()}:null; },{capture:true,passive:true});
+function intercept(e){
+  if(!enabled()) return;
+  var s=targetSelect(e); if(!s) return;
+  if(e.type==='touchend'){
+    var t=e.changedTouches&&e.changedTouches[0];
+    if(tStart&&t&&(Math.abs(t.clientX-tStart.x)>12||Math.abs(t.clientY-tStart.y)>12)) return; // سحب/تمرير وليس ضغطة
+  }
+  e.preventDefault(); e.stopPropagation();
+  if(Date.now()-lastOpen<500) return;
+  open(s);
+}
+document.addEventListener('touchend',intercept,{capture:true,passive:false});
+document.addEventListener('mousedown',intercept,true);
+document.addEventListener('click',function(e){ if(enabled()&&targetSelect(e)){ e.preventDefault(); } },true);
+document.addEventListener('keydown',function(e){ if(e.key==='Escape'&&current) close(); });
+window.addEventListener('popstate',function(){ if(current) close(); });
+window.nbOpenSelectPicker=open;
+})();
+</script>
+
+<script>
+/* ===== nb-overlay-guard: إغلاق النوافذ المنبثقة العالقة عند الانتقال لقسم آخر =====
+   كانت نوافذ مثل «إضافة موظف» و«ضبط إنذار الغياب» تبقى مفتوحة فوق القسم الجديد عند الانتقال
+   من القائمة العلوية أو الرئيسية، فتحجب القوائم المنسدلة والأزرار تحته. */
+(function(){
+var PAIRS=[['staffFormOverlay','closeStaffForm'],['careFormOverlay','closeCareForm'],['recordsFormOverlay','closeRecordsForm'],
+  ['recordsDocOverlay','closeRecordsDocViewer'],['recordsGradesOverlay','closeRecordsGradesForm'],['notesFormOverlay','closeNotesForm'],
+  ['accountsFormOverlay','closeAccountsForm'],['dashListOverlay','closeDashNameList'],['studentRecordOverlay','closeStudentRecordModal'],
+  ['studentSearchOverlay','closeStudentSearch']];
+function openOverlays(){
+  var out=[];
+  PAIRS.forEach(function(p){ var el=document.getElementById(p[0]); if(el&&el.classList.contains('open')) out.push({el:el,close:p[1]}); });
+  var aw=document.getElementById('attendanceWarningSettings'); if(aw) out.push({el:aw,remove:true});
+  return out;
+}
+function closeAll(list){
+  (list||openOverlays()).forEach(function(o){
+    try{
+      if(o.remove){ o.el.remove(); return; }
+      if(typeof window[o.close]==='function') window[o.close](); else o.el.classList.remove('open');
+    }catch(e){ try{ o.el.classList.remove('open'); }catch(_){} }
+  });
+}
+window.nbCloseStrayOverlays=function(){ closeAll(); };
+/* ضغطة خارج النافذة المفتوحة (القائمة العلوية/الرئيسية) = انتقال: أغلق النافذة أولاً */
+document.addEventListener('click',function(e){
+  var list=openOverlays(); if(!list.length) return;
+  var t=e.target; if(!t||!t.closest) return;
+  if(t.closest('#nbspBack,#daragatPdfSaveModal,.pdf-toast,#actOverlay,#dlsEntry')) return;
+  for(var i=0;i<list.length;i++){ if(list[i].el.contains(t)) return; }
+  closeAll(list);
+},true);
+/* زر الرجوع يغلق نافذة ضبط إنذار الغياب أيضاً */
+if(typeof window.appGoBack==='function'){
+  window.appGoBack=(function(orig){ return function(){
+    var aw=document.getElementById('attendanceWarningSettings'); if(aw){ aw.remove(); return true; }
+    return orig.apply(this,arguments);
+  }; })(window.appGoBack);
+}
+/* الرجوع للرئيسية من أي مكان لا يترك نافذة مفتوحة */
+['goHome','goDashboard'].forEach(function(n){
+  if(typeof window[n]!=='function') return;
+  window[n]=(function(orig){ return function(){ closeAll(); return orig.apply(this,arguments); }; })(window[n]);
+});
+})();
+</script>
+
+<script>
+/* ===== nb-staff-print-fix: طباعة/PDF الملاك من الشاشة الرئيسية لقسم الملاك =====
+   زر «طباعة وتصدير» في الصفحة الرئيسية للملاك كان لا يفعل شيئاً لأن جدول الملاك غير معروض فيها؛
+   الآن يُعرض جدول معلومات الملاك تلقائياً ثم تتم الطباعة. */
+(function(){
+if(typeof window.printStaffInfo!=='function') return;
+window.printStaffInfo=(function(orig){
+  return function(){
+    if(!document.querySelector('.staff-table') && typeof window.openStaffInfo==='function'){
+      try{ window.openStaffInfo(); }catch(e){}
+    }
+    return orig.apply(this,arguments);
+  };
+})(window.printStaffInfo);
 })();
 </script>
 
