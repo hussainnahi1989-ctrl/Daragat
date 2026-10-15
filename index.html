@@ -18245,7 +18245,7 @@ if(document.readyState==='loading'){
 <!-- ===== AUTO UPDATE NOTIFICATION (small icon in topbar) ===== -->
 <script>
 (function(){
-  const APP_VERSION = "1.11.4";
+  const APP_VERSION = "1.12.1";
   const CHECK_EVERY_MINUTES = 30;
   const LS_ACCEPTED = "daragat_accepted_version";
   const LS_SNOOZE   = "daragat_update_snooze";
@@ -22960,5 +22960,186 @@ lastO=orient();
 })();
 </script>
 
+<script>
+/* ===== nb-about-update-timeout: «التحقق من التحديث» لا يبقى معلقاً على إنترنت ضعيف ===== */
+(function(){
+if(typeof window.aboutCheckForUpdate!=='function') return;
+window.aboutCheckForUpdate=(function(orig){ return function(){
+  var r=orig.apply(this,arguments);
+  setTimeout(function(){
+    var btn=document.querySelector('#view-about button[disabled]'), st=document.getElementById('aboutUpdateStatus');
+    if(st && /جارٍ التحقق/.test(st.textContent||'')){
+      st.textContent=navigator.onLine===false?'لا يوجد اتصال بالإنترنت — البرنامج يعمل من النسخة المحفوظة على الجهاز.':'الإنترنت ضعيف ولم يصل رد من الموقع. حاول لاحقاً — البرنامج يعمل بشكل طبيعي.';
+      document.querySelectorAll('#view-about button').forEach(function(b){ if(/جارٍ البحث/.test(b.textContent||'')){ b.disabled=false; b.textContent='🔄 البحث عن تحديث'; } });
+    }
+  },12000);
+  return r;
+}; })(window.aboutCheckForUpdate);
+})();
+</script>
+<script>
+/* ===== nb-android-bridge-guard: ضمان وجود جسر التطبيق داخل تطبيق الأندرويد =====
+   تطبيق الأندرويد يحقن «جسر» الطباعة وحفظ الملفات في الصفحة. على بعض الأجهزة (مثل تابلت هواوي)
+   قد لا يُحقن هذا الجسر أو يتأخر، فتضغط طباعة أو تصدير ولا يحدث شيء.
+   هنا نسخة مطابقة حرفياً لجسر التطبيق نفسه (من daragat 1.1.7) تُفعَّل فقط إذا كان تطبيق الأندرويد
+   موجوداً والجسر غير موجود — فلا تكرار ولا تأثير على الحاسوب أو المتصفح. */
+(function(){
+  function installCopy(){
+    if(!window.flutter_inappwebview) return false;
+    if(window.DaragatNative && window.DaragatNative.__daragatBridge) return true;
+    try{
+(function () {
+  if (window.DaragatNative && window.DaragatNative.__daragatBridge) return;
+  var api = window.DaragatNative || {};
+  api.__daragatBridge = true;
+  function call(name, a, b) {
+    return new Promise(function (resolve, reject) {
+      var tries = 0;
+      function attempt() {
+        try {
+          if (window.flutter_inappwebview && typeof window.flutter_inappwebview.callHandler === 'function') {
+            var args = [a];
+            if (typeof b !== 'undefined') args.push(b);
+            window.flutter_inappwebview.callHandler.apply(null, [name].concat(args))
+              .then(resolve)
+              .catch(function (e) { reject(e); });
+            return;
+          }
+        } catch (e) { reject(e); return; }
+        if (++tries > 120) { reject(new Error('DaragatNative bridge unavailable')); return; }
+        setTimeout(attempt, 50);
+      }
+      attempt();
+    });
+  }
+  api.savePdf = function (base64, fileName) { return call('daragatSavePdf', base64, fileName); };
+  api.printHtml = function (html, optionsJson) { return call('daragatPrintHtml', html, optionsJson || '{}'); };
+  api.printPdf = function (base64, fileName) { return call('daragatPrintPdf', base64, fileName); };
+  // ماسح QR للسوار/الربط — نص الرمز أو null عند الإلغاء/الفشل.
+  api.scanAttachmentQr = function () { return call('daragatScanAttachmentQr'); };
+  // حفظ نتيجة ربط السوار/التطبيق محليًا — يعود دائمًا بالوعد (ok|error).
+  api.applyAttachmentPairing = function (payload) { return call('daragatApplyAttachmentPairing', payload); };
+  // جلسة الملحق: صلاحية/تشغيل/حالة — تُستدعى من الموقع بعد الربط.
+  api.isAttachmentSessionValid = function () { return call('daragatIsAttachmentSessionValid'); };
+  api.startAttachmentSync = function () { return call('daragatStartAttachmentSync'); };
+  api.getAttachmentSyncStatus = function () { return call('daragatGetAttachmentSyncStatus'); };
+  window.DaragatNative = api;
+
+  // توحيد مسار Excel/JSON/CSV/صور… مع PDF: أي تنزيل blob/data
+  // (XLSX.writeFile، نسخة JSON، CSV…) يمرّ عبر الجسر — نافذة «حفظ باسم»
+  // + رسائل صادقة من التطبيق — مع تحييد الرابط حتى لا يتكرر التنزيل.
+  function isDownloadable(href) {
+    return href.indexOf('blob:') === 0 || href.indexOf('data:') === 0;
+  }
+  function saveViaBridge(href, name) {
+    fetch(href).then(function (r) { return r.blob(); }).then(function (b) {
+      return new Promise(function (resolve, reject) {
+        var fr = new FileReader();
+        fr.onload = function () {
+          try {
+            var dataUrl = String(fr.result || '');
+            var comma = dataUrl.indexOf(',');
+            var b64 = comma >= 0 ? dataUrl.substring(comma + 1) : '';
+            resolve(call('daragatSaveFile', b64, name));
+          } catch (err) { reject(err); }
+        };
+        fr.onerror = function () { reject(new Error('FileReader')); };
+        fr.readAsDataURL(b);
+      });
+    }).catch(function () {
+      // بايتات فارغة → الجسر يعرض رسالة فشل صادقة.
+      call('daragatSaveFile', '', name);
+    });
+  }
+  function tryIntercept(el, e) {
+    try {
+      if (!el || !el.getAttribute || el.tagName !== 'A') return false;
+      var href = el.getAttribute('href') || '';
+      if (!isDownloadable(href)) return false;
+      if (e) {
+        if (e.__daragatDone) return false;
+        e.__daragatDone = true;
+        e.preventDefault();
+        e.stopPropagation();
+        if (e.stopImmediatePropagation) e.stopImmediatePropagation();
+      }
+      var name = el.getAttribute('download') || '';
+      // تحييد الرابط: أحداث dispatchEvent الاصطناعية قد لا تكون قابلة للإلغاء،
+      // فمنع التنزيل الافتراضي بتجريد العنصر من download/href.
+      try {
+        el.removeAttribute('download');
+        el.removeAttribute('href');
+      } catch (err) {}
+      saveViaBridge(href, name);
+      return true;
+    } catch (err) { return false; }
+  }
+  // 1) روابط ملتصقة بالصفحة (يُلتقطها مستمع المستند في طور الالتقاط).
+  document.addEventListener('click', function (e) {
+    var t = e.target;
+    if (!t) return;
+    var a = (t.closest ? t.closest('a[download]') : null) ||
+            (t.tagName === 'A' ? t : null);
+    if (a) tryIntercept(a, e);
+  }, true);
+  // 2) كل عنصر <a> يُنشأ جديدًا: يلتقط a.click() و dispatchEvent حتى لو غير ملتصق
+  //    (مسار XLSX.writeFile ونسخة JSON الاحتياطية).
+  var origCreate = document.createElement;
+  document.createElement = function (tag) {
+    var el = origCreate.apply(document, arguments);
+    try {
+      if (el && el.tagName === 'A') {
+        el.addEventListener('click', function (e) { tryIntercept(el, e); }, false);
+      }
+    } catch (err) {}
+    return el;
+  };
+  // 3) احتياطي لـ HTMLAnchorElement.prototype.click.
+  try {
+    if (window.HTMLAnchorElement && HTMLAnchorElement.prototype) {
+      var origClick = HTMLAnchorElement.prototype.click;
+      HTMLAnchorElement.prototype.click = function () {
+        if (tryIntercept(this, null)) return;
+        return origClick.apply(this, arguments);
+      };
+    }
+  } catch (err) {}
+})();
+      window.__nbBridgeFromSite=true;
+      if(window.__nbLog) window.__nbLog.push({t:Date.now(),k:'جسر',m:'جسر التطبيق لم يكن موجوداً — فُعّلت النسخة الاحتياطية من الموقع'});
+    }catch(e){}
+    return !!(window.DaragatNative && window.DaragatNative.__daragatBridge);
+  }
+  var n=0, t=setInterval(function(){
+    // ننتظر قليلاً ليحقن التطبيق جسره الأصلي أولاً
+    if(n++ >= 6 && (installCopy() || n>80)) clearInterval(t);
+    else if(window.DaragatNative && window.DaragatNative.__daragatBridge) clearInterval(t);
+  },250);
+  /* إشعار فوري عند الطباعة حتى لا يظن المستخدم أن الزر لا يعمل */
+  function toast(msg){
+    var el=document.getElementById('nbPrintToast');
+    if(!el){ el=document.createElement('div'); el.id='nbPrintToast';
+      el.style.cssText='position:fixed;left:50%;top:70px;transform:translateX(-50%);z-index:2147483000;background:#263238;color:#fff;padding:10px 16px;border-radius:22px;font:800 13.5px Tahoma,Arial,sans-serif;box-shadow:0 6px 18px rgba(0,0,0,.35);direction:rtl;max-width:92vw;text-align:center';
+      document.body.appendChild(el); }
+    el.textContent=msg; el.style.display='block';
+    clearTimeout(el.__t); el.__t=setTimeout(function(){ el.style.display='none'; },4000);
+  }
+  window.nbAppToast=toast;
+  var w=0, tw=setInterval(function(){
+    var nat=window.DaragatNative;
+    if(nat && window.flutter_inappwebview && !nat.__nbTimeouts && typeof nat.printHtml==='function'){
+      nat.__nbTimeouts=true;
+      var ph=nat.printHtml;
+      nat.printHtml=function(html,opt){
+        toast('🖨️ جاري فتح نافذة الطباعة…');
+        // إذا لم يرد التطبيق خلال 20 ثانية ننتقل تلقائياً للطريقة البديلة (ملف PDF)
+        return Promise.race([Promise.resolve(ph.call(nat,html,opt)),new Promise(function(_,rej){ setTimeout(function(){ rej(new Error('print timeout')); },20000); })]);
+      };
+      if(typeof nat.savePdf==='function'){ var sp=nat.savePdf; nat.savePdf=function(b,nm){ toast('💾 جاري حفظ الملف…'); return sp.call(nat,b,nm); }; }
+      clearInterval(tw);
+    } else if(++w>200) clearInterval(tw);
+  },300);
+})();
+</script>
 </body>
 </html>
