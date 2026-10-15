@@ -22855,6 +22855,8 @@ function envRows(){
   var chrome=(ua.match(/Chrome\/(\d+)/)||[])[1]||'?';
   var rows=[
     ['نوع التشغيل',kind],
+    ['الشاشة / نافذة العرض',(screen.width||0)+'×'+(screen.height||0)+' / '+window.innerWidth+'×'+window.innerHeight+' (×'+(window.devicePixelRatio||1)+')'],
+    ['تعريف الجهاز',(navigator.userAgent||'').replace(/^Mozilla\/5\.0 /,'').slice(0,90)],
     ['نسخة محرك العرض','Chrome '+chrome],
     ['جسر التطبيق',window.DaragatNative?'موجود':'غير موجود'],
     ['الطباعة المباشرة (printHtml)',typeof n.printHtml==='function'?'✅':'—'],
@@ -22900,6 +22902,61 @@ if(typeof window.renderBackupModule==='function'){
       if(form && !el.querySelector('#nbDiagPanel')) form.insertAdjacentHTML('beforeend',panelHtml()); }catch(e){}
     return r; }; })(window.renderBackupModule);
 }
+})();
+</script>
+
+<script>
+/* ===== nb-update-and-rotation: رسالة «تحديث جاهز» + معالجة قلب الجهاز ===== */
+(function(){
+/* 1) التحديثات: البرنامج يفتح من النسخة المحفوظة، والنسخة الجديدة تُنزَّل فقط عند وجود تحديث */
+function showUpdateBar(){
+  if(document.getElementById('nbUpdBar')) return;
+  var b=document.createElement('div'); b.id='nbUpdBar';
+  b.style.cssText='position:fixed;left:50%;bottom:18px;transform:translateX(-50%);z-index:2147482950;display:flex;gap:10px;align-items:center;background:#1b5e20;color:#fff;padding:10px 14px;border-radius:24px;box-shadow:0 8px 22px rgba(0,0,0,.35);font:800 13.5px Tahoma,Arial,sans-serif;direction:rtl;max-width:94vw';
+  b.innerHTML='<span>✨ نسخة جديدة من البرنامج جاهزة</span><button type="button" style="border:0;border-radius:16px;padding:7px 12px;background:#fff;color:#1b5e20;font:800 13px Tahoma,Arial,sans-serif">تحديث الآن</button><button type="button" aria-label="لاحقاً" style="border:0;background:transparent;color:#fff;font-size:16px">✕</button>';
+  var btns=b.querySelectorAll('button');
+  btns[0].onclick=function(){ try{ if(typeof saveApp==='function') saveApp(); }catch(e){} location.reload(); };
+  btns[1].onclick=function(){ b.remove(); };
+  document.body.appendChild(b);
+}
+if('serviceWorker' in navigator){
+  navigator.serviceWorker.addEventListener('message',function(e){ if(e.data&&e.data.type==='nb-update-ready') showUpdateBar(); });
+  var ask=function(){ try{ if(navigator.onLine!==false && navigator.serviceWorker.controller) navigator.serviceWorker.controller.postMessage({type:'nb-check-update'}); }catch(e){} };
+  window.addEventListener('online',ask);
+  var lastAsk=Date.now();
+  document.addEventListener('visibilitychange',function(){ if(document.visibilityState==='visible' && Date.now()-lastAsk>3*3600000){ lastAsk=Date.now(); ask(); } });
+}
+window.nbShowUpdateBar=showUpdateBar;
+
+/* 2) قلب الجهاز (أفقي ↔ عمودي): إعادة رسم الواجهة بالمقاس الجديد */
+var lastO='';
+function orient(){ return (window.innerWidth>window.innerHeight)?'landscape':'portrait'; }
+function nudge(){
+  try{
+    var b=document.body, de=document.documentElement; if(!b) return;
+    b.style.minHeight=(window.innerHeight+1)+'px'; void b.offsetHeight;
+    requestAnimationFrame(function(){
+      b.style.minHeight=''; void de.offsetHeight;
+      try{ window.dispatchEvent(new Event('resize')); }catch(e){}
+      var y=window.scrollY||0; window.scrollTo(0,y+1); window.scrollTo(0,y);
+      if(typeof window.dashSidebarFit==='function'){ try{ window.dashSidebarFit(); }catch(e){} }
+    });
+  }catch(e){}
+}
+function onRotate(){
+  [60,300,800,1500].forEach(function(t){ setTimeout(nudge,t); });
+  setTimeout(function(){
+    try{
+      var so=(screen.orientation&&screen.orientation.type)||'';
+      var stale=so && ((so.indexOf('portrait')===0 && window.innerWidth>window.innerHeight) || (so.indexOf('landscape')===0 && window.innerHeight>window.innerWidth));
+      if(stale && window.__nbLog) window.__nbLog.push({t:Date.now(),k:'تدوير',m:'لم يتغير حجم نافذة التطبيق بعد قلب الجهاز: '+window.innerWidth+'×'+window.innerHeight+' ('+so+')'});
+    }catch(e){}
+  },1800);
+}
+window.addEventListener('orientationchange',onRotate);
+try{ if(screen.orientation&&screen.orientation.addEventListener) screen.orientation.addEventListener('change',onRotate); }catch(e){}
+window.addEventListener('resize',function(){ var o=orient(); if(lastO && o!==lastO) onRotate(); lastO=o; });
+lastO=orient();
 })();
 </script>
 
