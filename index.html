@@ -4741,9 +4741,17 @@ var o=((a=s[17])==null?void 0:a[0])?Ob(e,e[_b(s[17][0].data)][0]):[];var l=vb(s[
 var o=[];var l=Array.isArray(e);for(f=n.s.c;f<=n.e.c;++f)s[f]=ya(f);for(var c=n.s.r;c<=n.e.r;++c){i=Ta(c);for(f=n.s.c;f<=n.e.c;++f){r=s[f]+i;t=l?(e[c]||[])[f]:e[r];a="";if(t===undefined)continue;else if(t.F!=null){r=t.F;if(!t.f)continue;a=t.f;if(r.indexOf(":")==-1)r=r+":"+r}if(t.f!=null)a=t.f;else if(t.t=="z")continue;else if(t.t=="n"&&t.v!=null)a=""+t.v;else if(t.t=="b")a=t.v?"TRUE":"FALSE";else if(t.w!==undefined)a="'"+t.w;else if(t.v===undefined)continue;else if(t.t=="s")a="'"+t.v;else a=""+t.v;o[o.length]=r+"="+a}}return o}function xw(e,r,t){var a=t||{};var n=+!a.skipHeader;var i=e||{};var s=0,f=0;if(i&&a.origin!=null){if(typeof a.origin=="number")s=a.origin;else{var o=typeof a.origin=="string"?Oa(a.origin):a.origin;s=o.r;f=o.c}}var l;var c={s:{c:0,r:0},e:{c:f,r:s+r.length-1+n}};if(i["!ref"]){var h=Da(i["!ref"]);c.e.c=Math.max(c.e.c,h.e.c);c.e.r=Math.max(c.e.r,h.e.r);if(s==-1){s=h.e.r+1;c.e.r=s+r.length-1+n}}else{if(s==-1){s=0;c.e.r=r.length-1+n}}var u=a.header||[],d=0;r.forEach(function(e,r){rr(e).forEach(function(t){if((d=u.indexOf(t))==-1)u[d=u.length]=t;var o=e[t];var c="z";var h="";var v=Ra({c:f+d,r:s+r+n});l=Rw(i,v);if(o&&typeof o==="object"&&!(o instanceof Date)){i[v]=o}else{if(typeof o=="number")c="n";else if(typeof o=="boolean")c="b";else if(typeof o=="string")c="s";else if(o instanceof Date){c="d";if(!a.cellDates){c="n";o=fr(o)}h=a.dateNF||X[14]}else if(o===null&&a.nullError){c="e";o=0}if(!l)i[v]=l={t:c,v:o};else{l.t=c;l.v=o;delete l.w;delete l.R;if(h)l.z=h}if(h)l.z=h}})});c.e.c=Math.max(c.e.c,f+u.length-1);var v=Ta(s);if(n)for(d=0;d<u.length;++d)i[ya(d+f)+v]={t:"s",v:u[d]};i["!ref"]=Na(c);return i}function Ow(e,r){return xw(null,e,r)}function Rw(e,r,t){if(typeof r=="string"){if(Array.isArray(e)){var a=Oa(r);if(!e[a.r])e[a.r]=[];return e[a.r][a.c]||(e[a.r][a.c]={t:"z"})}return e[r]||(e[r]={t:"z"})}if(typeof r!="number")return Rw(e,Ra(r));return Rw(e,Ra({r:r,c:t||0}))}function Iw(e,r){if(typeof r=="number"){if(r>=0&&e.SheetNames.length>r)return r;throw new Error("Cannot find sheet # "+r)}else if(typeof r=="string"){var t=e.SheetNames.indexOf(r);if(t>-1)return t;throw new Error("Cannot find sheet name |"+r+"|")}else throw new Error("Cannot find sheet |"+r+"|")}function Nw(){return{SheetNames:[],Sheets:{}}}function Dw(e,r,t,a){var n=1;if(!t)for(;n<=65535;++n,t=undefined)if(e.SheetNames.indexOf(t="Sheet"+n)==-1)break;if(!t||e.SheetNames.length>=65535)throw new Error("Too many worksheets");if(a&&e.SheetNames.indexOf(t)>=0){var i=t.match(/(^.*?)(\d+)$/);n=i&&+i[2]||0;var s=i&&i[1]||t;for(++n;n<=65535;++n)if(e.SheetNames.indexOf(t=s+n)==-1)break}Jp(t);if(e.SheetNames.indexOf(t)>=0)throw new Error("Worksheet with name |"+t+"| already exists!");e.SheetNames.push(t);e.Sheets[t]=r;return t}function Fw(e,r,t){if(!e.Workbook)e.Workbook={};if(!e.Workbook.Sheets)e.Workbook.Sheets=[];var a=Iw(e,r);if(!e.Workbook.Sheets[a])e.Workbook.Sheets[a]={};switch(t){case 0:;case 1:;case 2:break;default:throw new Error("Bad sheet visibility setting "+t);}e.Workbook.Sheets[a].Hidden=t}function Pw(e,r){e.z=r;return e}function Lw(e,r,t){if(!r){delete e.l}else{e.l={Target:r};if(t)e.l.Tooltip=t}return e}function Mw(e,r,t){return Lw(e,"#"+r,t)}function Uw(e,r,t){if(!e.c)e.c=[];e.c.push({t:r,a:t||"SheetJS"})}function Bw(e,r,t,a){var n=typeof r!="string"?r:Da(r);var i=typeof r=="string"?r:Na(r);for(var s=n.s.r;s<=n.e.r;++s)for(var f=n.s.c;f<=n.e.c;++f){var o=Rw(e,s,f);o.t="n";o.F=i;delete o.v;if(s==n.s.r&&f==n.s.c){o.f=t;if(a)o.D=true}}return e}var Ww={encode_col:ya,encode_row:Ta,encode_cell:Ra,encode_range:Na,decode_col:Ca,decode_row:ka,split_cell:xa,decode_cell:Oa,decode_range:Ia,format_cell:Pa,sheet_add_aoa:Ma,sheet_add_json:xw,sheet_add_dom:Gm,aoa_to_sheet:Ua,json_to_sheet:Ow,table_to_sheet:jm,table_to_book:Xm,sheet_to_csv:yw,sheet_to_txt:Sw,sheet_to_json:Aw,sheet_to_html:Vm,sheet_to_formulae:_w,sheet_to_row_object_array:Aw,sheet_get_cell:Rw,book_new:Nw,book_append_sheet:Dw,book_set_sheet_visibility:Fw,cell_set_number_format:Pw,cell_set_hyperlink:Lw,cell_set_internal_link:Mw,cell_add_comment:Uw,sheet_set_array_formula:Bw,consts:{SHEET_VISIBLE:0,SHEET_HIDDEN:1,SHEET_VERY_HIDDEN:2}};var Hw;function zw(e){Hw=e}function Vw(e,r){var t=Hw();var a=r==null?{}:r;if(e==null||e["!ref"]==null){t.push(null);return t}var n=Da(e["!ref"]);var i=a.FS!==undefined?a.FS:",",s=i.charCodeAt(0);var f=a.RS!==undefined?a.RS:"\n",o=f.charCodeAt(0);var l=new RegExp((i=="|"?"\\|":i)+"+$");var c="",h=[];a.dense=Array.isArray(e);var u=a.skipHidden&&e["!cols"]||[];var d=a.skipHidden&&e["!rows"]||[];for(var v=n.s.c;v<=n.e.c;++v)if(!(u[v]||{}).hidden)h[v]=ya(v);var p=n.s.r;var g=false,m=0;t._read=function(){if(!g){g=true;return t.push("\ufeff")}while(p<=n.e.r){++p;if((d[p-1]||{}).hidden)continue;c=Cw(e,n,p-1,h,s,o,i,a);if(c!=null){if(a.strip)c=c.replace(l,"");if(c||a.blankrows!==false)return t.push((m++?f:"")+c)}}return t.push(null)};return t}function Gw(e,r){var t=Hw();var a=r||{};var n=a.header!=null?a.header:Bm;var i=a.footer!=null?a.footer:Wm;t.push(n);var s=Ia(e["!ref"]);a.dense=Array.isArray(e);t.push(zm(e,s,a));var f=s.s.r;var o=false;t._read=function(){if(f>s.e.r){if(!o){o=true;t.push("</table>"+i)}return t.push(null)}while(f<=s.e.r){t.push(Um(e,s,f,a));++f;break}};return t}function jw(e,r){var t=Hw({objectMode:true});if(e==null||e["!ref"]==null){t.push(null);return t}var a={t:"n",v:0},n=0,i=1,s=[],f=0,o="";var l={s:{r:0,c:0},e:{r:0,c:0}};var c=r||{};var h=c.range!=null?c.range:e["!ref"];if(c.header===1)n=1;else if(c.header==="A")n=2;else if(Array.isArray(c.header))n=3;switch(typeof h){case"string":l=Da(h);break;case"number":l=Da(e["!ref"]);l.s.r=h;break;default:l=h;}if(n>0)i=0;var u=Ta(l.s.r);var d=[];var v=0;var p=Array.isArray(e);var g=l.s.r,m=0;var b={};if(p&&!e[g])e[g]=[];var w=c.skipHidden&&e["!cols"]||[];var k=c.skipHidden&&e["!rows"]||[];for(m=l.s.c;m<=l.e.c;++m){if((w[m]||{}).hidden)continue;d[m]=ya(m);a=p?e[g][m]:e[d[m]+u];switch(n){case 1:s[m]=m-l.s.c;break;case 2:s[m]=d[m];break;case 3:s[m]=c.header[m-l.s.c];break;default:if(a==null)a={w:"__EMPTY",t:"s"};o=f=Pa(a,null,c);v=b[f]||0;if(!v)b[f]=1;else{do{o=f+"_"+v++}while(b[o]);b[f]=v;b[o]=1}s[m]=o;}}g=l.s.r+i;t._read=function(){while(g<=l.e.r){if((k[g-1]||{}).hidden)continue;var r=Tw(e,l,g,d,n,s,p,c);++g;if(r.isempty===false||(n===1?c.blankrows!==false:!!c.blankrows)){t.push(r.row);return}}return t.push(null)};return t}var Xw={to_json:jw,to_html:Gw,to_csv:Vw,set_readable:zw};if(typeof vm!=="undefined")e.parse_xlscfb=vm;e.parse_zip=Xb;e.read=iw;e.readFile=sw;e.readFileSync=sw;e.write=gw;e.writeFile=bw;e.writeFileSync=bw;e.writeFileAsync=kw;e.utils=Ww;e.writeXLSX=pw;e.writeFileXLSX=ww;e.SSF=Ve;if(typeof Xw!=="undefined")e.stream=Xw;if(typeof Ke!=="undefined")e.CFB=Ke;if(typeof require!=="undefined"){var $w=undefined;if(($w||{}).Readable)zw($w.Readable)}}if(typeof exports!=="undefined")make_xlsx_lib(exports);else if(typeof module!=="undefined"&&module.exports)make_xlsx_lib(module.exports);else if(typeof define==="function"&&define.amd)define("xlsx",function(){if(!XLSX.version)make_xlsx_lib(XLSX);return XLSX});else make_xlsx_lib(XLSX);if(typeof window!=="undefined"&&!window.XLSX)try{window.XLSX=XLSX}catch(e){}
 
 </script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/peerjs/1.5.4/peerjs.min.js"></script>
+<script>
+/* nb-wifi-fix: مكتبات الإنترنت تُحمَّل بدون أن توقف البرنامج. كانت تُحمَّل بطريقة «حاجبة»: عند وجود واي فاي
+   ضعيف أو بلا إنترنت فعلي يتوقف تشغيل كل البرنامج (الطباعة والتصدير والأزرار) حتى ينتهي انتظار الشبكة.
+   مكتبة Excel مدمجة أصلاً داخل الملف، وهذه نسخ إضافية فقط. */
+(function(){
+  function add(u){ var s=document.createElement('script'); s.src=u; s.async=false; document.head.appendChild(s); return s; }
+  add("https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js");
+  add("https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.min.js");
+  add("https://cdnjs.cloudflare.com/ajax/libs/peerjs/1.5.4/peerjs.min.js");
+})();
+</script>
 <script>
 /* Embedded QR Code encoder (MIT License, Kazuhiko Arase / d-project.com), bundled for offline browser use */
 var QRCodeLib = (function(){
@@ -5980,11 +5988,21 @@ if (typeof module !== 'undefined' && module.exports) { module.exports = QRCodeLi
 </script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Noto+Kufi+Arabic:wght@600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Kufi+Arabic:wght@600;700&display=swap" rel="stylesheet" media="print" onload="this.media='all'"><!-- nb-wifi-fix: الخط لا يوقف تشغيل البرنامج -->
 
 <!-- Firebase SDK for activation system -->
-<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+<script>
+/* nb-wifi-fix: مكتبة Firebase (للتفعيل فقط) تُحمَّل في الخلفية بالترتيب نفسه. عند اكتمالها يُعاد فحص
+   الاشتراك تلقائياً بنفس آلية «عودة الاتصال» الموجودة أصلاً في نظام التفعيل — دون أي تغيير في منطقه. */
+(function(){
+  function add(u,cb){ var s=document.createElement('script'); s.src=u; s.async=false; if(cb){ s.onload=cb; } document.head.appendChild(s); }
+  add("https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js");
+  add("https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js",function(){
+    window.__nbFirebaseLoaded=true;
+    setTimeout(function(){ try{ if(navigator.onLine!==false && typeof firebase!=='undefined') window.dispatchEvent(new Event('online')); }catch(e){} },300);
+  });
+})();
+</script>
 <style>@keyframes actPulseS{0%,100%{box-shadow:0 1px 3px rgba(198,40,40,.4),0 0 0 0 rgba(239,108,0,.5)}50%{box-shadow:0 1px 6px rgba(198,40,40,.65),0 0 0 5px rgba(239,108,0,0)}}</style><link rel="manifest" href="manifest.json">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -18245,7 +18263,7 @@ if(document.readyState==='loading'){
 <!-- ===== AUTO UPDATE NOTIFICATION (small icon in topbar) ===== -->
 <script>
 (function(){
-  const APP_VERSION = "1.12.1";
+  const APP_VERSION = "1.13.0";
   const CHECK_EVERY_MINUTES = 30;
   const LS_ACCEPTED = "daragat_accepted_version";
   const LS_SNOOZE   = "daragat_update_snooze";
@@ -23141,5 +23159,224 @@ window.aboutCheckForUpdate=(function(orig){ return function(){
   },300);
 })();
 </script>
+<script>
+/* ===== nb-v1.13: العام الدراسي الموحد + الخلايا الفارغة + حقول سجل الدرجات + السجل الفصلي ===== */
+(function(){
+function esc(t){ return escapeHtml(String(t==null?'':t)); }
+function stage(){ return (typeof currentStage==='function'&&currentStage())||''; }
+var EMPTY_MARKS=/^[\s\u00a0]*(—|–|-|ـ|--|\.|\/)[\s\u00a0]*$/;
+
+/* ---------- 1) العام الدراسي: مصدر واحد في الإعدادات ---------- */
+function defaultYear(){ var d=new Date(),y=d.getFullYear(); return d.getMonth()>=8?(y+' / '+(y+1)):((y-1)+' / '+y); }
+function yearOf(){
+  var a=APP.school&&APP.school.academicYear, m=(typeof EXAMS_STATE!=='undefined'&&EXAMS_STATE&&EXAMS_STATE.monthly&&EXAMS_STATE.monthly.academicYear)||'';
+  return a||m||defaultYear();
+}
+function syncYear(y,save){
+  y=String(y||'').trim()||yearOf();
+  APP.school.academicYear=y;
+  try{ if(typeof EXAMS_STATE!=='undefined'&&EXAMS_STATE){
+    if(!EXAMS_STATE.monthly) EXAMS_STATE.monthly={}; EXAMS_STATE.monthly.academicYear=y;
+    if(EXAMS_STATE.seating) EXAMS_STATE.seating.academicYear=y;
+    if(save&&typeof saveExamsState==='function') saveExamsState(); } }catch(e){}
+  if(save&&typeof saveApp==='function') saveApp();
+  return y;
+}
+window.nbAcademicYear=yearOf; window.nbSetAcademicYear=function(y){ return syncYear(y,true); };
+try{ syncYear(yearOf(),false); }catch(e){}
+function yearOptions(sel){ var out=[],y0=2020; for(var y=y0;y<=2040;y++) out.push(y+' / '+(y+1)); if(sel&&out.indexOf(sel)<0) out.unshift(sel);
+  return out.map(function(v){ return '<option value="'+esc(v)+'"'+(v===sel?' selected':'')+'>'+esc(v)+'</option>'; }).join(''); }
+if(typeof window.renderSettingsView==='function'){
+  window.renderSettingsView=(function(orig){ return function(){
+    var r=orig.apply(this,arguments);
+    try{ var el=document.getElementById('view-settings'), p=el&&el.querySelector('.panel');
+      if(p&&!document.getElementById('nbYearSel')){
+        var box=document.createElement('div'); box.style.cssText='margin:10px 0 14px';
+        box.innerHTML='<label style="font-weight:800">العام الدراسي الحالي</label><select id="nbYearSel" dir="ltr" style="text-align:center">'+yearOptions(yearOf())+'</select><p class="empty-hint" style="margin:4px 0 0">يظهر تلقائياً في كل الكشوف والسجلات والبطاقات المطبوعة.</p>';
+        var h=p.querySelector('h2'); if(h) h.insertAdjacentElement('afterend',box); else p.insertBefore(box,p.firstChild);
+        box.querySelector('select').onchange=function(){ syncYear(this.value,true); try{ if(typeof showToast==='function') showToast('تم حفظ العام الدراسي'); }catch(e){} };
+      } }catch(e){}
+    return r; }; })(window.renderSettingsView);
+}
+if(typeof window.seatingAcademicYearOptions==='function'){
+  window.seatingAcademicYearOptions=(function(orig){ return function(sel){ return orig.call(this, sel||yearOf()); }; })(window.seatingAcademicYearOptions);
+}
+if(typeof window.examCardHTML==='function'){
+  window.examCardHTML=(function(orig){ return function(){ var h=orig.apply(this,arguments);
+    try{ return String(h).replace('العام الدراسي ٢٠٢٥ / ٢٠٢٦','العام الدراسي '+toArabicDigits(yearOf())); }catch(e){ return h; } }; })(window.examCardHTML);
+}
+if(typeof window.buildCard==='function'){
+  window.buildCard=(function(orig){ return function(){ var c=orig.apply(this,arguments);
+    try{ (c&&c.querySelectorAll?c:document).querySelectorAll('.yr').forEach(function(y){ if(!y.dataset.nbYear){ y.textContent=yearOf(); y.dataset.nbYear='1'; } }); }catch(e){}
+    return c; }; })(window.buildCard);
+}
+
+/* ---------- 2) الخلايا الفارغة تبقى فارغة في الطباعة وPDF ---------- */
+function blankEmptyCells(doc){
+  try{ if(!doc||!doc.querySelectorAll) return;
+    doc.querySelectorAll('td,.grade-box,.val,.cr-v').forEach(function(c){
+      if(c.children.length===0 && EMPTY_MARKS.test(c.textContent)) c.textContent='';
+    });
+  }catch(e){}
+}
+window.nbBlankEmptyCells=blankEmptyCells;
+['printIframeNow','downloadPdfFromPrintFrame'].forEach(function(n){
+  if(typeof window[n]!=='function') return;
+  window[n]=(function(orig){ return function(frame){ try{ blankEmptyCells(frame&&(frame.contentDocument||(frame.contentWindow&&frame.contentWindow.document))); }catch(e){} return orig.apply(this,arguments); }; })(window[n]);
+});
+if(typeof window.printCurrentHost==='function'){
+  window.printCurrentHost=(function(orig){ return function(host){ blankEmptyCells(host); return orig.apply(this,arguments); }; })(window.printCurrentHost);
+}
+if(typeof window.captureCurrentHostAsPdf==='function'){
+  window.captureCurrentHostAsPdf=(function(orig){ return function(host){ blankEmptyCells(host); return orig.apply(this,arguments); }; })(window.captureCurrentHostAsPdf);
+}
+/* السجل الوسطي: الخانة الفارغة فارغة على الشاشة أيضاً (الصفر الحقيقي يبقى صفراً) */
+if(typeof window.openCentralRecordSection==='function'){
+  window.openCentralRecordSection=(function(orig){ return function(){ var r=orig.apply(this,arguments);
+    try{ var el=document.getElementById('view-central-record'); el&&el.querySelectorAll('table.central-record-table td').forEach(function(td){ if(td.children.length===0&&EMPTY_MARKS.test(td.textContent)) td.textContent=''; }); }catch(e){}
+    return r; }; })(window.openCentralRecordSection);
+}
+
+/* ---------- 3) سجل الدرجات: حقول بعد «السعي السنوي» (الإعدادية/المتوسطة/الثانوية/الخامس والسادس الابتدائي) ---------- */
+function extraFieldsGrade(grade){ return usesSixthGradeLayout(grade) && stage()!=='professional' && String(grade||'').indexOf(' — ')<0; }
+function gbVal(v){ return (v==null||v==='')?'':toArabicDigits(String(v)); }
+if(typeof window.renderGradebookTable==='function'){
+  window.renderGradebookTable=(function(orig){ return function(){
+    var r=orig.apply(this,arguments);
+    try{
+      var grade=document.getElementById('gbGrade').value, sid=document.getElementById('gbSection').value, sub=document.getElementById('gbSubject').value;
+      var host=document.getElementById('gbTableHost'), table=host&&host.querySelector('table');
+      if(!table||!extraFieldsGrade(grade)||table.dataset.nbExtra==='1') return r;
+      table.dataset.nbExtra='1';
+      var rec=gbRecord(grade,sid,sub,true);
+      var ths=[].slice.call(table.querySelectorAll('thead tr:first-child th'));
+      var resTh=ths.filter(function(t){ return t.textContent.trim()==='النتيجة'; })[0];
+      if(!resTh) return r;
+      resTh.textContent='الامتحان النهائي';
+      var tail=resTh;
+      ['الدرجة النهائية','درجة الإكمال','الدرجة بعد الإكمال'].forEach(function(t){ var th=document.createElement('th'); th.setAttribute('rowspan','3'); th.textContent=t; tail.insertAdjacentElement('afterend',th); tail=th; });
+      table.querySelectorAll('tbody tr[data-student]').forEach(function(tr){
+        var stId=tr.getAttribute('data-student'), row=rec.rows[stId]||{};
+        var last=tr.lastElementChild;
+        var fg=document.createElement('td'); fg.className='calc-cell'; fg.setAttribute('data-calc','finalGrade'); fg.textContent=gbVal(row.finalGrade);
+        last.insertAdjacentElement('afterend',fg);
+        var c1=document.createElement('td'); c1.innerHTML='<input class="grade-input" inputmode="decimal" value="'+esc(gbVal(row.completion))+'">';
+        c1.firstChild.oninput=function(){ gbUpdate(stId,'completion',this.value); };
+        fg.insertAdjacentElement('afterend',c1);
+        var c2=document.createElement('td'); c2.innerHTML='<input class="grade-input" inputmode="decimal" value="'+esc(gbVal(row.finalAfterCompletion))+'">';
+        c2.firstChild.oninput=function(){ gbUpdate(stId,'finalAfterCompletion',this.value); };
+        c1.insertAdjacentElement('afterend',c2);
+      });
+    }catch(e){ try{console.warn('nb-gb-extra',e);}catch(_){} }
+    return r;
+  }; })(window.renderGradebookTable);
+}
+if(typeof window.gbUpdate==='function'){
+  window.gbUpdate=(function(orig){ return function(stId,field){
+    var r=orig.apply(this,arguments);
+    try{ var grade=document.getElementById('gbGrade').value;
+      if(extraFieldsGrade(grade)){
+        var rec=gbRecord(grade,document.getElementById('gbSection').value,document.getElementById('gbSubject').value,true), row=rec.rows[stId]||{};
+        try{ gbCompute56(row,rec); }catch(e){}
+        var tr=document.querySelector('#gbTableHost tr[data-student="'+CSS.escape(stId)+'"]'), c=tr&&tr.querySelector('[data-calc="finalGrade"]');
+        if(c) c.textContent=gbVal(row.finalGrade);
+      } }catch(e){}
+    return r; }; })(window.gbUpdate);
+}
+
+/* ---------- 4) السجل الفصلي ---------- */
+var SR={grade:'',sid:'',subject:''};
+function num(v){ if(v===''||v==null) return null; var n=Number(typeof toWesternDigits==='function'?toWesternDigits(v):v); return isFinite(n)?n:null; }
+function cell(v){ return (v===''||v==null)?'':toArabicDigits(String(v)); }
+function srRow(grade,sid,sub,stId){
+  var rec=gbRecord(grade,sid,sub,false), r=rec&&rec.rows?rec.rows[stId]:null; r=r?JSON.parse(JSON.stringify(r)):{};
+  var upper=usesSixthGradeLayout(grade);
+  if(upper&&typeof gbCompute56==='function'){ try{ gbCompute56(r,rec||{}); }catch(e){} }
+  var fe=(r.finalExam!=null&&r.finalExam!=='')?r.finalExam:(upper?r.result:'');
+  var fg=(r.finalGrade!=null&&r.finalGrade!=='')?r.finalGrade:(upper?'':fe);
+  var sr=(r.completion!=null&&r.completion!=='')?r.completion:'';
+  var f2=(r.finalAfterCompletion!=null&&r.finalAfterCompletion!=='')?r.finalAfterCompletion:'';
+  var pass=resultPassMark(grade), res='';
+  var f2n=num(f2), fgn=num(fg);
+  if(f2n!=null) res=f2n>=pass?'ناجح':'راسب'; else if(fgn!=null) res=fgn>=pass?'ناجح':'مكمل';
+  return {t1:upper?r.term1:'',mid:r.mid,t2:upper?r.term2:'',cw:upper?r.coursework:'',fe:fe,fg:fg,sr:sr,f2:f2,res:res,rm:r.remarks||''};
+}
+var HEAD=['التسلسل','رقم القيد','اسم الطالب','معدل الفصل الأول','امتحان نصف السنة','معدل الفصل الثاني','درجة السعي السنوي','الامتحان النهائي','الدرجة النهائية','امتحان الدور الثاني','الدرجة النهائية دور اثنين','النتيجة','الملاحظات'];
+function headHtml(){ return '<tr>'+HEAD.map(function(h,i){ var v=(i!==2&&i!==12); return '<th class="'+(v?'nbsr-v':'nbsr-h')+'"><span>'+h+'</span></th>'; }).join('')+'</tr>'; }
+function students(){ var sec=gbSectionsForGrade(SR.grade).find(function(s){ return s.id===SR.sid; }); return {sec:sec,list:sec?(sec.students||[]).filter(function(s){ return String(s.name||'').trim(); }):[]}; }
+function bodyHtml(sub){
+  var s=students();
+  if(!s.list.length) return '<tr><td colspan="13" style="padding:18px">لا يوجد طلاب في هذه الشعبة.</td></tr>';
+  return s.list.map(function(st,i){ var c=srRow(SR.grade,SR.sid,sub,st.id);
+    return '<tr><td>'+toArabicDigits(String(i+1))+'</td><td>'+esc(st.registrationNo||st.recordNo||st.registrationNumber||'')+'</td><td class="nm">'+esc(st.name)+'</td><td>'+cell(c.t1)+'</td><td>'+cell(c.mid)+'</td><td>'+cell(c.t2)+'</td><td>'+cell(c.cw)+'</td><td>'+cell(c.fe)+'</td><td>'+cell(c.fg)+'</td><td>'+cell(c.sr)+'</td><td>'+cell(c.f2)+'</td><td>'+esc(c.res)+'</td><td class="rm">'+esc(c.rm)+'</td></tr>'; }).join('');
+}
+var SR_CSS='<style id="nbsrCss">.nbsr-sel{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px;margin:10px 0}.nbsr-wrap{overflow:auto;-webkit-overflow-scrolling:touch;border:1px solid rgba(127,127,127,.35);border-radius:10px}'+
+'table.nbsr{border-collapse:collapse;width:100%;min-width:900px;font-size:13px}table.nbsr th{background:#1a237e;color:#fff;border:1px solid rgba(255,255,255,.3);padding:4px;font-weight:800}'+
+'table.nbsr th.nbsr-v{height:150px;width:44px;vertical-align:bottom}table.nbsr th.nbsr-v span{writing-mode:vertical-rl;transform:rotate(180deg);white-space:nowrap;display:inline-block}'+
+'table.nbsr td{border:1px solid rgba(127,127,127,.4);padding:5px 4px;text-align:center;height:28px}table.nbsr td.nm{text-align:right;white-space:nowrap;font-weight:700;min-width:170px}table.nbsr td.rm{text-align:right;min-width:120px}</style>';
+function opt(list,sel,ph){ return '<option value="">'+ph+'</option>'+list.map(function(o){ return '<option value="'+esc(o[0])+'"'+(o[0]===sel?' selected':'')+'>'+esc(o[1])+'</option>'; }).join(''); }
+function render(){
+  var el=document.getElementById('view-semester'); if(!el) return;
+  var grades=(typeof gradebookGradeLabels==='function'?gradebookGradeLabels():[]).filter(function(g){ return gbSectionsForGrade(g).length; });
+  if(SR.grade&&grades.indexOf(SR.grade)<0){ SR.grade='';SR.sid='';SR.subject=''; }
+  var secs=SR.grade?gbSectionsForGrade(SR.grade):[]; if(SR.sid&&!secs.some(function(s){return s.id===SR.sid;})) SR.sid='';
+  var subs=SR.grade?gbSubjects(SR.grade):[]; if(SR.subject&&subs.indexOf(SR.subject)<0) SR.subject='';
+  var ready=SR.grade&&SR.sid&&SR.subject;
+  el.innerHTML=SR_CSS+'<div class="module-shell"><div class="module-head"><div class="module-title"><span class="mi">🗂️</span><div><h2>السجل الفصلي</h2><p>العام الدراسي '+esc(yearOf())+'</p></div></div><button class="material-btn secondary" onclick="goHome()">الرئيسية</button></div>'+
+    '<div class="nbsr-sel"><div class="mat-field"><label>اختيار الصف</label><select id="nbsrGrade">'+opt(grades.map(function(g){return [g,g];}),SR.grade,'اختر الصف')+'</select></div>'+
+    '<div class="mat-field"><label>اختيار الشعبة</label><select id="nbsrSec"'+(SR.grade?'':' disabled')+'>'+opt(secs.map(function(s){return [s.id,'شعبة '+s.label];}),SR.sid,'اختر الشعبة')+'</select></div>'+
+    '<div class="mat-field"><label>اختيار المادة</label><select id="nbsrSub"'+(SR.grade?'':' disabled')+'>'+opt(subs.map(function(s){return [s,s];}),SR.subject,'اختر المادة')+'</select></div></div>'+
+    (!grades.length?'<div class="empty-module">لا توجد صفوف فيها شعب. أضف الصفوف والشعب من الإعدادات.</div>':
+     !ready?'<div class="empty-module">اختر الصف والشعبة والمادة لعرض السجل الفصلي.</div>':
+     '<div style="display:flex;gap:8px;flex-wrap:wrap;margin:8px 0"><button class="material-btn" onclick="nbsrPrint(false)">🖨️ طباعة</button><button class="material-btn" onclick="nbsrPrint(true)">📄 تصدير PDF</button></div>'+
+     '<div class="nbsr-wrap"><table class="nbsr"><thead>'+headHtml()+'</thead><tbody>'+bodyHtml(SR.subject)+'</tbody></table></div>')+'</div>';
+  var g=document.getElementById('nbsrGrade'), s=document.getElementById('nbsrSec'), b=document.getElementById('nbsrSub');
+  g.onchange=function(){ SR.grade=this.value; SR.sid=''; SR.subject=''; render(); };
+  if(s) s.onchange=function(){ SR.sid=this.value; render(); };
+  if(b) b.onchange=function(){ SR.subject=this.value; render(); };
+}
+window.openSemesterRegister=function(){
+  if(!document.getElementById('view-semester')){ var v=document.createElement('div'); v.className='view wide'; v.id='view-semester'; v.style.display='none';
+    var ref=document.getElementById('view-central-record'); (ref&&ref.parentNode||document.body).insertBefore(v,ref?ref.nextSibling:null); }
+  render(); navigateTo('view-semester');
+};
+window.nbsrPrint=function(asPdf){
+  var s=students(); if(!s.sec) return;
+  var theme=(typeof getPrintTheme==='function')?getPrintTheme():'';
+  var logo=APP.school&&APP.school.logo?'<img src="'+APP.school.logo+'">':'';
+  var html='<!doctype html><html lang="ar" dir="rtl" class="exam-theme-'+theme+'"><head><meta charset="utf-8"><title>السجل الفصلي - '+esc(SR.grade)+' - '+esc(s.sec.label)+' - '+esc(SR.subject)+'</title><style>'+(typeof printThemeRootCss==='function'?printThemeRootCss():'')+'</style><style>@page{size:A4 landscape;margin:7mm}*{box-sizing:border-box;-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}html,body{margin:0;background:#fff;color:#111;font-family:Tahoma,Arial,sans-serif}'+
+    'header{display:grid;grid-template-columns:22mm 1fr 70mm;gap:4mm;align-items:center;padding:3mm 4mm;border-radius:2mm;color:#fff;background:linear-gradient(125deg,var(--list-dark,#1a237e),var(--list-mid,#3949ab));margin-bottom:3mm}.lg{width:18mm;height:18mm;border-radius:50%;background:#fff;overflow:hidden}.lg img{width:100%;height:100%;object-fit:cover}.tt{text-align:center}.tt h1{margin:0;font-size:18pt}.tt p{margin:1mm 0 0;font-size:10.5pt}.mt{font-size:10pt;line-height:1.65}'+
+    'table{width:100%;border-collapse:collapse;font-size:9.5pt}th{background:var(--list-dark,#1a237e);color:#fff;border:.25mm solid #444;padding:1mm;font-size:9pt}th.v{height:34mm;width:11mm;vertical-align:bottom}th.v span{writing-mode:vertical-rl;transform:rotate(180deg);white-space:nowrap;display:inline-block}th.h{min-width:48mm}td{border:.25mm solid #444;padding:1.3mm .8mm;text-align:center;height:7mm}td.nm{text-align:right;white-space:nowrap;font-weight:700}td.rm{text-align:right;min-width:30mm}tbody tr:nth-child(even) td{background:#f4f6fb}footer{display:flex;justify-content:space-between;margin-top:6mm;font-weight:700;font-size:10pt}</style></head><body>'+
+    '<header><div class="lg">'+logo+'</div><div class="tt"><h1>السجل الفصلي</h1><p>'+esc(APP.school&&APP.school.name||'')+' — العام الدراسي '+esc(yearOf())+'</p></div><div class="mt"><div><b>الصف:</b> '+esc(SR.grade)+'</div><div><b>الشعبة:</b> '+esc(s.sec.label)+'</div><div><b>المادة:</b> '+esc(SR.subject)+'</div></div></header>'+
+    '<table><thead><tr>'+HEAD.map(function(h,i){ var v=(i!==2&&i!==12); return '<th class="'+(v?'v':'h')+'"><span>'+h+'</span></th>'; }).join('')+'</tr></thead><tbody>'+bodyHtml(SR.subject)+'</tbody></table>'+
+    '<footer><span>مدرس المادة: ............................</span><span>مدير المدرسة: '+esc(APP.school&&APP.school.principal||'............................')+'</span></footer></body></html>';
+  var frame=document.createElement('iframe'); frame.style.cssText='position:fixed;left:-10000px;top:0;width:297mm;height:210mm;border:0;background:#fff';
+  document.body.appendChild(frame); var d=frame.contentDocument; d.open(); d.write(html); d.close();
+  try{ if(typeof applyDigitsToPrintDoc==='function') applyDigitsToPrintDoc(d); }catch(e){}
+  setTimeout(function(){
+    if(asPdf) Promise.resolve(downloadPdfFromPrintFrame(frame,'السجل-الفصلي-'+SR.grade+'-'+s.sec.label+'-'+SR.subject+'.pdf',null)).then(function(){ setTimeout(function(){ frame.remove(); },800); });
+    else { printIframeNow(frame); setTimeout(function(){ if(frame.parentNode) frame.remove(); },120000); }
+  },350);
+};
+/* إضافة «السجل الفصلي» للقوائم بجانب «السجل الوسطي» */
+function addMenuEntries(root){
+  try{ (root||document).querySelectorAll('[onclick*="openCentralRecordModule()"]').forEach(function(b){
+      if(/رجوع/.test(b.textContent)||b.dataset.nbSem) return;
+      var nx=b.nextElementSibling; if(nx&&nx.dataset&&nx.dataset.nbSemEntry) return;
+      var c=b.cloneNode(true); c.dataset.nbSemEntry='1'; b.dataset.nbSem='1';
+      c.setAttribute('onclick',b.getAttribute('onclick').replace('openCentralRecordModule()','openSemesterRegister()'));
+      c.removeAttribute('data-nav'); c.innerHTML=c.innerHTML.replace('السجل الوسطي','السجل الفصلي').replace('📚','🗂️');
+      b.insertAdjacentElement('afterend',c); });
+  }catch(e){}
+}
+['renderDashboard','renderDashboardLauncher'].forEach(function(n){
+  if(typeof window[n]!=='function') return;
+  window[n]=(function(orig){ return function(){ var r=orig.apply(this,arguments); addMenuEntries(document.getElementById('view-dashboard')); return r; }; })(window[n]);
+});
+addMenuEntries(document);
+document.addEventListener('DOMContentLoaded',function(){ addMenuEntries(document); });
+})();
+</script>
+
 </body>
 </html>
