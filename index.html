@@ -18263,7 +18263,7 @@ if(document.readyState==='loading'){
 <!-- ===== AUTO UPDATE NOTIFICATION (small icon in topbar) ===== -->
 <script>
 (function(){
-  const APP_VERSION = "1.17.1";
+  const APP_VERSION = "1.18.0";
   const CHECK_EVERY_MINUTES = 30;
   const LS_ACCEPTED = "daragat_accepted_version";
   const LS_SNOOZE   = "daragat_update_snooze";
@@ -23841,6 +23841,58 @@ window.generateExamList=(function(orig){ return function(){
   }catch(e){}
   return orig.apply(this,arguments);
 }; })(window.generateExamList);
+})();
+</script>
+
+<script>
+/* ===== nb-v1.19: بطاقات النتائج كما تظهر تُطبع + طباعة الأندرويد عبر PDF ===== */
+(function(){
+/* 1) الوضع الليلي للبرنامج كان يغيّر ألوان جداول البطاقات على الشاشة (خلايا داكنة ونص باهت)،
+      فتبدو مختلفة عن الطباعة. نستثني البطاقات من قواعد الوضع الليلي فتظهر بقالبها الحقيقي. */
+function excludeCardsFromNight(){
+  var EX=':not(#pages *):not(.card *):not(.card)';
+  [].forEach.call(document.styleSheets,function(sh){
+    var rules; try{ rules=sh.cssRules; }catch(e){ return; }
+    (function walk(list){
+      for(var i=0;i<list.length;i++){
+        var r=list[i];
+        if(r.cssRules&&!r.selectorText){ walk(r.cssRules); continue; }
+        var sel=r.selectorText; if(!sel||sel.indexOf('data-ui-skin')<0||r.__nbEx) continue;
+        // كل قواعد الوضع الليلي لا تمس محتوى البطاقات (#pages)
+        var parts=sel.split(',').map(function(p){
+          p=p.trim(); if(!p||/::?(before|after|placeholder|selection)/.test(p)||p.indexOf(':not(#pages *)')>=0) return p;
+          return p+EX;
+        });
+        try{ r.selectorText=parts.join(', '); r.__nbEx=true; }catch(e){}
+      }
+    })(rules);
+  });
+}
+try{ excludeCardsFromNight(); }catch(e){}
+/* لون النص الأساسي للبطاقة كما في الطباعة (لا يرث لون الوضع الليلي الفاتح) */
+(function(){ var st=document.createElement('style'); st.id='nbCardInk';
+  st.textContent='#pages .card{color:#1f1f1f}#pages .card input,#pages .card select{color:inherit}';
+  (document.head||document.documentElement).appendChild(st); })();
+document.addEventListener('DOMContentLoaded',function(){ try{ excludeCardsFromNight(); }catch(e){} });
+window.addEventListener('load',function(){ setTimeout(function(){ try{ excludeCardsFromNight(); }catch(e){} },300); });
+
+/* 2) تطبيق الأندرويد: الطباعة تمر عبر ملف PDF يصنعه البرنامج نفسه (نفس شكل الشاشة ونفس ملف التصدير)،
+      بدل إعادة رسم الصفحة داخل التطبيق التي كانت تغيّر القياسات وتقص جزءاً من البطاقة.
+      للرجوع للطريقة القديمة: localStorage.setItem('nbAndroidPrintMode','html') */
+function isAndroidApp(){ return !!(window.flutter_inappwebview && window.DaragatNative); }
+function patch(){
+  var n=window.DaragatNative; if(!n||!isAndroidApp()||n.__nbPdfPrint) return !!(n&&n.__nbPdfPrint);
+  if(typeof n.printPdf!=='function') return false;
+  var ph=n.printHtml;
+  n.printHtml=function(html,opt){
+    var mode=''; try{ mode=localStorage.getItem('nbAndroidPrintMode')||''; }catch(e){}
+    if(mode==='html'&&typeof ph==='function') return ph.call(n,html,opt);
+    if(window.nbAppToast) window.nbAppToast('🖨️ جاري تجهيز الطباعة…');
+    return Promise.reject(new Error('use-pdf-print')); // البرنامج ينتقل تلقائياً إلى printPdf
+  };
+  n.__nbPdfPrint=true; return true;
+}
+var k=0,t=setInterval(function(){ if(patch()||++k>120) clearInterval(t); },250);
 })();
 </script>
 
