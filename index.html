@@ -18263,7 +18263,7 @@ if(document.readyState==='loading'){
 <!-- ===== AUTO UPDATE NOTIFICATION (small icon in topbar) ===== -->
 <script>
 (function(){
-  const APP_VERSION = "1.25.1";
+  const APP_VERSION = "1.25.2";
   const CHECK_EVERY_MINUTES = 30;
   const LS_ACCEPTED = "daragat_accepted_version";
   const LS_SNOOZE   = "daragat_update_snooze";
@@ -24899,5 +24899,57 @@ var wd=setInterval(function(){
 });
 })();
 </script>
+<script>
+/* ===== nb-print-trace: شريط حالة واضح لكل عملية طباعة/PDF (للتأكد أين تتوقف على الجهاز) ===== */
+(function(){
+var bar=null, hideT=null, t0=0;
+function show(msg,color,stay){
+  if(!document.body) return;
+  if(!bar){ bar=document.createElement('div'); bar.id='nbTrace';
+    bar.style.cssText='position:fixed;right:12px;bottom:12px;z-index:2147483001;max-width:min(92vw,520px);padding:9px 14px;border-radius:12px;font:800 13px Tahoma,Arial,sans-serif;direction:rtl;color:#fff;box-shadow:0 6px 18px rgba(0,0,0,.35);pointer-events:none';
+    document.body.appendChild(bar); }
+  bar.style.background=color||'#37474f'; bar.textContent=msg+(t0?'  ('+Math.round((Date.now()-t0)/100)/10+' ث)':''); bar.style.display='block';
+  clearTimeout(hideT); hideT=setTimeout(function(){ if(bar) bar.style.display='none'; }, stay||6000);
+  try{ (window.__nbLog=window.__nbLog||[]).push({t:Date.now(),k:'مسار الطباعة',m:msg}); }catch(e){}
+}
+window.nbTrace=show;
+/* 1) لمس زر طباعة/PDF */
+document.addEventListener('click',function(e){
+  var b=e.target&&e.target.closest&&e.target.closest('button'); if(!b) return;
+  var t=(b.textContent||'').replace(/\s+/g,' ').trim();
+  if(/طباعة|PDF|تصدير/.test(t) && !/▾/.test(t)){ t0=Date.now(); show('📨 استُلم الأمر: '+t.slice(0,30),'#455a64',15000); }
+},true);
+/* 2) بدء التجهيز */
+function hook(n,label){
+  setInterval(function(){ var f=window[n]; if(typeof f!=='function'||f.__nbTraced) return;
+    var w=function(){ show(label,'#1565c0',30000); try{ var r=f.apply(this,arguments); if(r&&r.then) r.then(null,function(err){ show('❌ تعذر التجهيز: '+((err&&err.message)||err),'#c62828',20000); }); return r; }catch(err){ show('❌ خطأ أثناء التجهيز: '+err.message,'#c62828',20000); throw err; } };
+    for(var k in f){ try{ w[k]=f[k]; }catch(e){} } w.__nbTraced=true; window[n]=w; },2500);
+}
+hook('printIframeNow','⏳ جاري تجهيز الصفحة للطباعة…');
+hook('downloadPdfFromPrintFrame','⏳ جاري إنشاء ملف PDF…');
+/* 3) الإرسال لتطبيق الأندرويد/الحاسوب والرد */
+setInterval(function(){
+  var n=window.DaragatNative; if(!n||n.__nbTraced) return;
+  ['printPdf','savePdf','saveFile','printHtml'].forEach(function(k){
+    var f=n[k]; if(typeof f!=='function') return;
+    n[k]=function(a,b){
+      var size=Math.round(String(a||'').length*0.75/1024);
+      if(k!=='printHtml'||!(window.nbIsAndroidApp&&window.nbIsAndroidApp())) show('📤 أُرسل الملف للتطبيق ('+k+'، '+size+' KB) — بانتظار رد التطبيق…','#6a1b9a',40000);
+      var p=Promise.resolve().then(function(){ return f.call(n,a,b); });
+      var timeout=new Promise(function(res){ setTimeout(function(){ res('__timeout'); },35000); });
+      return Promise.race([p,timeout]).then(function(r){
+        if(r==='__timeout'){ show('⚠️ التطبيق لم يرد خلال 35 ثانية على أمر '+k+'. الخلل في تطبيق الأندرويد/الحاسوب نفسه وليس في الموقع.','#e65100',30000); return 'error'; }
+        if(k!=='printHtml') show(r==='ok'||r===true||r==null?'✅ التطبيق استلم الملف ('+k+')':(r==='cancel'?'↩️ أُلغيت العملية':'❌ رد التطبيق: '+JSON.stringify(r)),r==='ok'||r===true||r==null?'#2e7d32':'#c62828',8000);
+        return r;
+      },function(err){ if(!(k==='printHtml'&&/use-pdf-print/.test(String(err&&err.message)))) show('❌ التطبيق رفض '+k+': '+((err&&err.message)||err),'#c62828',20000); throw err; });
+    };
+  });
+  n.__nbTraced=true;
+},1500);
+window.addEventListener('error',function(e){ if(t0&&Date.now()-t0<60000) show('❌ خطأ: '+(e.message||''),'#c62828',20000); });
+window.addEventListener('unhandledrejection',function(e){ if(t0&&Date.now()-t0<60000){ var m=(e.reason&&(e.reason.message||e.reason))||''; if(!/use-pdf-print/.test(String(m))) show('❌ خطأ: '+m,'#c62828',20000); } });
+})();
+</script>
+
 </body>
 </html>
