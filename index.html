@@ -18263,7 +18263,7 @@ if(document.readyState==='loading'){
 <!-- ===== AUTO UPDATE NOTIFICATION (small icon in topbar) ===== -->
 <script>
 (function(){
-  const APP_VERSION = "1.25.2";
+  const APP_VERSION = "1.25.3";
   const CHECK_EVERY_MINUTES = 30;
   const LS_ACCEPTED = "daragat_accepted_version";
   const LS_SNOOZE   = "daragat_update_snooze";
@@ -23431,7 +23431,7 @@ function pageSizeMm(doc){
   doc.querySelectorAll('style').forEach(function(st){
     var t=st.textContent, mm=t.match(/@page\s*\{[^}]*size:\s*([^;}]+)/i);
     if(mm){ var v=mm[1].toLowerCase(); var nums=v.match(/([\d.]+)mm\s+([\d.]+)mm/);
-      if(nums){ w=+nums[1]; h=+nums[2]; } else if(/a4/.test(v)){ if(/landscape/.test(v)){ w=297;h=210; } else { w=210;h=297; } } else if(/a5/.test(v)){ w=148;h=210; }
+      if(nums){ w=+nums[1]; h=+nums[2]; } else if(/a4/.test(v)){ if(/landscape/.test(v)){ w=297;h=210; } else { w=210;h=297; } } else if(/a5/.test(v)){ w=148;h=210; } else if(/a3/.test(v)){ if(/landscape/.test(v)){ w=420;h=297; } else { w=297;h=420; } }
       var mg=t.match(/@page\s*\{[^}]*margin:\s*([\d.]+)mm/i); if(mg) m=+mg[1]; }
   });
   return {w:w,h:h,m:m};
@@ -23489,10 +23489,10 @@ function pdfCentralA4(doc){ // ملف PDF: نفس التصميم بالضبط ع
 }
 /* السجل الوسطي يُحوَّل إلى A4 فقط عندما تُطبع الصفحة كـ HTML حقيقي (تطبيق الحاسوب). في كل الطرق الأخرى
    (الأندرويد، المتصفح، ملفات PDF) يصنع البرنامج ملف PDF بنفسه، فيبقى التصميم الأصلي كاملاً بورقة واحدة لكل طالب. */
-function realHtmlPrint(){
+function realHtmlPrint(doc){
   var n=window.DaragatNative;
   if(!n||typeof n.printHtml!=='function') return false;
-  if(window.nbIsAndroidApp&&window.nbIsAndroidApp()){ var m=''; try{ m=localStorage.getItem('nbAndroidPrintMode')||''; }catch(e){} return m==='html'; }
+  if(window.nbIsAndroidApp&&window.nbIsAndroidApp()){ var m=''; try{ m=localStorage.getItem('nbAndroidPrintMode')||''; }catch(e){} if(m==='html') return true; if(m==='pdf') return false; return !(doc&&doc.querySelector&&doc.querySelector('.card')); }
   return true;
 }
 /* «العدد» في السجل الوسطي كان ثابتاً (١) لكل الطلاب؛ الآن تسلسل الطالب في شعبته */
@@ -23622,11 +23622,64 @@ function glyphImages(doc){
     });
   }catch(e){ try{console.warn('nb-glyph',e);}catch(_){} }
 }
+/* ---- لملفات PDF التي يصنعها البرنامج: بدون CSS zoom (المولّد لا يدعمه) ---- */
+function fitTablesByFont(doc){
+  try{
+    var ps=pageSizeMm(doc), usable=mmToPx(ps.w-2*ps.m)-2, win=doc.defaultView;
+    doc.querySelectorAll('table').forEach(function(t){
+      if(t.closest('.card')||(t.parentElement&&t.parentElement.closest('table'))) return;
+      var box=t.parentElement, avail=Math.min(usable,(box&&box.clientWidth)||usable);
+      var cells=t.querySelectorAll('th,td'); if(!cells.length) return;
+      var base=[].map.call(cells,function(c){ var cs=win.getComputedStyle(c); return [parseFloat(cs.fontSize)||12,parseFloat(cs.paddingLeft)||0,parseFloat(cs.paddingRight)||0]; });
+      for(var k=0;k<14&&t.scrollWidth>avail+1;k++){
+        var f=1-0.05*(k+1);
+        [].forEach.call(cells,function(c,i){ var b=base[i]; c.style.setProperty('font-size',(b[0]*f).toFixed(2)+'px','important'); c.style.setProperty('padding-left',(b[1]*f).toFixed(2)+'px','important'); c.style.setProperty('padding-right',(b[2]*f).toFixed(2)+'px','important'); c.querySelectorAll('*').forEach(function(x){ x.style.setProperty('font-size',(b[0]*f).toFixed(2)+'px','important'); }); });
+      }
+      if(t.scrollWidth>avail+1){ t.style.setProperty('table-layout','fixed','important'); t.style.setProperty('width',avail+'px','important'); }
+    });
+  }catch(e){ try{console.warn('nb-fitfont',e);}catch(_){} }
+}
+/* ترقيم الصفحات للمولّد: أي جزء (عنوان، جدول، مربع) لا يُقطع بين ورقتين، والجدول الأطول من ورقة يُقسَّم مع تكرار رأسه */
+function paginateForPdf(doc){
+  try{
+    if(doc.querySelector('.central-print-page,#pages .page,.qp-page,body > .card')) return;
+    var ps=pageSizeMm(doc), P=mmToPx(ps.h-2*ps.m)-4; if(P<200) return;
+    var root=doc.body; if(root.children.length===1&&root.firstElementChild.children.length>1&&!/^(TABLE|HEADER)$/.test(root.firstElementChild.tagName)) root=root.firstElementChild;
+    var top0=doc.body.getBoundingClientRect().top+(parseFloat(doc.defaultView.getComputedStyle(doc.body).paddingTop)||0);
+    function y(el){ return el.getBoundingClientRect().top-top0; }
+    function splitTable(t){
+      var tb=t.tBodies[0]; if(!tb) return;
+      var rows=[].slice.call(tb.rows); if(rows.length<2) return;
+      var start=y(t), pageEnd=(Math.floor(start/P)+1)*P, cut=-1;
+      for(var i=0;i<rows.length;i++){ var r=rows[i].getBoundingClientRect(); if(r.bottom-top0>pageEnd-1){ cut=i; break; } }
+      if(cut<=0) return;
+      var t2=t.cloneNode(false); if(t.tHead) t2.appendChild(t.tHead.cloneNode(true)); var b2=doc.createElement('tbody'); t2.appendChild(b2);
+      rows.slice(cut).forEach(function(r){ b2.appendChild(r); });
+      if(t.tFoot){ t2.appendChild(t.tFoot); }
+      var sp=doc.createElement('div'); sp.className='nb-pg-sp';
+      t.parentNode.insertBefore(t2,t.nextSibling);
+      var gap=pageEnd-(t.getBoundingClientRect().bottom-top0); sp.style.height=Math.max(0,gap)+'px'; t.parentNode.insertBefore(sp,t2);
+      splitTable(t2);
+    }
+    var kids=[].slice.call(root.children);
+    kids.forEach(function(el){
+      if(/^(SCRIPT|STYLE)$/.test(el.tagName)||el.classList.contains('nb-pg-sp')) return;
+      var a=y(el), h=el.getBoundingClientRect().height; if(h<=0) return;
+      var pageEnd=(Math.floor(a/P)+1)*P;
+      if(a+h<=pageEnd+1) return;                       // داخل ورقة واحدة
+      var tables=el.tagName==='TABLE'?[el]:[].slice.call(el.querySelectorAll(':scope > table, :scope > div > table'));
+      if(h<P*0.92 || !tables.length){                   // ينتقل كاملاً للورقة التالية
+        var sp=doc.createElement('div'); sp.className='nb-pg-sp'; sp.style.height=(pageEnd-a)+'px'; el.parentNode.insertBefore(sp,el); return;
+      }
+      tables.forEach(splitTable);                       // جدول طويل: يُقسَّم على الأوراق
+    });
+  }catch(e){ try{console.warn('nb-paginate',e);}catch(_){} }
+}
 function prep(frame,isPdf){
   try{ var d=frame&&(frame.contentDocument||(frame.contentWindow&&frame.contentWindow.document)); if(!d||!d.body) return;
     if(window.nbEl56PrintFix) window.nbEl56PrintFix(d);
     if(window.nbBlankPrep) window.nbBlankPrep(d);
-    widenNames(d); gradebookPrintTune(d); crSequence(d); if(!isPdf && realHtmlPrint()) fitCentralRecord(d); fitCards(d); fitNames(d); glyphImages(d); fixBidi(d); if(window.nbVerticalHeaderImages) window.nbVerticalHeaderImages(d); fitWidth(d); }catch(e){ try{console.warn('nb-fit',e);}catch(_){} }
+    widenNames(d); gradebookPrintTune(d); crSequence(d); var gen=isPdf||!realHtmlPrint(d); if(!gen) fitCentralRecord(d); fitCards(d); fitNames(d); if(gen) fitTablesByFont(d); glyphImages(d); fixBidi(d); if(window.nbVerticalHeaderImages) window.nbVerticalHeaderImages(d); if(gen) paginateForPdf(d); else fitWidth(d); }catch(e){ try{console.warn('nb-fit',e);}catch(_){} }
 }
 /* تُغلَّف دوال الطباعة حتى لو أعاد البرنامج تعريفها لاحقاً بعد التحميل */
 function ensureWrapped(){
@@ -23733,7 +23786,7 @@ document.addEventListener('DOMContentLoaded',function(){ fixMenus(document); });
 (function(){
 /* 1) مولّد PDF لا يرسم النص العمودي (writing-mode/rotate) فتتداخل عناوين السجل الوسطي والسجل الفصلي.
       في ملف PDF فقط تتحول هذه العناوين لنص أفقي ملتف بخط أصغر — الطباعة المباشرة تبقى عمودية كما هي. */
-function horizontalHeaders(doc){ verticalHeaderImages(doc); }
+function horizontalHeaders(doc){ /* تُرسم داخل prep بعد ضبط عرض الجدول */ }
 /* العناوين العمودية تُرسم كصورة بنفس شكلها (نفس الخط والاتجاه) لأن مولّد PDF وبعض الطابعات
    لا تفهم النص العمودي — فيبقى التصميم كما هو تماماً في الطباعة وPDF. */
 function verticalHeaderImages(doc){
@@ -24054,7 +24107,7 @@ function patch(){
   var ph=n.printHtml;
   n.printHtml=function(html,opt){
     var mode=''; try{ mode=localStorage.getItem('nbAndroidPrintMode')||''; }catch(e){}
-    if(mode==='html'&&typeof ph==='function') return ph.call(n,html,opt);
+    if((mode==='html'||(mode!=='pdf'&&!/class="[^"]*\bcard\b/.test(String(html||''))))&&typeof ph==='function') return ph.call(n,html,opt);
     sticky('🖨️ جاري تجهيز ملف الطباعة… قد يستغرق ذلك حتى دقيقة عند طباعة عدد كبير من الطلاب');
     return Promise.reject(new Error('use-pdf-print')); // البرنامج ينتقل تلقائياً إلى printPdf
   };
