@@ -6072,7 +6072,8 @@ if (typeof module !== 'undefined' && module.exports) { module.exports = QRCodeLi
     <button type="button" onclick="closeGlobalNav()" title="إغلاق">✕</button>
   </div>
   <nav class="gnd-links">
-    <button type="button" data-nav="dashboard" onclick="closeGlobalNav();goDashboard()"><span>▦</span>كشوفات المدرسة</button>
+    <button type="button" data-nav="dashboard" onclick="closeGlobalNav();goDashboard()"><span>▦</span>الموجز العام</button>
+    <button type="button" data-nav="subjects" onclick="closeGlobalNav();openSubjectsEditor()"><span>📚</span>المواد الدراسية</button>
     <button type="button" data-nav="grades" onclick="closeGlobalNav();openGradesEditor()"><span>🏫</span>الطلاب</button>
     <button type="button" data-nav="exemptions" onclick="closeGlobalNav();openExemptionsModule()"><span>🎓</span>طلاب الإعفاء</button>
     <button type="button" data-nav="gradebook" onclick="closeGlobalNav();openGradebook()"><span>📊</span>سجل الدرجات</button>
@@ -6082,7 +6083,6 @@ if (typeof module !== 'undefined' && module.exports) { module.exports = QRCodeLi
     <button type="button" data-nav="schoollogs" onclick="closeGlobalNav();openSchoolLogsModule()"><span>📁</span>سجلات المدرسة</button>
     <button type="button" data-nav="staff" onclick="closeGlobalNav();openStaffModule()"><span>👥</span>الملاك</button>
     <button type="button" data-nav="results" onclick="closeGlobalNav();openResultsSectionsFromDashboard()"><span>🖨️</span>كشوف النتائج</button>
-    <button type="button" data-nav="subjects" onclick="closeGlobalNav();openSubjectsEditor()"><span>📚</span>المواد الدراسية</button>
     <button type="button" data-nav="attendance" onclick="closeGlobalNav();openAttendanceModule()"><span>📋</span>الغياب</button>
     <button type="button" data-nav="timetable" onclick="closeGlobalNav();openTimetableModule()"><span>🗓️</span>جدول الحصص</button>
     <button type="button" data-nav="properties" onclick="closeGlobalNav();openPropertiesModule()"><span>🏫</span>الممتلكات</button>
@@ -10016,7 +10016,8 @@ function printDashNameList(orientation){
 }
 function dashMenuItems(){
   var items = [
-    ['▦','كشوفات المدرسة','أعداد الطلاب والنتائج والدوام','reports','linear-gradient(135deg,#6d1028,#c9a227)'],
+    ['▦','الموجز العام','أعداد الطلاب والنتائج والدوام','reports','linear-gradient(135deg,#6d1028,#c9a227)'],
+    ['📚','المواد الدراسية','مواد كل صف','openSubjectsEditor()','linear-gradient(135deg,#1b5e20,#43a047)'],
     ['🏫','الطلاب','الصفوف والشعب والأسماء','openGradesEditor()','linear-gradient(135deg,#1565c0,#42a5f5)'],
     ['🎓','طلاب الإعفاء','الإعفاء الفردي والجماعي','openExemptionsModule()','linear-gradient(135deg,#1b5e20,#8a6d1d)'],
     ['📊','سجل المواد والدرجات','درجات الشعب والمواد','openGradebook()','linear-gradient(135deg,#2e7d32,#66bb6a)'],
@@ -10034,7 +10035,6 @@ function dashMenuItems(){
     ['📷','باركود','مسح نتائج الطلاب','openBarcodeModule()','linear-gradient(135deg,#004d40,#00897b)'],
     ['📝','الامتحانات','قوائم وأسئلة وجداول','openExamsModule()','linear-gradient(135deg,#01579b,#29b6f6)'],
     ['🖨️','كشوف النتائج','طباعة النتائج','openResultsSectionsFromDashboard()','linear-gradient(135deg,#4a148c,#8e24aa)'],
-    ['📚','المواد الدراسية','مواد كل صف','openSubjectsEditor()','linear-gradient(135deg,#1b5e20,#43a047)'],
     ['💾','النسخ الاحتياطي','حفظ واسترجاع ومسح البيانات','openBackupModule()','linear-gradient(135deg,#004d40,#26a69a)'],
     ['⚙️','إعدادات المدرسة','البيانات وشكل القائمة','openSettings()','linear-gradient(135deg,#263238,#546e7a)']
   ];
@@ -10102,7 +10102,8 @@ function renderDashboard(){
   const cardsMode=APP.school.mainMenu==='cards'||APP.school.mainMenu==='capsules';
   el.innerHTML='<div class="dashboard-layout">'+(cardsMode?'<button type="button" class="material-btn secondary" style="margin:8px 0 12px" onclick="window.DASH_SHOW_REPORTS=false;renderDashboardLauncher()">↩ القائمة الرئيسية</button>':'<button type="button" class="mobile-menu-btn" onclick="toggleDashboardSidebar()">☰</button>')+'<div id="dashboardBackdrop" class="dashboard-backdrop" onclick="closeDashboardSidebar()"></div>'+
     '<aside id="dashboardSidebar" class="dashboard-sidebar"><div class="ds-brand"><div class="ds-logo">'+dashboardSidebarLogo()+'</div><div><strong>'+escapeHtml(APP.school.name||'ادارة المدرسه والامتحانات')+'</strong><small>'+escapeHtml(gradebookStageTitle())+'</small></div></div><div class="ds-label">القائمة الرئيسية</div><nav class="ds-nav">'+
-      '<button class="active" onclick="closeDashboardSidebar();goDashboard()"><span class="dni">▦</span>كشوفات المدرسة</button>'+
+      '<button class="active" onclick="closeDashboardSidebar();goDashboard()"><span class="dni">▦</span>الموجز العام</button>'+
+      '<button onclick="closeDashboardSidebar();openSubjectsEditor()"><span class="dni">📚</span>المواد الدراسية</button>'+
       '<button onclick="closeDashboardSidebar();openGradesEditor()"><span class="dni">🏫</span>الطلاب</button>'+
       '<button onclick="closeDashboardSidebar();openExemptionsModule()"><span class="dni">🎓</span>طلاب الإعفاء</button>'+
       '<button onclick="closeDashboardSidebar();openGradebook()"><span class="dni">📊</span>سجل الدرجات</button>'+
@@ -10112,7 +10113,6 @@ function renderDashboard(){
       '<button onclick="closeDashboardSidebar();openSchoolLogsModule()"><span class="dni">📁</span>سجلات المدرسة</button>'+
       '<button onclick="closeDashboardSidebar();openStaffModule()"><span class="dni">👥</span>الملاك</button>'+
       '<button onclick="closeDashboardSidebar();openResultsSectionsFromDashboard()"><span class="dni">🖨️</span>كشوف النتائج</button>'+
-      '<button onclick="closeDashboardSidebar();openSubjectsEditor()"><span class="dni">📚</span>المواد الدراسية</button>'+
       '<button onclick="closeDashboardSidebar();openAttendanceModule()"><span class="dni">📋</span>الغياب</button>'+
       '<button onclick="closeDashboardSidebar();openTimetableModule()"><span class="dni">🗓️</span>جدول الحصص</button>'+
       '<button onclick="closeDashboardSidebar();openPropertiesModule()"><span class="dni">🏫</span>الممتلكات</button>'+
@@ -10129,7 +10129,7 @@ function renderDashboard(){
       '<button onclick="toggleUiTheme()"><span class="dni ui-theme-icon">🌙</span><span class="ui-theme-toggle-text">الوضع الليلي</span></button>'+
       '<button onclick="closeDashboardSidebar();authLogout()"><span class="dni">🚪</span>تسجيل خروج</button>'+
       '<button class="ds-exit" onclick="requestAppBack()"><span class="dni">↩</span>رجوع خطوة</button>'+
-    '</nav></aside><main class="dashboard-main"><header class="dashboard-top"><div><h1>كشوفات المدرسة</h1><p>نظرة شاملة على أعداد الطلاب ونتائج آخر امتحان مسجل</p></div><div class="dashboard-date">'+escapeHtml(dateText)+'</div></header>'+
+    '</nav></aside><main class="dashboard-main"><header class="dashboard-top"><div><h1>الموجز العام</h1><p>نظرة شاملة على أعداد الطلاب ونتائج آخر امتحان مسجل</p></div><div class="dashboard-date">'+escapeHtml(dateText)+'</div></header>'+
     '<section class="stats-kpis">'+
       '<div class="stat-kpi" onclick="openDashNameList(\'total\')" style="cursor:pointer"><div class="sk-icon">🎓</div><div><strong>'+toArabicDigits(String(stats.total))+'</strong><span>إجمالي طلاب المدرسة</span></div></div>'+
       '<div class="stat-kpi success" onclick="openDashNameList(\'passed\')" style="cursor:pointer"><div class="sk-icon">✅</div><div><strong>'+toArabicDigits(String(stats.passed))+'</strong><span>الطلاب الناجحون</span></div></div>'+
@@ -18263,7 +18263,7 @@ if(document.readyState==='loading'){
 <!-- ===== AUTO UPDATE NOTIFICATION (small icon in topbar) ===== -->
 <script>
 (function(){
-  const APP_VERSION = "1.25.3";
+  const APP_VERSION = "1.27.1";
   const CHECK_EVERY_MINUTES = 30;
   const LS_ACCEPTED = "daragat_accepted_version";
   const LS_SNOOZE   = "daragat_update_snooze";
@@ -18779,7 +18779,7 @@ function renderAboutView(){
 
       '<h3 class="about-section-title">✨ مميزات التطبيق الرئيسية</h3>'+
       '<div class="about-grid">'+
-        '<div class="feat-card"><div class="ico">🏫</div><h4>كشوفات المدرسة</h4><p>لوحة شاملة تعرض أعداد الطلاب، الناجحين، الراسبين، الغائبين والحاضرين اليوم، مع إحصائيات مباشرة لكل صف وشعبة، وإمكانية طباعة قوائم الأسماء عمودياً أو أفقياً.</p></div>'+
+        '<div class="feat-card"><div class="ico">🏫</div><h4>الموجز العام</h4><p>لوحة شاملة تعرض أعداد الطلاب، الناجحين، الراسبين، الغائبين والحاضرين اليوم، مع إحصائيات مباشرة لكل صف وشعبة، وإمكانية طباعة قوائم الأسماء عمودياً أو أفقياً.</p></div>'+
         '<div class="feat-card"><div class="ico">👨‍🎓</div><h4>إدارة الطلاب</h4><p>إضافة وتعديل بيانات الطلاب (اسم، رقم امتحاني، رقم قيد، الأب والأم، الجنس، الحالة، صورة شخصية) مع ترقيم تلقائي، وبحث فوري بالاسم في جميع الصفوف، وإمكانية نقل الطلاب بين الشعب.</p></div>'+
         '<div class="feat-card"><div class="ico">📊</div><h4>سجل الدرجات</h4><p>إدخال درجات المواد لكل شعبة، مع حساب المعدل تلقائياً (مجموع الدرجات مقسوم على عدد المواد)، وتمييز الناجح والراسب، وتلوين الصفوف، وإصدار كشوف النتائج النهائية وطباعتها.</p></div>'+
         '<div class="feat-card"><div class="ico">📈</div><h4>سجل المستويات</h4><p>تتبع مستوى الطالب أسبوعياً وشهرياً لكل مادة (ممتاز / جيد / متوسط / ضعيف) بتواقيع المعلمين، لمعرفة تطور أداء الطالب طوال السنة الدراسية.</p></div>'+
@@ -23679,6 +23679,7 @@ function prep(frame,isPdf){
   try{ var d=frame&&(frame.contentDocument||(frame.contentWindow&&frame.contentWindow.document)); if(!d||!d.body) return;
     if(window.nbEl56PrintFix) window.nbEl56PrintFix(d);
     if(window.nbBlankPrep) window.nbBlankPrep(d);
+    if(window.nbArabic4Transform) window.nbArabic4Transform(d);
     widenNames(d); gradebookPrintTune(d); crSequence(d); var gen=isPdf||!realHtmlPrint(d); if(!gen) fitCentralRecord(d); fitCards(d); fitNames(d); if(gen) fitTablesByFont(d); glyphImages(d); fixBidi(d); if(window.nbVerticalHeaderImages) window.nbVerticalHeaderImages(d); if(gen) paginateForPdf(d); else fitWidth(d); }catch(e){ try{console.warn('nb-fit',e);}catch(_){} }
 }
 /* تُغلَّف دوال الطباعة حتى لو أعاد البرنامج تعريفها لاحقاً بعد التحميل */
@@ -23798,6 +23799,19 @@ function verticalHeaderImages(doc){
       if(/^vertical/.test(cs.writingMode||'')) target=th;
       else { var kids=th.querySelectorAll('*'); for(var k=0;k<kids.length;k++){ var c2=win.getComputedStyle(kids[k]); if(/^vertical/.test(c2.writingMode||'')){ target=kids[k]; break; } } }
       if(!target) return;
+      if(target!==th){
+        var ttext=(target.textContent||'').replace(/\s+/g,' ').trim(); if(!ttext) return;
+        var r0=target.getBoundingClientRect(), tcs0=win.getComputedStyle(target);
+        var w0=Math.max(4,r0.width), h0=Math.max(8,r0.height), fs0=parseFloat(tcs0.fontSize)||11;
+        var S0=3, c0=doc.createElement('canvas'); c0.width=Math.ceil(w0*S0); c0.height=Math.ceil(h0*S0);
+        var x0=c0.getContext('2d'); x0.scale(S0,S0); x0.font=(tcs0.fontWeight||'700')+' '+fs0+'px '+(tcs0.fontFamily||'Tahoma'); x0.fillStyle=tcs0.color||'#000';
+        x0.textAlign='center'; x0.textBaseline='middle'; try{ x0.direction='rtl'; }catch(e){}
+        var flip0=/matrix\(-1|rotate\(180/.test(tcs0.transform||'');
+        x0.translate(w0/2,h0/2); x0.rotate(flip0?-Math.PI/2:Math.PI/2); x0.fillText(ttext,0,0);
+        var im0=doc.createElement('img'); im0.src=c0.toDataURL('image/png'); im0.alt=ttext;
+        im0.style.cssText='display:inline-block;vertical-align:middle;width:'+w0+'px;height:'+h0+'px';
+        target.replaceWith(im0); th.dataset.nbVimg='1'; return;
+      }
       var text=(th.innerText||th.textContent||'').replace(/\s+/g,' ').trim(); if(!text) return;
       var tcs=win.getComputedStyle(target), pcs=win.getComputedStyle(th);
       var bw=th.clientWidth-(parseFloat(pcs.paddingLeft)||0)-(parseFloat(pcs.paddingRight)||0);
@@ -25001,6 +25015,192 @@ setInterval(function(){
 },1500);
 window.addEventListener('error',function(e){ if(t0&&Date.now()-t0<60000) show('❌ خطأ: '+(e.message||''),'#c62828',20000); });
 window.addEventListener('unhandledrejection',function(e){ if(t0&&Date.now()-t0<60000){ var m=(e.reason&&(e.reason.message||e.reason))||''; if(!/use-pdf-print/.test(String(m))) show('❌ خطأ: '+m,'#c62828',20000); } });
+})();
+</script>
+
+<script>
+/* ===== nb-arabic4-list: قائمة امتحان اللغة العربية للصف الرابع الابتدائي فقط =====
+   القراءة/المحفوظات/المحادثة/الإنشاء/القواعد/الخط/الإملاء: الكلمة عمودية والدرجة تحتها أفقية.
+   معدل الشفوي، مجموع التحريري، مجموع الشفوي: الكلمة الأولى فوق والثانية تحتها.
+   ارتفاع رأس الجدول وقياسات الطباعة لا تتغير، والخط أكبر قليلاً بقدر ما تتسع الخلية. */
+(function(){
+var SK=['القراءة','محفوظات','المحفوظات','المحادثة','الإنشاء','القواعد','الخط','الإملاء'];
+var TWO=['معدل الشفوي','مجموع التحريري','مجموع الشفوي'];
+function isTarget(t){ var h=t.tHead||t; var x=(h.textContent||''); return /محفوظات/.test(x)&&/مجموع الشفوي/.test(x)&&/مجموع التحريري/.test(x); }
+function transform(t){
+  if(!t||(t.dataset.nbAr4&&t.ownerDocument===document)||!isTarget(t)) return; t.dataset.nbAr4='1';
+  var head=t.tHead||t.querySelector('tr'); var doc=t.ownerDocument, win=doc.defaultView;
+  var h0=(t.tHead?t.tHead.getBoundingClientRect().height:0);
+  var ths=[].slice.call((t.tHead||t).querySelectorAll('th'));
+  var changed=[];
+  ths.forEach(function(th){
+    var parts=th.innerHTML.split(/<br\s*\/?>/i).map(function(x){ return x.replace(/<[^>]+>/g,'').trim(); });
+    var label=parts[0], mark=parts[1]||'';
+    if(SK.indexOf(label)>=0){
+      th.innerHTML='<span class="nb4v" style="writing-mode:vertical-rl;transform:rotate(180deg);display:inline-block;white-space:nowrap;line-height:1.1">'+label+'</span>'+(mark?'<br><span class="nb4n">'+mark+'</span>':'');
+      changed.push(th);
+    } else if(TWO.indexOf(label.replace(/\s+/g,' '))>=0){
+      var w=label.split(/\s+/); th.innerHTML='<span class="nb4t">'+w[0]+'</span><br><span class="nb4t">'+w.slice(1).join(' ')+'</span>'; changed.push(th);
+    }
+  });
+  if(!changed.length) return;
+  // نفس ارتفاع الرأس: الكلمة العمودية بأكبر خط يتسع للخلية (حشو أقل)، والدرجة تحتها أفقية
+  function fits(th){ var h=t.tHead?t.tHead.getBoundingClientRect().height:0; if(h0&&h>h0+0.6) return false; return th.scrollWidth<=th.clientWidth+1&&th.scrollHeight<=th.clientHeight+1; }
+  changed.forEach(function(th){ var v=th.querySelector('.nb4v'); if(v){ v.style.fontSize='7px'; th.style.setProperty('padding-top','1px','important'); th.style.setProperty('padding-bottom','1px','important'); } });
+  changed.forEach(function(th){
+    var base=parseFloat(win.getComputedStyle(th).fontSize)||12, v=th.querySelector('.nb4v');
+    if(v){
+      th.style.setProperty('padding-top','1px','important'); th.style.setProperty('padding-bottom','1px','important'); th.style.setProperty('line-height','1','important');
+      var n=th.querySelector('.nb4n'); if(n){ n.style.display='inline-block'; n.style.lineHeight='1.05'; n.style.fontSize=(base+1)+'px'; }
+      var lo=7, hi=base+3, best=0;
+      for(var i=0;i<8;i++){ var mid=(lo+hi)/2; v.style.fontSize=mid+'px'; if(fits(th)){ best=mid; lo=mid; } else hi=mid; }
+      if(!best && n){ n.style.fontSize=base+'px'; lo=7; hi=base+3; for(var j=0;j<8;j++){ var m2=(lo+hi)/2; v.style.fontSize=m2+'px'; if(fits(th)){ best=m2; lo=m2; } else hi=m2; } }
+      v.style.fontSize=(best||7)+'px';
+    } else {
+      var done=false; [1.5,1,0.5].forEach(function(d){ if(done) return; th.style.setProperty('font-size',(base+d)+'px','important'); if(fits(th)) done=true; });
+      if(!done) th.style.removeProperty('font-size');
+    }
+  });
+}
+window.nbArabic4Transform=function(root){ try{ (root||document).querySelectorAll('table').forEach(transform); }catch(e){} };
+if(typeof window.generateExamList==='function'){
+  window.generateExamList=(function(orig){ return function(){ var r=orig.apply(this,arguments); setTimeout(function(){ window.nbArabic4Transform(document.getElementById('view-exams')); },0); return r; }; })(window.generateExamList);
+}
+})();
+</script>
+<script>
+/* ===== nb-subjects: إدارة مواد المرحلة بأمان =====
+   • تعديل اسم مادة ينقل درجاتها وسجل مستوياتها للاسم الجديد (لا تضيع الدرجات).
+   • حذف مادة يخفيها من كل البرنامج، ودرجاتها تبقى محفوظة وتعود إذا أُعيدت المادة بنفس الاسم.
+   • توضيح الصفوف التي تتبع كل قائمة مواد. */
+(function(){
+function gradesForKey(key){ try{ return gradebookGradeLabels().filter(function(g){ return subjectKeyForGrade(g)===key&&currentStage()!=='professional'; }); }catch(e){ return []; } }
+function migrate(key,oldName,newName){
+  if(!oldName||!newName||oldName===newName) return 0;
+  var grades=gradesForKey(key), n=0;
+  [['GRADEBOOK','records',function(g,sid,sub){ return gbKey(g,sid,sub); }],['LEVELS_STATE','records',function(g,sid,sub){ return levelsRecordKey(g,sid,sub); }]].forEach(function(st){
+    try{
+      var obj=window[st[0]]||(st[0]==='GRADEBOOK'?GRADEBOOK:(typeof LEVELS_STATE!=='undefined'?LEVELS_STATE:null)); if(!obj||!obj[st[1]]) return;
+      var recs=obj[st[1]];
+      Object.keys(recs).forEach(function(k){
+        var r=recs[k]; if(!r||r.subject!==oldName||grades.indexOf(r.grade)<0) return;
+        var nk=st[2](r.grade,r.sectionId,newName); if(recs[nk]) return;
+        r.subject=newName; recs[nk]=r; delete recs[k]; n++;
+      });
+    }catch(e){}
+  });
+  try{ if(typeof saveGradebook==='function') saveGradebook(GRADEBOOK); }catch(e){}
+  try{ if(typeof saveLevelsState==='function') saveLevelsState(); else if(typeof saveLevels==='function') saveLevels(); }catch(e){}
+  return n;
+}
+if(typeof window.renderSubjectRows==='function'){
+  window.renderSubjectRows=(function(orig){ return function(key){
+    var r=orig.apply(this,arguments);
+    try{
+      var box=document.getElementById('subjList-'+key); if(!box) return r;
+      box.querySelectorAll('input[type=text]').forEach(function(inp){
+        inp.addEventListener('focus',function(){ inp.dataset.nbOld=inp.value.trim(); });
+        inp.addEventListener('change',function(){
+          var o=inp.dataset.nbOld||'', v=inp.value.trim();
+          if(!v){ alert('اسم المادة لا يكون فارغاً.'); inp.value=o; inp.dispatchEvent(new Event('input')); return; }
+          var n=migrate(key,o,v); inp.dataset.nbOld=v;
+          if(n&&window.nbAppToast) window.nbAppToast('✅ نُقلت درجات «'+o+'» إلى «'+v+'»');
+        });
+      });
+      var set=box.closest('.subj-set'); if(set&&!set.querySelector('.nb-subj-grades')){
+        var gs=gradesForKey(key); if(gs.length){ var p=document.createElement('p'); p.className='nb-subj-grades'; p.style.cssText='margin:-4px 0 8px;font-size:12.5px;opacity:.8'; p.textContent='تُستخدم في: '+gs.join('، '); var h=set.querySelector('h3'); h&&h.insertAdjacentElement('afterend',p); }
+      }
+    }catch(e){}
+    return r; }; })(window.renderSubjectRows);
+}
+if(typeof window.removeSubjectItem==='function'){
+  window.removeSubjectItem=(function(orig){ return function(key,idx){
+    var name=''; try{ name=getSubjects(key)[idx]; }catch(e){}
+    var oc=window.confirm;
+    window.confirm=function(){ window.confirm=oc; return oc('حذف مادة «'+name+'» من المرحلة؟\n\nتختفي من سجل المعلم والبطاقات والسجلات والقوائم. درجاتها المدخلة تبقى محفوظة، وتعود إذا أضفت المادة مرة أخرى بنفس الاسم.'); };
+    try{ return orig.apply(this,arguments); } finally { window.confirm=oc; }
+  }; })(window.removeSubjectItem);
+}
+if(typeof window.addSubjectItem==='function'){
+  window.addSubjectItem=(function(orig){ return function(key){
+    var input=document.getElementById('subjNew-'+key), v=input?input.value.trim():'';
+    if(v){ try{ if(getSubjects(key).indexOf(v)>=0){ alert('المادة «'+v+'» موجودة مسبقاً.'); return; } }catch(e){} }
+    return orig.apply(this,arguments);
+  }; })(window.addSubjectItem);
+}
+})();
+</script>
+
+<script>
+/* ===== nb-grade-subjects: مواد خاصة لكل صف =====
+   لكل صف (الأول، الثاني، …) تختار مواده من مواد المرحلة (الافتراضية والتي أضفتها).
+   الصف الذي لم تُخصَّص مواده يتبع قائمة المرحلة كما كان. كل البرنامج يعتمد على هذا الاختيار. */
+(function(){
+if(typeof window.subjectsForGrade!=='function') return;
+var origSFG=window.subjectsForGrade;
+function store(){ if(!APP.gradeSubjects||typeof APP.gradeSubjects!=='object') APP.gradeSubjects={}; return APP.gradeSubjects; }
+function pool(label){
+  var out=[];
+  try{ getSubjects(subjectKeyForGrade(label)).forEach(function(x){ if(out.indexOf(x)<0) out.push(x); }); }catch(e){}
+  try{ visibleSubjectSets().forEach(function(k){ getSubjects(k).forEach(function(x){ if(out.indexOf(x)<0) out.push(x); }); }); }catch(e){}
+  return out;
+}
+window.nbGradeSubjectPool=pool;
+window.subjectsForGrade=function(label){
+  var base=origSFG.apply(this,arguments);
+  try{
+    if(currentStage()==='professional'||String(label||'').indexOf(' — ')>=0) return base;
+    var sel=store()[label]; if(!Array.isArray(sel)||!sel.length) return base;
+    var p=pool(label), list=p.filter(function(x){ return sel.indexOf(x)>=0; });
+    return list.length?list:base;
+  }catch(e){ return base; }
+};
+/* عند تغيير اسم مادة في قائمة المرحلة: يتغير في اختيارات الصفوف أيضاً */
+document.addEventListener('change',function(e){
+  var inp=e.target; if(!inp||!inp.closest||!inp.closest('.subj-list')||inp.type!=='text') return;
+  var o=inp.dataset.nbOld0||'', v=inp.value.trim(); if(!o||!v||o===v) return;
+  var st=store(); Object.keys(st).forEach(function(g){ var i=st[g].indexOf(o); if(i>=0) st[g][i]=v; }); saveApp();
+},true);
+document.addEventListener('focusin',function(e){ var inp=e.target; if(inp&&inp.closest&&inp.closest('.subj-list')&&inp.type==='text') inp.dataset.nbOld0=inp.value.trim(); },true);
+
+/* ---------- الواجهة: قسم «مواد كل صف» في صفحة المواد الدراسية ---------- */
+function esc(t){ return escapeHtml(String(t==null?'':t)); }
+function renderPanel(){
+  var el=document.getElementById('view-subjects'); if(!el) return;
+  var panel=el.querySelector('.panel'); if(!panel) return;
+  var old=document.getElementById('nbGradeSubj'); if(old) old.remove();
+  if(currentStage()==='professional') return;
+  var grades=[]; try{ grades=gradebookGradeLabels(); }catch(e){}
+  if(!grades.length) return;
+  var st=store();
+  var box=document.createElement('div'); box.id='nbGradeSubj'; box.style.cssText='margin-top:18px';
+  box.innerHTML='<h2 style="margin:0 0 4px">📋 مواد كل صف</h2><p style="font-size:13px;opacity:.8;margin:0 0 10px">اختر مواد كل صف من مواد المرحلة أعلاه. الصف الذي لا تغيّر مواده يأخذ كل مواد المرحلة. التغيير يظهر في سجل المعلم والبطاقات والسجلات والقوائم.</p>'+
+    grades.map(function(g){
+      var p=pool(g), cur=window.subjectsForGrade(g), custom=Array.isArray(st[g])&&st[g].length;
+      return '<details class="nb-gs" data-g="'+esc(g)+'" style="border:1px solid var(--skin-border,#d5dde6);border-radius:12px;padding:8px 12px;margin-bottom:8px"><summary style="cursor:pointer;font-weight:800">الصف '+esc(g)+' <span style="font-weight:600;font-size:12.5px;opacity:.75">— '+cur.length+' مادة'+(custom?' (مخصصة)':' (كل مواد المرحلة)')+'</span></summary>'+
+        '<div style="display:flex;flex-wrap:wrap;gap:6px 14px;margin:10px 0">'+p.map(function(s){ return '<label style="display:inline-flex;gap:6px;align-items:center;font-size:14px;margin:0;padding:4px 8px;border-radius:8px;background:rgba(127,127,127,.08);min-height:0"><input type="checkbox" value="'+esc(s)+'"'+(cur.indexOf(s)>=0?' checked':'')+'> '+esc(s)+'</label>'; }).join('')+'</div>'+
+        '<div style="display:flex;gap:8px;flex-wrap:wrap"><button type="button" class="material-btn secondary" data-a="all">تحديد الكل</button><button type="button" class="material-btn secondary" data-a="reset">إرجاع لمواد المرحلة</button></div></details>';
+    }).join('');
+  panel.insertBefore(box,panel.querySelector('.panel-actions')||null);
+  box.querySelectorAll('.nb-gs').forEach(function(d){
+    var g=d.getAttribute('data-g');
+    function save(){
+      var picked=[].slice.call(d.querySelectorAll('input[type=checkbox]')).filter(function(c){ return c.checked; }).map(function(c){ return c.value; });
+      if(!picked.length){ alert('يجب أن تبقى مادة واحدة على الأقل للصف.'); return false; }
+      var p=pool(g); if(picked.length===p.length&&p.every(function(x){ return picked.indexOf(x)>=0; })&&getSubjects(subjectKeyForGrade(g)).length===p.length) delete store()[g]; else store()[g]=picked;
+      saveApp(); var sm=d.querySelector('summary span'); var custom=!!store()[g]; if(sm) sm.textContent='— '+window.subjectsForGrade(g).length+' مادة'+(custom?' (مخصصة)':' (كل مواد المرحلة)');
+      return true;
+    }
+    d.querySelectorAll('input[type=checkbox]').forEach(function(c){ c.addEventListener('change',function(){ if(!save()){ c.checked=true; } }); });
+    d.querySelector('[data-a="all"]').onclick=function(){ d.querySelectorAll('input[type=checkbox]').forEach(function(c){ c.checked=true; }); save(); };
+    d.querySelector('[data-a="reset"]').onclick=function(){ delete store()[g]; saveApp(); var keep=d.open; renderPanel(); var nd=document.querySelector('#nbGradeSubj .nb-gs[data-g="'+g.replace(/"/g,'\\"')+'"]'); if(nd) nd.open=keep; };
+  });
+}
+window.nbRenderGradeSubjects=renderPanel;
+['renderSubjectsView','addSubjectItem','removeSubjectItem','resetSubjectSet','moveSubjectItem'].forEach(function(n){
+  if(typeof window[n]!=='function') return;
+  window[n]=(function(orig){ return function(){ var r=orig.apply(this,arguments); try{ var open=[].slice.call(document.querySelectorAll('#nbGradeSubj .nb-gs[open]')).map(function(d){ return d.getAttribute('data-g'); }); renderPanel(); open.forEach(function(g){ var nd=[].slice.call(document.querySelectorAll('#nbGradeSubj .nb-gs')).find(function(x){ return x.getAttribute('data-g')===g; }); if(nd) nd.open=true; }); }catch(e){} return r; }; })(window[n]);
+});
 })();
 </script>
 
