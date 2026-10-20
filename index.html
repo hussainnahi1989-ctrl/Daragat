@@ -5999,7 +5999,7 @@ if (typeof module !== 'undefined' && module.exports) { module.exports = QRCodeLi
   add("https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js");
   add("https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js",function(){
     window.__nbFirebaseLoaded=true;
-    setTimeout(function(){ try{ if(navigator.onLine!==false && typeof firebase!=='undefined') window.dispatchEvent(new Event('online')); }catch(e){} },300);
+    var tries=0; (function fire(){ try{ if(!window.__appStarted && tries++<60){ setTimeout(fire,1000); return; } if(navigator.onLine!==false && typeof firebase!=='undefined') window.dispatchEvent(new Event('online')); }catch(e){} })();
   });
 })();
 </script>
@@ -18263,7 +18263,7 @@ if(document.readyState==='loading'){
 <!-- ===== AUTO UPDATE NOTIFICATION (small icon in topbar) ===== -->
 <script>
 (function(){
-  const APP_VERSION = "1.25.0";
+  const APP_VERSION = "1.25.1";
   const CHECK_EVERY_MINUTES = 30;
   const LS_ACCEPTED = "daragat_accepted_version";
   const LS_SNOOZE   = "daragat_update_snooze";
@@ -23657,7 +23657,7 @@ setInterval(function(){ try{ var now=Date.now(); PRINT_FRAMES=PRINT_FRAMES.filte
 window.nbCleanupPrintFrames=function(){ cleanupOldFrames(null); };
 ensureWrapped();
 window.addEventListener('load',function(){ ensureWrapped(); setTimeout(ensureWrapped,500); setTimeout(ensureWrapped,2500); });
-var ewN=0, ewT=setInterval(function(){ ensureWrapped(); if(++ewN>30) clearInterval(ewT); },1000);
+setInterval(function(){ ensureWrapped(); },3000);
 window.nbEnsurePrintWrap=ensureWrapped;
 /* اسم الطالب لا يختفي تحت شريط «ادارة مدرسة» في قالب الشريط */
 var st=document.createElement('style'); st.id='nbCardFix';
@@ -23801,7 +23801,7 @@ window.centralRecordExportPdf=function(id){
 // يجب أن تكون هذه الأغلفة خارجية بعد أغلفة القياسات
 function ensure(){ if(window.nbEnsurePrintWrap) window.nbEnsurePrintWrap(); var f=window.downloadPdfFromPrintFrame; if(f&&!f.__nbPdfH) wrapPdf(); wrapPrintForPdf(); wrapPdfButton(); }
 ensure(); window.addEventListener('load',function(){ ensure(); setTimeout(ensure,600); setTimeout(ensure,2600); });
-var n=0,t=setInterval(function(){ ensure(); if(++n>32) clearInterval(t); },1000);
+setInterval(function(){ ensure(); },3000);
 
 /* 2) «سجلات الدرجات»: الأقسام الأربعة تظهر داخله فقط وليس في اللوحة الجانبية والقوائم */
 var HIDE=['openGradebook()','openCentralRecordModule()','openExemptionsModule()','openSemesterRegister()'];
@@ -24127,7 +24127,7 @@ function wrap(){
   });
 }
 wrap(); window.addEventListener('load',function(){ wrap(); setTimeout(wrap,700); setTimeout(wrap,2800); });
-var n=0,t=setInterval(function(){ wrap(); if(++n>34) clearInterval(t); },1000);
+setInterval(function(){ wrap(); },3000);
 })();
 </script>
 
@@ -24869,6 +24869,34 @@ document.addEventListener('click',function(e){
   en.click();
   setTimeout(function(){ var ob=document.querySelector('#dlsHostPanel [data-a="offline"]'); if(ob){ ob.__nbAuto=true; ob.click(); setTimeout(function(){ ob.__nbAuto=false; },500); } },1200);
 },true);
+})();
+</script>
+<script>
+/* ===== nb-online-guard: البرنامج لا يتعطل عند وجود إنترنت بطيء أو متقطع =====
+   مع الإنترنت ينتظر نظام التفعيل رد خادم الاشتراك قبل تشغيل البرنامج. إذا تأخر الرد (واي فاي ضعيف أو محجوب)
+   كان البرنامج يبقى نصف مُشغَّل فلا تعمل الطباعة والتصدير والرجوع. الآن: بعد 8 ثوانٍ يُشغَّل بالاشتراك المحفوظ
+   على الجهاز (نفس ما يحدث بدون إنترنت)، ويكمل الفحص في الخلفية — دون أي تغيير في قواعد الاشتراك. */
+(function(){
+function log(k,m){ try{ (window.__nbLog=window.__nbLog||[]).push({t:Date.now(),k:k,m:String(m).slice(0,200)}); if(window.__nbLog.length>60) window.__nbLog.shift(); }catch(e){} }
+window.addEventListener('online',function(e){ log('شبكة','متصل'+(e.isTrusted?'':' (فحص التفعيل)')); });
+window.addEventListener('offline',function(){ log('شبكة','غير متصل'); });
+var t0=Date.now();
+var wd=setInterval(function(){
+  if(window.__appStarted){ log('تشغيل','بدأ البرنامج بعد '+Math.round((Date.now()-t0)/100)/10+' ث — '+(navigator.onLine?'مع إنترنت':'بدون إنترنت')); clearInterval(wd); return; }
+  if(Date.now()-t0>8000){
+    clearInterval(wd);
+    try{
+      var info=window.__actGetInfo&&window.__actGetInfo();
+      if(info&&info.valid&&typeof window.__actResume==='function'){ log('تشغيل','رد خادم الاشتراك تأخر — تشغيل بالاشتراك المحفوظ'); window.__actResume(true); }
+    }catch(e){ log('خطأ','watchdog: '+e.message); }
+  }
+},500);
+/* سجل الطباعة والتصدير في فحص الجهاز */
+['printIframeNow','downloadPdfFromPrintFrame','downloadPdfFromPrintButton'].forEach(function(n){
+  setTimeout(function hook(){ var f=window[n]; if(typeof f!=='function'||f.__nbLogged){ setTimeout(hook,3000); return; }
+    var w=function(){ log('طباعة',n+(navigator.onLine?' (متصل)':' (غير متصل)')); try{ return f.apply(this,arguments); }catch(e){ log('خطأ',n+': '+e.message); throw e; } };
+    for(var k in f){ try{ w[k]=f[k]; }catch(e){} } w.__nbLogged=true; window[n]=w; setTimeout(hook,3000); },2000);
+});
 })();
 </script>
 </body>
