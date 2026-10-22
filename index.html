@@ -23356,13 +23356,24 @@ window.nbsrPrint=function(asPdf){
   var s=students(); if(!s.sec) return;
   var theme=(typeof getPrintTheme==='function')?getPrintTheme():'';
   var logo=APP.school&&APP.school.logo?'<img src="'+APP.school.logo+'">':'';
+  // Fixed column proportions follow the teacher-register grid; keep A4 portrait and the existing 7mm margins.
+  var nbsrWidths=[8,16,44,11,11,11,11,11,11,11,11,11,32],nbsrTotal=nbsrWidths.reduce(function(a,b){return a+b;},0);
+  var nbsrCols='<colgroup data-nbsr-cols="1">'+nbsrWidths.map(function(w){return '<col style="width:'+((w/nbsrTotal)*100).toFixed(5)+'%">';}).join('')+'</colgroup>';
   var html='<!doctype html><html lang="ar" dir="rtl" class="exam-theme-'+theme+'"><head><meta charset="utf-8"><title>السجل الفصلي - '+esc(SR.grade)+' - '+esc(s.sec.label)+' - '+esc(SR.subject)+'</title><style>'+(typeof printThemeRootCss==='function'?printThemeRootCss():'')+'</style><style>@page{size:A4 portrait;margin:7mm}*{box-sizing:border-box;-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}html,body{margin:0;background:#fff;color:#111;font-family:Tahoma,Arial,sans-serif}'+
     'header{display:grid;grid-template-columns:20mm 1fr 58mm;gap:4mm;align-items:center;padding:3mm 4mm;border-radius:2mm;color:#fff;background:linear-gradient(125deg,var(--list-dark,#1a237e),var(--list-mid,#3949ab));margin-bottom:3mm}.lg{width:18mm;height:18mm;border-radius:50%;background:#fff;overflow:hidden}.lg img{width:100%;height:100%;object-fit:cover}.tt{text-align:center}.tt h1{margin:0;font-size:18pt}.tt p{margin:1mm 0 0;font-size:10.5pt}.mt{font-size:10pt;line-height:1.65}'+
-    'table{width:100%;border-collapse:collapse;font-size:9.5pt}th{background:var(--list-dark,#1a237e);color:#fff;border:.25mm solid #444;padding:1mm;font-size:9pt}th.v{height:34mm;width:10mm;vertical-align:bottom}th.v span{writing-mode:vertical-rl;transform:rotate(180deg);white-space:nowrap;display:inline-block}th.h{min-width:40mm}td{border:.25mm solid #444;padding:1.3mm .8mm;text-align:center;height:7mm}td.nm{text-align:right;white-space:nowrap;font-weight:700}td.rm{text-align:right;min-width:30mm}tbody tr:nth-child(even) td{background:#f4f6fb}footer{display:flex;justify-content:space-between;margin-top:6mm;font-weight:700;font-size:10pt}</style></head><body>'+
+    'table.nbsr-print-table{width:100%!important;table-layout:fixed!important;border-collapse:collapse;font-size:11px}'+
+    'table.nbsr-print-table th{background:var(--list-dark,#1a237e);color:#fff;border:.25mm solid #444;padding:.35mm .25mm;font-size:9px;line-height:1.12;vertical-align:middle}'+
+    'table.nbsr-print-table th.v{height:19mm!important;max-height:19mm!important;overflow:hidden!important;vertical-align:middle;padding:.3mm .15mm!important;width:auto!important;font-size:8.2px!important;line-height:1.1;writing-mode:vertical-rl;transform:rotate(180deg);white-space:normal;word-break:normal}'+
+    'table.nbsr-print-table th.h{min-width:0!important;max-width:none!important;white-space:normal}'+
+    'table.nbsr-print-table td{border:.25mm solid #444;padding:.5mm .2mm;text-align:center;height:7mm;font-size:11px;line-height:1.15;overflow-wrap:anywhere}'+
+    'table.nbsr-print-table td:nth-child(2){font-size:10px!important}'+
+    'table.nbsr-print-table td.nm{text-align:right;white-space:normal!important;word-break:keep-all!important;overflow-wrap:normal!important;font-weight:900;font-size:14px!important;line-height:1.15;min-width:0!important;max-width:none!important}'+
+    'table.nbsr-print-table td.rm{text-align:right;min-width:0!important;max-width:none!important;white-space:normal!important;overflow-wrap:anywhere}'+
+    'table.nbsr-print-table tbody tr:nth-child(even) td{background:#f4f6fb}footer{display:flex;justify-content:space-between;margin-top:6mm;font-weight:700;font-size:10pt}</style></head><body>'+
     '<header><div class="lg">'+logo+'</div><div class="tt"><h1>السجل الفصلي</h1><p>'+esc(APP.school&&APP.school.name||'')+' — العام الدراسي '+esc(yearOf())+'</p></div><div class="mt"><div><b>الصف:</b> '+esc(SR.grade)+'</div><div><b>الشعبة:</b> '+esc(s.sec.label)+'</div><div><b>المادة:</b> '+esc(SR.subject)+'</div></div></header>'+
-    '<table><thead><tr>'+HEAD.map(function(h,i){ var v=(i!==2&&i!==12); return '<th class="'+(v?'v':'h')+'"><span>'+h+'</span></th>'; }).join('')+'</tr></thead><tbody>'+bodyHtml(SR.subject)+'</tbody></table>'+
+    '<table class="nbsr-print-table">'+nbsrCols+'<thead><tr>'+HEAD.map(function(h,i){ var v=(i!==2&&i!==12); return '<th class="'+(v?'v':'h')+'">'+h+'</th>'; }).join('')+'</tr></thead><tbody>'+bodyHtml(SR.subject)+'</tbody></table>'+
     '<footer><span>مدرس المادة: ............................</span><span>مدير المدرسة: '+esc(APP.school&&APP.school.principal||'............................')+'</span></footer></body></html>';
-  var frame=document.createElement('iframe'); frame.style.cssText='position:fixed;left:-10000px;top:0;width:210mm;height:297mm;border:0;background:#fff';
+  var frame=document.createElement('iframe'); frame.style.cssText='position:fixed;left:-10000px;top:0;width:196mm;height:283mm;border:0;background:#fff';
   document.body.appendChild(frame); var d=frame.contentDocument; d.open(); d.write(html); d.close();
   try{ if(typeof applyDigitsToPrintDoc==='function') applyDigitsToPrintDoc(d); }catch(e){}
   setTimeout(function(){
@@ -23454,6 +23465,8 @@ function fitWidth(doc){ // أي جدول أعرض من الورقة يُصغَّ
   if(parseFloat(doc.body.style.zoom||'1')<1) return; // السجل الوسطي مضبوط مسبقاً
   doc.querySelectorAll('table').forEach(function(t){
     if(t.parentElement&&t.parentElement.closest('table')) return;
+    // The semester register is already a fixed-width A4 grid; preserve its typography and scale.
+    if(t.classList&&t.classList.contains('nbsr-print-table')) return;
     t.style.zoom='';
     var box=t.parentElement, avail=Math.min(usable, box?box.clientWidth||usable:usable);
     var w=Math.max(t.scrollWidth,t.getBoundingClientRect().width);
@@ -23463,18 +23476,25 @@ function fitWidth(doc){ // أي جدول أعرض من الورقة يُصغَّ
 /* سجل المدرس: رؤوس عمودية لأعمدة المعدلات والنتائج، وصفوف رأس أقصر، والجدول بعرض الإطار */
 var GB_VERTICAL=['السعي السنوي','الامتحان النهائي','الدرجة النهائية','درجة الإكمال','الدرجة بعد الإكمال','معدل الفصل الأول','معدل الفصل الثاني','الدرجة النهائية بعد الإكمال'];
 function gradebookPrintTune(doc){
-  var t=doc.querySelector('table.gradebook-print-table')||doc.querySelector('.gradebook-print-table table'); if(!t||t.dataset.nbTuned) return;
-  t.dataset.nbTuned='1';
-  var st=doc.createElement('style');
-  st.textContent='.gradebook-print-table{width:100%!important;table-layout:auto!important}'+
-    '.gradebook-print-table thead th{padding:.35mm .25mm!important;line-height:1.12!important;font-size:8.2px!important;height:auto!important;vertical-align:middle!important;word-break:keep-all;overflow-wrap:break-word}'+
-    '.gradebook-print-table thead th.nbv{width:7.2mm!important;min-width:7.2mm!important;max-width:8.5mm!important;height:19mm!important;padding:.3mm 0!important}'+
-    '.gradebook-print-table thead th.nbv span.nbvt{writing-mode:vertical-rl;transform:rotate(180deg);white-space:normal;display:inline-block;max-height:18mm;line-height:1.1;font-size:8.2px}'+
-    '.gradebook-print-table tbody td{padding:.5mm .2mm!important}';
-  doc.head.appendChild(st);
-  t.querySelectorAll('thead th').forEach(function(th){
-    var txt=(th.textContent||'').replace(/\s+/g,' ').trim();
-    if(GB_VERTICAL.indexOf(txt)>=0){ th.classList.add('nbv'); th.innerHTML='<span class="nbvt">'+txt+'</span>'; }
+  var tables=[].slice.call(doc.querySelectorAll('table.gradebook-print-table'));
+  if(!tables.length) return;
+  if(!doc.getElementById('nbGradebookPrintTune')){
+    var st=doc.createElement('style'); st.id='nbGradebookPrintTune';
+    st.textContent='.gradebook-print-table{width:100%!important;table-layout:auto!important}'+
+      '.gradebook-print-table thead th{padding:.35mm .25mm!important;line-height:1.12!important;font-size:8.2px!important;height:auto!important;vertical-align:middle!important;word-break:keep-all;overflow-wrap:break-word}'+
+      '.gradebook-print-table thead th.nbv{width:7.2mm!important;min-width:7.2mm!important;max-width:8.5mm!important;height:19mm!important;padding:.3mm 0!important}'+
+      '.gradebook-print-table thead th.nbv span.nbvt{writing-mode:vertical-rl;transform:rotate(180deg);white-space:normal;display:inline-block;max-height:18mm;line-height:1.1;font-size:8.2px}'+
+      '.gradebook-print-table tbody td{padding:.5mm .2mm!important}';
+    doc.head.appendChild(st);
+  }
+  // كل ورقة هي جدول مستقل؛ طبّق نفس معالجة رؤوس الأعمدة على كل نسخة.
+  tables.forEach(function(t){
+    if(t.dataset.nbTuned) return;
+    t.dataset.nbTuned='1';
+    t.querySelectorAll('thead th').forEach(function(th){
+      var txt=(th.textContent||'').replace(/\s+/g,' ').trim();
+      if(GB_VERTICAL.indexOf(txt)>=0){ th.classList.add('nbv'); th.innerHTML='<span class="nbvt">'+txt+'</span>'; }
+    });
   });
 }
 function widenNames(doc){ // اسم الطالب: الثلاثي في سطر واحد، الرباعي يلتف
@@ -23640,6 +23660,8 @@ function fitTablesByFont(doc){
     var ps=pageSizeMm(doc), usable=mmToPx(ps.w-2*ps.m)-2, win=doc.defaultView;
     doc.querySelectorAll('table').forEach(function(t){
       if(t.closest('.card')||(t.parentElement&&t.parentElement.closest('table'))) return;
+      // The semester register has an explicit A4 column grid and fitted name cells; do not shrink its text globally.
+      if(t.classList&&t.classList.contains('nbsr-print-table')) return;
       var box=t.parentElement, avail=Math.min(usable,(box&&box.clientWidth)||usable);
       var cells=t.querySelectorAll('th,td'); if(!cells.length) return;
       var base=[].map.call(cells,function(c){ var cs=win.getComputedStyle(c); return [parseFloat(cs.fontSize)||12,parseFloat(cs.paddingLeft)||0,parseFloat(cs.paddingRight)||0]; });
@@ -23665,7 +23687,13 @@ function paginateForPdf(doc){
       var start=y(t), pageEnd=(Math.floor(start/P)+1)*P, cut=-1;
       for(var i=0;i<rows.length;i++){ var r=rows[i].getBoundingClientRect(); if(r.bottom-top0>pageEnd-1){ cut=i; break; } }
       if(cut<=0) return;
-      var t2=t.cloneNode(false); if(t.tHead) t2.appendChild(t.tHead.cloneNode(true)); var b2=doc.createElement('tbody'); t2.appendChild(b2);
+      var t2=t.cloneNode(false);
+      // Preserve explicit column grids for the two print-only registers that span pages.
+      var fixedPrintCols=null;
+      if(t.classList&&t.classList.contains('gradebook-print-table')) fixedPrintCols=t.querySelector('colgroup[data-nb-gradebook-cols]');
+      else if(t.classList&&t.classList.contains('nbsr-print-table')) fixedPrintCols=t.querySelector('colgroup[data-nbsr-cols]');
+      if(fixedPrintCols) t2.appendChild(fixedPrintCols.cloneNode(true));
+      if(t.tHead) t2.appendChild(t.tHead.cloneNode(true)); var b2=doc.createElement('tbody'); t2.appendChild(b2);
       rows.slice(cut).forEach(function(r){ b2.appendChild(r); });
       if(t.tFoot){ t2.appendChild(t.tFoot); }
       var sp=doc.createElement('div'); sp.className='nb-pg-sp';
@@ -23687,12 +23715,59 @@ function paginateForPdf(doc){
     });
   }catch(e){ try{console.warn('nb-paginate',e);}catch(_){} }
 }
+/* On multi-page teacher gradebooks, every page is a separate HTML table. Preserve the first
+   page's computed column proportions on all continuations so auto table layout cannot shift
+   the name / sequence / marks columns when the last page contains fewer students. This only
+   applies to gradebook-print-table and leaves single-page tables and all other print templates alone. */
+function lockGradebookPageColumns(doc){
+  try{
+    var tables=[].slice.call(doc.querySelectorAll('table.gradebook-print-table'));
+    if(tables.length<2) return;
+    var master=tables[0], masterZoom=master.style.zoom||'';
+    // fitWidth may have assigned different zoom values to each page; keep the first page's scale.
+    tables.forEach(function(t){
+      if(masterZoom) t.style.zoom=masterZoom;
+      else t.style.removeProperty('zoom');
+    });
+    var masterCols=master.querySelector('colgroup[data-nb-gradebook-cols]'), widths=[];
+    if(masterCols&&masterCols.children.length){
+      widths=[].map.call(masterCols.children,function(col){ return parseFloat(col.style.width)||0; });
+    }else{
+      var row=master.tBodies&&master.tBodies[0]&&master.tBodies[0].rows[0];
+      if(!row) return;
+      [].forEach.call(row.cells,function(cell){
+        var span=Math.max(1,parseInt(cell.colSpan,10)||1), w=cell.getBoundingClientRect().width;
+        if(!(w>0)) return;
+        for(var i=0;i<span;i++) widths.push(w/span);
+      });
+      var total=widths.reduce(function(a,b){ return a+b; },0);
+      if(!(total>0)) return;
+      widths=widths.map(function(w){ return w/total*100; });
+    }
+    if(!widths.length||widths.some(function(w){ return !(w>0); })) return;
+    tables.forEach(function(t){
+      var row=t.tBodies&&t.tBodies[0]&&t.tBodies[0].rows[0], count=0;
+      if(row) [].forEach.call(row.cells,function(cell){ count+=Math.max(1,parseInt(cell.colSpan,10)||1); });
+      if(count&&count!==widths.length) return;
+      var cols=t.querySelector('colgroup[data-nb-gradebook-cols]');
+      if(!cols||cols.children.length!==widths.length){
+        if(cols) cols.remove();
+        cols=doc.createElement('colgroup'); cols.setAttribute('data-nb-gradebook-cols','1');
+        var ref=t.tHead||t.firstChild; t.insertBefore(cols,ref||null);
+        widths.forEach(function(w){ var col=doc.createElement('col'); col.style.width=w.toFixed(5)+'%'; cols.appendChild(col); });
+      }else{
+        [].forEach.call(cols.children,function(col,i){ col.style.width=widths[i].toFixed(5)+'%'; });
+      }
+      t.style.setProperty('table-layout','fixed','important');
+    });
+  }catch(e){ try{console.warn('nb-gradebook-columns',e);}catch(_){} }
+}
 function prep(frame,isPdf){
   try{ var d=frame&&(frame.contentDocument||(frame.contentWindow&&frame.contentWindow.document)); if(!d||!d.body) return;
     if(window.nbEl56PrintFix) window.nbEl56PrintFix(d);
     if(window.nbBlankPrep) window.nbBlankPrep(d);
     if(window.nbArabic4Transform) window.nbArabic4Transform(d);
-    widenNames(d); gradebookPrintTune(d); crSequence(d); var gen=isPdf||!realHtmlPrint(d); if(!gen) fitCentralRecord(d); fitCards(d); fitNames(d); if(gen) fitTablesByFont(d); glyphImages(d); fixBidi(d); if(window.nbVerticalHeaderImages) window.nbVerticalHeaderImages(d); if(gen) paginateForPdf(d); else fitWidth(d); }catch(e){ try{console.warn('nb-fit',e);}catch(_){} }
+    widenNames(d); gradebookPrintTune(d); crSequence(d); var gen=isPdf||!realHtmlPrint(d); if(!gen) fitCentralRecord(d); fitCards(d); fitNames(d); if(gen) fitTablesByFont(d); glyphImages(d); fixBidi(d); if(window.nbVerticalHeaderImages) window.nbVerticalHeaderImages(d); if(gen){ lockGradebookPageColumns(d); paginateForPdf(d); } else { fitWidth(d); lockGradebookPageColumns(d); } }catch(e){ try{console.warn('nb-fit',e);}catch(_){} }
 }
 /* تُغلَّف دوال الطباعة حتى لو أعاد البرنامج تعريفها لاحقاً بعد التحميل */
 function ensureWrapped(){
