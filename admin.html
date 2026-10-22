@@ -545,8 +545,17 @@ function resetPassword(email){
   }).catch(e=>alert("خطأ: "+e.message));
 }
 function rejectTransfer(email){
-  if(!confirm("رفض طلب النقل؟"))return;
-  db.ref("activation/accounts/"+emailKey(email)).update({status:"approved",accountDisabled:false,disabledReason:null});
+  if(!confirm("رفض طلب النقل؟\nسيبقى الاشتراك على الجهاز القديم."))return;
+  const ref=db.ref("activation/accounts/"+emailKey(email));
+  ref.once("value",snap=>{
+    const v=snap.val()||{};
+    // أعِد الجهاز الفعّال إلى الجهاز السابق (آخر جهاز في السجل غير الجهاز الطالب)
+    const hist=Array.isArray(v.deviceHistory)?v.deviceHistory:Object.values(v.deviceHistory||{});
+    let prev=null;
+    for(let i=hist.length-1;i>=0;i--){ if(hist[i]&&hist[i].id&&hist[i].id!==v.activeDeviceId){ prev=hist[i].id; break; } }
+    if(!prev){alert("تعذر تحديد الجهاز القديم من السجل — لم يتم تنفيذ الرفض. استخدم زر الإيقاف أو الموافقة حسب الحاجة.");return;}
+    ref.update({status:"approved",activeDeviceId:prev,accountDisabled:false,disabledReason:null});
+  });
 }
 function reject(email){
   if(!confirm("تأكيد رفض هذا الطلب؟"))return;

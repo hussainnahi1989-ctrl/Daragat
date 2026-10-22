@@ -8073,7 +8073,12 @@ function showSchoolSetupOverlayGlobal(){
       if(!APP.school.name)APP.school.name="ادارة المدرسه والامتحانات";
       localStorage.setItem("daragat_school_setup_v2","1");
       var _hide=window.__actHideOverlay; if(_hide)_hide();
-      try{window.__schoolSetupAfterDone&&window.__schoolSetupAfterDone();}catch(e){location.reload();}
+      if(typeof window.__schoolSetupAfterDone==='function'){
+        try{window.__schoolSetupAfterDone();}catch(e){location.reload();}
+      }else if(!window.__appStarted && typeof window.__realInitApp==='function'){
+        window.__appStarted=true;
+        setTimeout(function(){ window.__realInitApp(); },30);
+      }
     };
     check();
     _show();
@@ -17535,12 +17540,19 @@ if(document.readyState==='loading'){
       });
     }catch(e){if(done)done(false);}
   }
+  const __accListeners={};
   function listenAccount(acc, cb){
     if(!fbReady||!acc) return;
     const emailKey = acc.email.replace(/\./g,",");
+    // One cloud listener per account: repeated calls only refresh the callback/account, so
+    // listeners can no longer multiply (each extra listener used to trigger another resume()).
+    const rec=__accListeners[emailKey];
+    if(rec){ rec.acc=acc; if(cb) rec.cb=cb; return; }
+    const r=__accListeners[emailKey]={acc:acc,cb:cb};
     fbRef("activation/accounts/"+emailKey).on("value", function(snap){
-      applyCloudAccount(acc,snap.val(),function(ev){
-        cb&&cb(ev);
+      const cur=accountFind(r.acc.email)||r.acc;
+      applyCloudAccount(cur,snap.val(),function(ev){
+        r.cb&&r.cb(ev);
         if(ev&&ev.stopped){showOverlay();screenAccountStopped(ev.reason);}
       });
     });
@@ -17710,12 +17722,12 @@ if(document.readyState==='loading'){
         });
         if(acc.status!=="approved"){
           // Mark pending-device-change on cloud so admin sees it
-          fbRef("activation/accounts/"+emailKey).update({activeDeviceId:deviceId, status:acc.status==="trial"||!acc.status?"trial":acc.status});
+          fbRef("activation/accounts/"+emailKey).update({activeDeviceId:deviceId(), status:acc.status==="trial"||!acc.status?"trial":acc.status});
         }else{
           // Request device transfer — admin must approve
           acc.status="device_transfer_pending";
           fbRef("activation/accounts/"+emailKey).update({
-            activeDeviceId:deviceId,
+            activeDeviceId:deviceId(),
             status:"device_transfer_pending",
             transferRequestedAt:firebase.database.ServerValue.TIMESTAMP,
             lastSeenDevice:{id:deviceId(),...deviceInfo()}
