@@ -22,6 +22,18 @@ header .hbtn{border:none;padding:7px 12px;border-radius:8px;font-weight:700;curs
 .hbtn.set{background:#00838f}
 
 /* ========== Tabs ========== */
+/* البحث الذكي */
+.srch{position:sticky;top:100px;z-index:89;display:flex;align-items:center;gap:8px;margin:10px 12px 0;padding:8px 12px;background:#fff;border:1px solid #dcdfe6;border-radius:14px;box-shadow:0 2px 10px #0000000f}
+.srch-ic{font-size:18px}
+.srch input::-webkit-search-cancel-button{-webkit-appearance:none;display:none}
+.srch input{flex:1;min-width:0;border:0!important;background:transparent!important;box-shadow:none!important;font-size:15px;padding:8px 4px!important;margin:0!important}
+.srch-x{border:0;background:#eceff1;border-radius:50%;width:30px;height:30px;cursor:pointer;font-size:14px}
+.srch-n{font-size:12.5px;font-weight:800;color:#3949ab;white-space:nowrap}
+.srch-hit{background:#fff59d;color:inherit;border-radius:3px;padding:0 1px}
+.srch-why{font-size:12px;color:#455a64;margin:-4px 0 10px}
+.srch-why b{color:#1a237e}
+body.admin-dark .srch{background:#151d2c;border-color:#2c394d}body.admin-dark .srch-x{background:#2c394d;color:#fff}body.admin-dark .srch-why{color:#b0bec5}body.admin-dark .srch-why b{color:#9fa8da}body.admin-dark .srch-hit{background:#827717;color:#fff}
+@media(max-width:700px){.srch{top:88px;margin:8px 6px 0}}
 nav.tabs{background:#fff;border-bottom:1px solid #dcdfe6;display:flex;flex-wrap:nowrap;padding:0 8px;position:sticky;top:54px;z-index:90;overflow-x:auto;gap:2px;box-shadow:0 1px 3px #00000010;-webkit-overflow-scrolling:touch}
 nav.tabs button{background:none;border:none;padding:13px 14px;font-size:13px;font-weight:700;color:#606f80;cursor:pointer;border-bottom:3px solid transparent;white-space:nowrap;transition:all .15s}
 nav.tabs button.active{color:#1a237e;border-bottom-color:#1a237e;background:#f5f6ff}
@@ -273,8 +285,15 @@ body.admin-dark .stat{box-shadow:0 1px 3px #0008}
     <button data-tab="reset">🔑 استعادة كلمة سر <span class="badge vio" id="bRes">0</span></button>
     <button data-tab="approved">✅ المفعّلة <span class="badge ok" id="bApp">0</span></button>
   </nav>
+  <div class="srch" id="srchBar">
+    <span class="srch-ic">🔎</span>
+    <input type="search" id="adSearch" autocomplete="off" placeholder="بحث ذكي: رقم الهاتف، اسم المدرسة، اسم المدير، البريد…" oninput="onAdSearch()" />
+    <button type="button" class="srch-x" id="adSearchX" onclick="clearAdSearch()" title="مسح البحث" style="display:none">✕</button>
+    <span class="srch-n" id="adSearchN"></span>
+  </div>
   <main>
     <div class="stats" id="statsBox"></div>
+    <div id="tab-search" class="tab" style="display:none"></div>
     <div id="tab-all" class="tab"></div>
     <div id="tab-trial" class="tab" style="display:none"></div>
     <div id="tab-pending" class="tab" style="display:none"></div>
@@ -356,6 +375,8 @@ applyAdminTheme();
 function stageLabel(st){return {elementary:"ابتدائية",intermediate:"متوسطة",prep:"إعدادية"}[st]||st||"";}
 function genderLabel(g){return {boys:"بنين",girls:"بنات",mixed:"مختلطة"}[g]||"";}
 function esc(s){return String(s==null?"":s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));}
+/* نص يُمرَّر لدالة داخل onclick بأمان: لا يمكن لبيانات الزبون الخروج من النص وتنفيذ أوامر في لوحة الإدارة */
+function jsq(v){ return esc(JSON.stringify(String(v==null?"":v))); }
 function emailKey(email){return String(email||"").replace(/\./g,",");}
 function normIraqPhone(p){
   let digits=String(p||"").replace(/[^0-9]/g,"");
@@ -581,7 +602,70 @@ function waLink(phone){
 }
 
 let currentTab="all";
+/* ====== البحث الذكي في الحسابات ====== */
+function normAr(t){
+  return String(t==null?"":t)
+    .replace(/[\u0660-\u0669]/g,d=>String(d.charCodeAt(0)-0x0660)).replace(/[\u06F0-\u06F9]/g,d=>String(d.charCodeAt(0)-0x06F0))
+    .replace(/[\u064B-\u0652\u0670\u0640]/g,"").replace(/[أإآٱ]/g,"ا").replace(/ة/g,"ه").replace(/ى/g,"ي").replace(/ؤ/g,"و").replace(/ئ/g,"ي")
+    .toLowerCase().replace(/\s+/g," ").trim();
+}
+function phoneDigits(p){ const d=normAr(p).replace(/[^0-9]/g,""); return d?normIraqPhone(d):""; }
+let adSearchQ="";
+function adSearchFields(r){
+  return [
+    ["الهاتف",r.phone],["المدرسة",r.schoolName],["المدير",r.principalName],["اسم الحساب",r.name],["البريد",r.email],
+    ["المرحلة",r.schoolStage?stageLabel(r.schoolStage):""],["الحالة",statusLabel(r.status)],["الاشتراك",r.plan||r.planCode?planLabel(r.plan||r.planCode):""],
+    ["المبلغ",r.paidAmount],["المحافظة",r.governorate||r.city||r.province||""]
+  ];
+}
+function adSearchMatch(r,q){
+  const toks=normAr(q).split(" ").filter(Boolean); if(!toks.length) return null;
+  const f=adSearchFields(r), why=new Set(); let score=0;
+  for(const t of toks){
+    let ok=false; const dig=t.replace(/[^0-9]/g,"");
+    if(dig.length>=3&&dig.length===t.length){ /* رقم: يُطابق الهاتف بأي صيغة (07.. أو 964.. أو جزء منه) */
+      const pd=phoneDigits(r.phone), qd=normIraqPhone(dig), qn=dig.replace(/^0+/,"");
+      if(pd&&(pd.includes(dig)||pd.includes(qd)||(qn.length>=3&&pd.includes(qn)))){ ok=true; why.add("الهاتف"); score+=pd===qd?100:40; }
+    }
+    if(!ok){ for(const [lab,val] of f){ const v=normAr(val); if(v&&v.includes(t)){ ok=true; why.add(lab); score+=(v===t?30:(v.startsWith(t)?20:10)); break; } } }
+    if(!ok) return null;
+  }
+  return {score,why:[...why]};
+}
+function highlightIn(html,q){
+  const toks=normAr(q).split(" ").filter(t=>t.length>=2&&!/^[0-9]+$/.test(t)); if(!toks.length) return html;
+  return html.replace(/(<[^>]*>)|([^<]+)/g,(m,tag,txt)=>{ if(tag) return tag;
+    let out=txt; toks.forEach(t=>{ const src=out, ns=normAr(src); if(ns.length!==src.toLowerCase().length) return; const i=ns.indexOf(t); if(i>=0) out=src.slice(0,i)+'<mark class="srch-hit">'+src.slice(i,i+t.length)+'</mark>'+src.slice(i+t.length); });
+    return out; });
+}
+function renderAdSearch(){
+  const box=$("tab-search"), n=$("adSearchN"), x=$("adSearchX"); if(!box) return;
+  const q=adSearchQ.trim();
+  if(x) x.style.display=q?"":"none";
+  if(!q){ box.style.display="none"; box.innerHTML=""; if(n) n.textContent=""; const t=$("tab-"+(currentTab||"all")); if(t) t.style.display="block"; return; }
+  const recs=Object.entries(allAccounts||{}).map(([k,v])=>({emailKey:k,email:(v.email||k.replace(/,/g,".")),...v}));
+  const hits=[]; recs.forEach(r=>{ const m=adSearchMatch(r,q); if(m) hits.push({r,m}); });
+  hits.sort((a,b)=>b.m.score-a.m.score||((b.r.registeredAt||0)-(a.r.registeredAt||0)));
+  const why=[...new Set(hits.flatMap(h=>h.m.why))];
+  if(n) n.textContent=hits.length?("النتائج: "+hits.length):"لا نتائج";
+  document.querySelectorAll(".tab").forEach(t=>t.style.display="none");
+  box.style.display="block";
+  box.innerHTML=hits.length
+    ? '<div class="srch-why">البحث عن «<b>'+esc(q)+'</b>» — وُجد في: <b>'+esc(why.join("، "))+'</b></div>'+highlightIn(renderTable(hits.map(h=>h.r),"🔎 نتائج البحث ("+hits.length+")"),q)
+    : '<div class="card"><p class="muted">لا يوجد زبون يطابق «'+esc(q)+'». جرّب جزءاً من الرقم أو من اسم المدرسة أو المدير.</p></div>';
+}
+let adSearchT=0;
+function onAdSearch(){ clearTimeout(adSearchT); adSearchT=setTimeout(()=>{ adSearchQ=($("adSearch")||{}).value||""; renderAdSearch(); bindRowInputs($("tab-search")); },120); }
+function clearAdSearch(){ const i=$("adSearch"); if(i) i.value=""; adSearchQ=""; renderAdSearch(); if(i) i.focus(); }
+function bindRowInputs(root){
+  if(!root) return;
+  root.querySelectorAll("input[data-paid-for]").forEach(inp=>{ if(inp.__b) return; inp.__b=1; inp.addEventListener("change",()=>setPaid(inp.dataset.paidFor,inp.value)); });
+  root.querySelectorAll("input[data-phone-for]").forEach(inp=>{ if(inp.__b) return; inp.__b=1; inp.addEventListener("change",()=>setPhone(inp.dataset.phoneFor,inp.value)); });
+}
+document.addEventListener("keydown",e=>{ if(e.key==="/"&&!/INPUT|TEXTAREA|SELECT/.test((document.activeElement||{}).tagName||"")){ const i=$("adSearch"); if(i&&i.offsetParent){ e.preventDefault(); i.focus(); } } });
+
 function switchTab(name){
+  if(adSearchQ){ adSearchQ=""; const i=$("adSearch"); if(i) i.value=""; const b=$("tab-search"); if(b){ b.style.display="none"; b.innerHTML=""; } const n=$("adSearchN"); if(n) n.textContent=""; const x=$("adSearchX"); if(x) x.style.display="none"; }
   currentTab=name;
   document.querySelectorAll("nav.tabs button").forEach(b=>b.classList.toggle("active",b.dataset.tab===name));
   document.querySelectorAll(".tab").forEach(t=>t.style.display="none");
@@ -658,6 +742,7 @@ function renderAll(){
   $("tab-approved").innerHTML=renderTable(approved,"الحسابات المُفعّلة");
   $("tab-transfers").innerHTML=renderTransfersTable(transfers,"طلبات نقل الأجهزة");
   $("tab-reset").innerHTML=renderTable(resets,"🔑 طلبات استعادة كلمة السر");
+  if(adSearchQ) renderAdSearch();
   document.querySelectorAll('[id^="tab-"] select[id]').forEach(el=>{
     const tab=el.closest('[id^="tab-"]');const v=keep[(tab?tab.id:"")+"|"+el.id];
     if(v!==undefined && Array.from(el.options).some(o=>o.value===v))el.value=v;
@@ -681,8 +766,8 @@ function renderTransfersTable(list,title){
       <td>${fmtDate(r.transferRequestedAt)}</td>
       <td><span class="code" style="font-size:10px">${esc((r.activeDeviceId||"-").slice(0,8))}…</span></td>
       <td><div class="actions">
-        <button class="btn success small" onclick="approveTransfer('${esc(r.email).replace(/'/g,"\\'")}')">✔ موافقة</button>
-        <button class="btn danger small" onclick="rejectTransfer('${esc(r.email).replace(/'/g,"\\'")}')">✖ رفض</button>
+        <button class="btn success small" onclick="approveTransfer(${jsq(r.email)})">✔ موافقة</button>
+        <button class="btn danger small" onclick="rejectTransfer(${jsq(r.email)})">✖ رفض</button>
       </div></td>
     </tr>`).join("");
   const cards=list.map(r=>`
@@ -694,8 +779,8 @@ function renderTransfersTable(list,title){
         <b>تاريخ:</b><span>${fmtDate(r.transferRequestedAt)}</span>
       </div>
       <div class="actions">
-        <button class="btn success" onclick="approveTransfer('${esc(r.email).replace(/'/g,"\\'")}')">✔ موافقة النقل</button>
-        <button class="btn danger" onclick="rejectTransfer('${esc(r.email).replace(/'/g,"\\'")}')">✖ رفض</button>
+        <button class="btn success" onclick="approveTransfer(${jsq(r.email)})">✔ موافقة النقل</button>
+        <button class="btn danger" onclick="rejectTransfer(${jsq(r.email)})">✖ رفض</button>
       </div>
     </div>`).join("");
   return `<div class="card">
@@ -728,6 +813,8 @@ function renderTable(list,title){
     const cls=statusClass(r);
     const email=esc(r.email);
     const emEsc=email.replace(/'/g,"\\'");
+    const jsEm=jsq(r.email), jsKey=jsq(r.emailKey), jsPw=jsq(r.password||"");
+    const jsChg=jsq('chg-'+(r.emailKey||'')), jsPa=jsq('pa-'+(r.emailKey||'')), jsPl=jsq('pl-'+(r.emailKey||''));
     const keyEsc=esc(r.emailKey).replace(/'/g,"\\'");
     const k=esc(r.emailKey);
     const pw=r.password||"";
@@ -743,7 +830,7 @@ function renderTable(list,title){
     const schoolCell=`<div class="at-school">${esc(r.schoolName||"—")}</div>
       ${schoolSub?`<div class="at-sub">${schoolSub}</div>`:""}
       <div class="at-sub"><span class="at-num">#${i+1}</span>
-        <span class="badge-status s-${r.status||"trial"}">${statusLabel(r.status)}</span>${isReset?' <span class="badge-status s-reset-pw">🔑 استعادة</span>':""}
+        <span class="badge-status s-${String(r.status||"trial").replace(/[^A-Za-z0-9_-]/g,"")}">${statusLabel(r.status)}</span>${isReset?' <span class="badge-status s-reset-pw">🔑 استعادة</span>':""}
       </div>`;
 
     /* 2) المدير */
@@ -755,7 +842,7 @@ function renderTable(list,title){
 
     /* 4) كلمة السر */
     const pwCell=pw
-      ? `<span class="code at-ltr at-copy" title="اضغط للنسخ" onclick="navigator.clipboard&&navigator.clipboard.writeText('${pwEsc}').then(()=>{this.textContent='✅ تم النسخ';setTimeout(()=>{this.textContent='${pwEsc}'},1200)},()=>{})">${esc(pw)}</span>`
+      ? `<span class="code at-ltr at-copy" title="اضغط للنسخ" onclick="navigator.clipboard&&navigator.clipboard.writeText(${jsPw}).then(()=>{this.textContent='✅ تم النسخ';setTimeout(()=>{this.textContent=${jsPw}},1200)},()=>{})">${esc(pw)}</span>`
       : '<span class="muted at-sub">غير محفوظ</span>';
 
     /* 5) الموبايل */
@@ -782,14 +869,14 @@ function renderTable(list,title){
     /* 7) الإجراءات */
     const actions=`<div class="actions at-actions">
       ${isApproved
-        ?`<button class="btn warn small" onclick="changePlan('${keyEsc}',pickIn(this,'chg-${k}').value,pickIn(this,'pa-${k}').value)">⏱ تغيير المدة</button>`
-        :`<button class="btn success small" onclick="approve('${emEsc}',pickIn(this,'pl-${k}').value,pickIn(this,'pa-${k}').value)">✔ فعّل</button>`}
-      ${r.status!=="rejected"&&!isReset?`<button class="btn ghost small" onclick="reject('${emEsc}')">رفض</button>`:""}
+        ?`<button class="btn warn small" onclick="changePlan(${jsKey},pickIn(this,${jsChg}).value,pickIn(this,${jsPa}).value)">⏱ تغيير المدة</button>`
+        :`<button class="btn success small" onclick="approve(${jsEm},pickIn(this,${jsPl}).value,pickIn(this,${jsPa}).value)">✔ فعّل</button>`}
+      ${r.status!=="rejected"&&!isReset?`<button class="btn ghost small" onclick="reject(${jsEm})">رفض</button>`:""}
       ${isReset
-        ?`<button class="btn violet small" onclick="resetPassword('${emEsc}')">🔑 إرسال الرمز</button><button class="btn ghost small" onclick="clearReset('${emEsc}')" title="إلغاء الطلب">✕</button>`
-        :`<button class="btn violet small" onclick="resetPassword('${emEsc}')" title="استعادة كلمة السر">🔑</button>`}
-      ${!isStopped?`<button class="btn warn small" onclick="stopAccount('${emEsc}')">⏹ إيقاف</button>`:""}
-      <button class="btn danger small" onclick="del('${emEsc}')">🗑 حذف</button>
+        ?`<button class="btn violet small" onclick="resetPassword(${jsEm})">🔑 إرسال الرمز</button><button class="btn ghost small" onclick="clearReset(${jsEm})" title="إلغاء الطلب">✕</button>`
+        :`<button class="btn violet small" onclick="resetPassword(${jsEm})" title="استعادة كلمة السر">🔑</button>`}
+      ${!isStopped?`<button class="btn warn small" onclick="stopAccount(${jsEm})">⏹ إيقاف</button>`:""}
+      <button class="btn danger small" onclick="del(${jsEm})">🗑 حذف</button>
     </div>`;
 
     return `<tr class="${cls}">
