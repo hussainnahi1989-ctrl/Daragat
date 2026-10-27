@@ -635,7 +635,7 @@ function adSearchMatch(r,q){
 function highlightIn(html,q){
   const toks=normAr(q).split(" ").filter(t=>t.length>=2&&!/^[0-9]+$/.test(t)); if(!toks.length) return html;
   return html.replace(/(<[^>]*>)|([^<]+)/g,(m,tag,txt)=>{ if(tag) return tag;
-    let out=txt; toks.forEach(t=>{ const src=out, ns=normAr(src); if(ns.length!==src.toLowerCase().length) return; const i=ns.indexOf(t); if(i>=0) out=src.slice(0,i)+'<mark class="srch-hit">'+src.slice(i,i+t.length)+'</mark>'+src.slice(i+t.length); });
+    let out=txt; if(txt.indexOf('&')>=0) return txt; toks.forEach(t=>{ const src=out, ns=normAr(src); if(ns.length!==src.toLowerCase().length) return; const i=ns.indexOf(t); if(i>=0) out=src.slice(0,i)+'<mark class="srch-hit">'+src.slice(i,i+t.length)+'</mark>'+src.slice(i+t.length); });
     return out; });
 }
 function renderAdSearch(){
