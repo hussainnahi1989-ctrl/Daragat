@@ -18020,7 +18020,7 @@ if(document.readyState==='loading'){
 <!-- ===== AUTO UPDATE NOTIFICATION (small icon in topbar) ===== -->
 <script>
 (function(){
-  const APP_VERSION = "1.33.0";
+  const APP_VERSION = "1.33.1";
   const CHECK_EVERY_MINUTES = 30;
   const LS_ACCEPTED = "daragat_accepted_version";
   const LS_SNOOZE   = "daragat_update_snooze";
@@ -20864,7 +20864,7 @@ var H = (function(){
     pc.ondatachannel = function(ev){ got = true; adopt(pc, ev.channel, 'lan'); };
     setTimeout(function(){ if(!got){ try{ pc.close(); }catch(e){} } }, 60000);
     await pc.setRemoteDescription(unpackText(offerText, 'o'));
-    await pc.setLocalDescription(await pc.createAnswer()); await waitIce(pc, 2500);
+    await pc.setLocalDescription(await pc.createAnswer()); await waitIce(pc, 900);   /* داخل الشبكة تُجمع العناوين خلال أجزاء من الثانية: رد أسرع حتى لا تنتهي مهلة التطبيق */
     return packText('a', pc.localDescription);
   }
   function view(){
@@ -21011,7 +21011,7 @@ var G = (function(){
       var pc = newPC(), dc = pc.createDataChannel('dls');
       await pc.setLocalDescription(await pc.createOffer()); await waitIce(pc, 2500);
       var r = null;
-      try{ r = await window.DaragatNative.dlsSignal(cfg.hostId, packText('o', pc.localDescription), 15000); }catch(e){ r = null; }
+      try{ r = await window.DaragatNative.dlsSignal(cfg.hostId, packText('o', pc.localDescription), 30000); }catch(e){ r = null; }
       if(typeof r !== 'string' || r.indexOf('DLS1.') < 0){
         try{ pc.close(); }catch(e){}
         throw err(r === 'notfound' ? 'لم يُعثر على الجهاز الرئيسي على الشبكة. افتح البرنامج على الجهاز الرئيسي وتأكد أن الجهازين على نفس الواي فاي.' : 'تعذر الوصول إلى الجهاز الرئيسي على الشبكة.');
