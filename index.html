@@ -2,6 +2,59 @@
 <html lang="ar" dir="rtl">
 <head>
 <meta charset="UTF-8">
+<script>
+/* ===== nb-v1.32.2: تخفيف سجل المزامنة في تطبيق الأندرويد (DaragatApp 2.0.x) =====
+   التطبيق يحقن سجلاً يحفظ نسخة كاملة من بيانات المدرسة مع كل عملية حفظ (حتى 5000 نسخة)، ويعيد كتابته كاملاً كل مرة.
+   مع مدرسة كبيرة يصير هذا عشرات الميغابايتات فيتجمد البرنامج داخل التطبيق: المعاينة لا تفتح وزر الرجوع لا يستجيب.
+   هنا نفس الواجهة التي يحتاجها التطبيق للمزامنة، لكن السجل يحفظ اسم البيانات ورقم التغيير فقط، والقيمة تُقرأ عند الطلب.
+   يعمل داخل التطبيق فقط ولا يغيّر شيئاً في المتصفح أو برنامج الويندوز. */
+(function(){
+  try{ if(!window.AndroidDaragat) return; }catch(e){ return; }
+  var ALLOW=['schoolResultsApp_v1','schoolResultsGradebook_v1','schoolResultsExams_v1','schoolResultsAttendance_v1','schoolResultsStaffAtt_v1','schoolResultsStaff_v1','schoolResultsLevels_v1','schoolResultsNotes_v1','schoolResultsRecords_v1','schoolResultsProperties_v1','schoolResultsCare_v1','schoolResultsExemptions_v1','schoolResultsNumeral_v1','schoolResultsTimetable_v1'];
+  var ALLOWSET={}; ALLOW.forEach(function(k){ ALLOWSET[k]=1; });
+  var LKEY='daragatSyncLite_v1', RKEY='daragatSyncRev_v1', OLDKEY='daragatSyncJournal_v1', APPLY='__daragatSyncApplying', MAX=400;
+  /* دوال التخزين الأصلية من إطار نظيف (حتى لو سبقنا التطبيق بتغليفها) */
+  var P=Storage.prototype, oSet=P.setItem, oDel=P.removeItem, oClr=P.clear, oGet=P.getItem;
+  try{ var fr=document.createElement('iframe'); fr.style.display='none'; (document.head||document.documentElement).appendChild(fr);
+    var FP=fr.contentWindow.Storage.prototype; oSet=FP.setItem; oDel=FP.removeItem; oClr=FP.clear; oGet=FP.getItem; fr.parentNode.removeChild(fr); }catch(e){}
+  var LS=window.localStorage;
+  function g(k){ try{ return oGet.call(LS,k); }catch(e){ return null; } }
+  function s(k,v){ try{ oSet.call(LS,k,v); return true; }catch(e){ return false; } }
+  try{ if(g(OLDKEY)!=null) oDel.call(LS,OLDKEY); }catch(e){}   /* تحرير المساحة التي أخذها السجل القديم */
+  var lite=null;
+  function load(){ if(lite) return lite; try{ lite=JSON.parse(g(LKEY)||'[]'); }catch(e){ lite=[]; } if(!Array.isArray(lite)) lite=[]; return lite; }
+  function rev(){ var r=(parseInt(g(RKEY)||'0',10)||0)+1; s(RKEY,String(r)); return r; }
+  function record(op,key){
+    if(!ALLOWSET[key]||window[APPLY]) return;
+    load(); for(var i=lite.length-1;i>=0;i--){ if(lite[i].recordId===key){ lite.splice(i,1); } }
+    lite.push({revision:rev(),recordId:key,operation:op,updatedAt:Date.now()});
+    if(lite.length>MAX) lite=lite.slice(-MAX);
+    s(LKEY,JSON.stringify(lite));
+  }
+  P.setItem=function(k,v){ var r=oSet.apply(this,arguments); if(this===LS){ var key=String(k); if(key.indexOf('daragatSync')!==0) record('put',key); } return r; };
+  P.removeItem=function(k){ var r=oDel.apply(this,arguments); if(this===LS){ var key=String(k); if(key.indexOf('daragatSync')!==0) record('del',key); } return r; };
+  P.clear=function(){ var present=[]; if(this===LS){ ALLOW.forEach(function(k){ if(g(k)!==null) present.push(k); }); } var r=oClr.apply(this,arguments); if(this===LS&&!window[APPLY]) present.forEach(function(k){ record('del',k); }); return r; };
+  var api={
+    v:1, lite:true, allow:ALLOW.slice(),
+    allowlist:function(){ return ALLOW.slice(); },
+    keys:function(){ return ALLOW.filter(function(k){ return g(k)!==null; }); },
+    get:function(k){ return g(k); },
+    put:function(k,v){ if(!ALLOWSET[k]) return false; LS.setItem(k,String(v)); return true; },
+    del:function(k){ if(!ALLOWSET[k]) return false; LS.removeItem(k); return true; },
+    beginApply:function(){ window[APPLY]=1; },
+    endApply:function(){ window[APPLY]=0; },
+    changes:function(since){ since=parseInt(since,10)||0; load(); var out=[];
+      lite.forEach(function(e){ if(e.revision>since){ var val=e.operation==='put'?g(e.recordId):null; out.push({revision:e.revision,recordId:e.recordId,operation:(e.operation==='put'&&val===null)?'del':e.operation,updatedAt:e.updatedAt,value:val}); } });
+      return out; },
+    revNow:function(){ return parseInt(g(RKEY)||'0',10)||0; },
+    snapMeta:function(){ return {rev:parseInt(g(RKEY)||'0',10)||0,ts:Date.now(),count:ALLOW.length}; },
+    fire:function(st){ try{ if(typeof window.__daragatSyncStatusCb==='function') window.__daragatSyncStatusCb(st); }catch(e){} }
+  };
+  var cur=window.__daragatSync;
+  if(cur&&typeof cur==='object'&&!cur.lite){ Object.keys(api).forEach(function(k){ try{ cur[k]=api[k]; }catch(e){} }); }   /* سبقنا التطبيق: نستبدل الدوال على الكائن نفسه */
+  else window.__daragatSync=api;                                                                                                /* قبل التطبيق: لن يحقن نسخته الثقيلة */
+})();
+</script>
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=5, user-scalable=yes">
 <meta name="theme-color" content="#7a0e2e">
 <title>ادارة المدرسه والامتحانات</title>
@@ -17966,7 +18019,7 @@ if(document.readyState==='loading'){
 <!-- ===== AUTO UPDATE NOTIFICATION (small icon in topbar) ===== -->
 <script>
 (function(){
-  const APP_VERSION = "1.32.0";
+  const APP_VERSION = "1.32.2";
   const CHECK_EVERY_MINUTES = 30;
   const LS_ACCEPTED = "daragat_accepted_version";
   const LS_SNOOZE   = "daragat_update_snooze";
@@ -25419,12 +25472,19 @@ function buildCtx(view,firstBtn){
 }
 function clickSource(b){ SELF=true; try{ b.click(); } finally { SELF=false; } }
 /* الأجهزة اللوحية أبطأ في بناء ورقة الطباعة: ننتظرها مدة أطول بدل أن تُلغى المعاينة وتُطبع مباشرة */
-function armLimit(){ try{ return (window.nbIsAndroidApp&&window.nbIsAndroidApp())?25000:9000; }catch(e){ return 9000; } }
+function armLimit(){ try{ return (window.nbIsAndroidApp&&window.nbIsAndroidApp())?15000:9000; }catch(e){ return 9000; } }
+function pvLog(m){ try{ (window.__nbLog=window.__nbLog||[]).push({t:Date.now(),k:'المعاينة',m:m}); }catch(e){} }
+function pvOff(){ try{ return sessionStorage.getItem('nbPvOff')==='1'; }catch(e){ return false; } }
+function pvNotice(msg){ try{ var n=document.getElementById('nbPvNotice'); if(!n){ n=document.createElement('div'); n.id='nbPvNotice'; n.style.cssText='position:fixed;left:50%;bottom:22px;transform:translateX(-50%);z-index:2147483200;max-width:92vw;background:#263238;color:#fff;padding:12px 16px;border-radius:14px;font:800 13.5px/1.8 Tahoma,Arial,sans-serif;direction:rtl;text-align:center;box-shadow:0 8px 24px rgba(0,0,0,.4)'; document.body.appendChild(n); } n.textContent=msg; n.style.display='block'; clearTimeout(n.__t); n.__t=setTimeout(function(){ n.style.display='none'; },9000); }catch(e){} }
 function arm(ctx,orient,pending){
   ARMED={ctx:ctx,orient:orient,pending:pending||null,at:Date.now()};
-  showLoading();
+  showLoading(); pvLog('بانتظار ورقة الطباعة');
   var lim=armLimit(), mine=ARMED;
-  setTimeout(function(){ if(ARMED&&ARMED===mine&&Date.now()-ARMED.at>=lim){ ARMED=null; if(PV&&!PV.frame) closePreview(); else if(PV) PV.load.style.display='none'; } },lim+200);
+  setTimeout(function(){ if(ARMED&&ARMED===mine&&Date.now()-ARMED.at>=lim){ ARMED=null;
+    if(PV&&!PV.frame){ closePreview(); pvLog('لم تصل ورقة الطباعة خلال '+Math.round(lim/1000)+' ث — أُوقفت المعاينة لهذه الجلسة');
+      try{ sessionStorage.setItem('nbPvOff','1'); }catch(e){}
+      pvNotice('تعذر فتح المعاينة على هذا الجهاز. اضغط زر الطباعة مرة أخرى وستُطبع مباشرة.'); }
+    else if(PV) PV.load.style.display='none'; } },lim+200);
 }
 function openFor(ctx,orient,pending){
   var g=ctx.groups[ctx.gi]; if(!g) return false;
@@ -25436,8 +25496,8 @@ function installIntercept(){
   var f=window.printIframeNow; if(typeof f!=='function'||f.__nbPv) return;
   var w=function(frame){
     if(ARMED&&frame&&!frame.__nbPvPass&&!frame.__nbPvSeen&&Date.now()-ARMED.at<armLimit()){
-      frame.__nbPvSeen=true; var a=ARMED; ARMED=null;
-      try{ showPreview(frame,a); return; }catch(e){ try{console.warn('nb-preview',e);}catch(_){} try{ closePreview(); }catch(_){} }
+      frame.__nbPvSeen=true; var a=ARMED; ARMED=null; pvLog('وصلت ورقة الطباعة بعد '+Math.round((Date.now()-a.at)/100)/10+' ث');
+      try{ showPreview(frame,a); return; }catch(e){ pvLog('خطأ في فتح المعاينة: '+(e&&e.message)); try{console.warn('nb-preview',e);}catch(_){} try{ closePreview(); }catch(_){} }
     }
     return f.apply(this,arguments);
   };
@@ -25446,7 +25506,7 @@ function installIntercept(){
 installIntercept(); window.addEventListener('load',function(){ installIntercept(); setTimeout(installIntercept,800); setTimeout(installIntercept,3000); });
 setInterval(installIntercept,1500);
 document.addEventListener('click',function(e){
-  if(SELF) return;
+  if(SELF||pvOff()) return;
   var t=e.target&&e.target.closest?e.target:null; if(!t) return;
   var tog=t.closest('.txe-menu-btn');
   if(tog){
@@ -25525,7 +25585,7 @@ document.addEventListener('keydown',function(e){
   else if((e.ctrlKey||e.metaKey)&&(e.key==='z'||e.key==='Z')&&!PV.edit){ e.preventDefault(); undo(); }
 });
 if(typeof window.appGoBack==='function'){
-  window.appGoBack=(function(orig){ return function(){ if(PV){ closePreview(); return; } return orig.apply(this,arguments); }; })(window.appGoBack);
+  window.appGoBack=(function(orig){ return function(){ if(PV){ closePreview(); return true; } return orig.apply(this,arguments); }; })(window.appGoBack);
 }
 function toast(msg){ if(!PV) return; [].forEach.call(PV.root.querySelectorAll('.nbpv-toast'),function(x){ x.remove(); }); var t=el('div','nbpv-toast',msg); PV.root.appendChild(t); setTimeout(function(){ try{ t.remove(); }catch(e){} },1800); }
 
@@ -25666,8 +25726,8 @@ function showPreview(srcFrame,a){
     done=true; clearTimeout(PV.slowT);
     try{ displayPrep(d); }catch(e){ try{console.warn('nb-preview prep',e);}catch(_){} }
     try{ decorate(d); applyFooter(d); if(lsGet(LS_FOOT)==='1') repaginate(); }catch(e){}
-    PV.load.style.display='none';
-    try{ renderBar(); }catch(e){ try{console.warn('nb-preview bar',e);}catch(_){} }
+    PV.load.style.display='none'; pvLog('المعاينة جاهزة');
+    try{ renderBar(); }catch(e){ pvLog('خطأ في الشريط: '+(e&&e.message)); try{console.warn('nb-preview bar',e);}catch(_){} }
     if(CARRY){ var cy=CARRY; CARRY=null; if(cy.look){ PV.look=cy.look; try{ applyLook(); renderBar(); var fl=fontsInUse(d); if(fl.length) Promise.all(fl.map(function(f){ return loadFont(f,[document,d]); })).then(function(){ setTimeout(function(){ refit(); fitZoom(); syncHeight(); },60); }); }catch(e){} } }
     try{ renderSide(); }catch(e){}
     setTimeout(fitZoom,30); setTimeout(fitZoom,400); setTimeout(syncHeight,500);
@@ -27028,6 +27088,18 @@ window.renderHomeView=function(){
   });
   if(!any) host.innerHTML='<div class="nbres-empty">لا توجد شعب بعد. اضغط «📚 تعديل الصفوف والشعب» لإضافتها.</div>';
 };
+})();
+</script>
+<script>
+/* ===== nb-v1.32.2: زر الرجوع في تطبيق الأندرويد =====
+   التطبيق يسأل appGoBack() ويخرج إذا لم يستلم «نعم». أي خطأ داخلها أو نتيجة فارغة كان يُفهم «خروج/لا شيء».
+   الآن ترجع دائماً «تم» وتُسجَّل الأخطاء في فحص الجهاز. */
+(function(){
+  if(typeof window.appGoBack!=='function') return;
+  window.appGoBack=(function(orig){ return function(){
+    try{ var r=orig.apply(this,arguments); return r===undefined?true:r; }
+    catch(e){ try{ (window.__nbLog=window.__nbLog||[]).push({t:Date.now(),k:'خطأ',m:'الرجوع: '+(e&&e.message)}); }catch(_){} try{ if(typeof goDashboard==='function') goDashboard(); }catch(_){} return true; }
+  }; })(window.appGoBack);
 })();
 </script>
 <script type="text/plain" id="nbJsQrSrc">/* jsQR (Apache-2.0) — قارئ QR احتياطي للمتصفحات التي لا تدعم BarcodeDetector (آيفون، كروم الحاسوب)؛ يُحمَّل عند المسح فقط */
