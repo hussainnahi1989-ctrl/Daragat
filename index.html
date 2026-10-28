@@ -10,6 +10,7 @@
    يعمل داخل التطبيق فقط ولا يغيّر شيئاً في المتصفح أو برنامج الويندوز. */
 (function(){
   try{ if(!window.AndroidDaragat) return; }catch(e){ return; }
+  try{ if(window.__daragatSync && window.__daragatSync.lite) return; }catch(e){}   /* التطبيق الجديد يوفّر السجل الخفيف بنفسه: لا نغلّف التخزين مرتين */
   var ALLOW=['schoolResultsApp_v1','schoolResultsGradebook_v1','schoolResultsExams_v1','schoolResultsAttendance_v1','schoolResultsStaffAtt_v1','schoolResultsStaff_v1','schoolResultsLevels_v1','schoolResultsNotes_v1','schoolResultsRecords_v1','schoolResultsProperties_v1','schoolResultsCare_v1','schoolResultsExemptions_v1','schoolResultsNumeral_v1','schoolResultsTimetable_v1'];
   var ALLOWSET={}; ALLOW.forEach(function(k){ ALLOWSET[k]=1; });
   var LKEY='daragatSyncLite_v1', RKEY='daragatSyncRev_v1', OLDKEY='daragatSyncJournal_v1', APPLY='__daragatSyncApplying', MAX=400;
@@ -18019,7 +18020,7 @@ if(document.readyState==='loading'){
 <!-- ===== AUTO UPDATE NOTIFICATION (small icon in topbar) ===== -->
 <script>
 (function(){
-  const APP_VERSION = "1.32.2";
+  const APP_VERSION = "1.32.4";
   const CHECK_EVERY_MINUTES = 30;
   const LS_ACCEPTED = "daragat_accepted_version";
   const LS_SNOOZE   = "daragat_update_snooze";
@@ -20857,6 +20858,15 @@ var H = (function(){
     };
   }
 
+  /* nb-v1.32.4: عرض اتصال وصل عبر تطبيق الأندرويد داخل الشبكة المحلية (بلا إنترنت). الثقة تُفحص كالعادة في رسالة hello */
+  async function lanAnswer(offerText){
+    var pc = newPC(), got = false;
+    pc.ondatachannel = function(ev){ got = true; adopt(pc, ev.channel, 'lan'); };
+    setTimeout(function(){ if(!got){ try{ pc.close(); }catch(e){} } }, 60000);
+    await pc.setRemoteDescription(unpackText(offerText, 'o'));
+    await pc.setLocalDescription(await pc.createAnswer()); await waitIce(pc, 2500);
+    return packText('a', pc.localDescription);
+  }
   function view(){
     return {
       on: !!cfg.on, code: cfg.code, id: cfg.id, online: online, err: lastErr, name: hostName(),
@@ -20866,7 +20876,7 @@ var H = (function(){
       blocked: Object.keys(cfg.blocked).map(function(id){ return {devId: id, name: cfg.blocked[id]}; })
     };
   }
-  return {enable: enable, disable: disable, renewCode: renewCode, approve: approve, reject: reject, kick: kick, kickAll: kickAll, block: block, unblock: unblock, forget: forget, forgetAll: forgetAll, setPerm: setPerm, manualOffer: manualOffer, view: view, onLocalRemove: onLocalRemove, cfg: cfg, isOn: function(){ return !!cfg.on; }, peers: function(){ return peers; }};
+  return {enable: enable, disable: disable, renewCode: renewCode, approve: approve, reject: reject, kick: kick, kickAll: kickAll, block: block, unblock: unblock, forget: forget, forgetAll: forgetAll, setPerm: setPerm, manualOffer: manualOffer, lanAnswer: lanAnswer, view: view, onLocalRemove: onLocalRemove, cfg: cfg, isOn: function(){ return !!cfg.on; }, peers: function(){ return peers; }};
 })();
 
 /* ================================================================= GUEST (الجهاز الملحق) */
@@ -20990,15 +21000,45 @@ var G = (function(){
     };
   }
 
+  /* nb-v1.32.4: إعادة الاتصال بلا إنترنت عبر تطبيق الأندرويد: التطبيق يجد الجهاز الرئيسي على الواي فاي ويوصل رسالة الاتصال */
+  function lanRoute(){ var n = window.DaragatNative; return !!(n && typeof n.dlsSignal === 'function' && cfg && cfg.hostId); }
+  async function joinLan(name, full){
+    if(!lanRoute()) throw err('لا يوجد طريق محلي.');
+    if(connecting) throw err('هناك محاولة اتصال جارية.');
+    connecting = true;
+    try{
+      setSt('connecting', 'جاري البحث عن الجهاز الرئيسي على الشبكة…');
+      var pc = newPC(), dc = pc.createDataChannel('dls');
+      await pc.setLocalDescription(await pc.createOffer()); await waitIce(pc, 2500);
+      var r = null;
+      try{ r = await window.DaragatNative.dlsSignal(cfg.hostId, packText('o', pc.localDescription), 15000); }catch(e){ r = null; }
+      if(typeof r !== 'string' || r.indexOf('DLS1.') < 0){
+        try{ pc.close(); }catch(e){}
+        throw err(r === 'notfound' ? 'لم يُعثر على الجهاز الرئيسي على الشبكة. افتح البرنامج على الجهاز الرئيسي وتأكد أن الجهازين على نفس الواي فاي.' : 'تعذر الوصول إلى الجهاز الرئيسي على الشبكة.');
+      }
+      await pc.setRemoteDescription(unpackText(r, 'a'));
+      setSt('connecting', 'جاري إنشاء الاتصال المباشر داخل الشبكة…');
+      try{ await waitOpen(dc, 20000); }catch(e){ try{ pc.close(); }catch(x){} throw err('تعذر الاتصال المباشر. تأكد أن الجهازين على نفس شبكة الواي فاي.'); }
+      connecting = false;
+      return await attach(pc, dc, (cfg && cfg.code) || '', name || (cfg && cfg.name), full);
+    } finally { connecting = false; }
+  }
+
   /* ---- guest session lifecycle */
   function startReconnect(){
     clearTimeout(reconT);
     var n = 0;
     (function tick(){
-      if(!isGuest() || st === 'live' || !cfg.code) return;
+      if(!isGuest() || st === 'live') return;
+      var lan = lanRoute(), onl = !!cfg.code;
+      if(!lan && !onl){
+        setSt('lost', 'رُبط هذا الجهاز بلا إنترنت. لإعادة الاتصال اضغط «📴 ربط بلا إنترنت» وامسح رمز الجهاز الرئيسي.'); UI.lock('lost'); return;
+      }
       if(connecting){ reconT = setTimeout(tick, 3000); return; }
       n++;
-      joinOnline(cfg.code, cfg.name).then(function(r){ afterConnected(r); }).catch(function(e){
+      /* الطريق المحلي أولاً (لا يحتاج إنترنت)، ثم بالتناوب مع الرمز عبر الإنترنت إن وُجد */
+      var useLan = lan && (!onl || n % 2 === 1);
+      (useLan ? joinLan(cfg.name) : joinOnline(cfg.code, cfg.name)).then(function(r){ afterConnected(r); }).catch(function(e){
         setSt('lost', (e && e.friendly ? e.message : 'تعذر الاتصال') + ' — إعادة المحاولة تلقائيًا…'); UI.lock('lost');
         reconT = setTimeout(tick, Math.min(15000, 4000 + n * 1500));
       });
@@ -21345,6 +21385,20 @@ function openGuestInfo(){
 window.openAttachmentQr = function(){ openHostPanel(); };
 window.openAttachmentJoin = function(){ openJoin(); };
 window.__lanGuestGate = G.gate;
+/* nb-v1.32.4: واجهة تطبيق الأندرويد للربط المحلي بلا إنترنت (يستدعيها التطبيق فقط) */
+window.__dlsHostInfo = function(){ try{ var c = H.cfg; return {id: c.id, name: H.view().name, trusted: Object.keys(c.trusted || {}).length, on: !!c.on, guest: G.isGuest()}; }catch(e){ return null; } };
+window.__dlsAns = window.__dlsAns || {};
+window.__dlsNativeAnswer = function(reqId, offerText){
+  reqId = String(reqId || '');
+  window.__dlsAns[reqId] = {state: 'pending'};
+  try{
+    if(G.isGuest()) throw new Error('guest');
+    var c = H.cfg; if(!Object.keys(c.trusted || {}).length && !c.on) throw new Error('not-receiving');
+    H.lanAnswer(String(offerText || '')).then(function(a){ window.__dlsAns[reqId] = {state: 'ok', answer: a}; }, function(e){ window.__dlsAns[reqId] = {state: 'error', error: String(e && e.message || e)}; });
+  }catch(e){ window.__dlsAns[reqId] = {state: 'error', error: String(e && e.message || e)}; }
+  setTimeout(function(){ try{ delete window.__dlsAns[reqId]; }catch(e){} }, 60000);
+  return true;
+};
 (function(){
   var orig = window.__actGetInfo;
   window.__actGetInfo = function(){
