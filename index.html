@@ -18020,7 +18020,7 @@ if(document.readyState==='loading'){
 <!-- ===== AUTO UPDATE NOTIFICATION (small icon in topbar) ===== -->
 <script>
 (function(){
-  const APP_VERSION = "1.33.2";
+  const APP_VERSION = "1.33.3";
   const CHECK_EVERY_MINUTES = 30;
   const LS_ACCEPTED = "daragat_accepted_version";
   const LS_SNOOZE   = "daragat_update_snooze";
@@ -21035,7 +21035,7 @@ var G = (function(){
         var lines = [];
         (Array.isArray(arr) ? arr : (arr && (arr.events || arr.log || arr.items)) || []).forEach(function(x){ var s = typeof x === 'string' ? x : JSON.stringify(x); if(/dls|nsd|udp|scan|wifi|network|socket/i.test(s)) lines.push(s); });
         if(!lines.length){ var m = txt.match(/dlsSignal[^"\\]*/g); if(m) lines = m; }
-        window.__dlsLastDiag = lines.slice(-3).join('\n') || '(لا يوجد سطر dlsSignal في سجل التطبيق)';
+        window.__dlsLastDiag = 'searching hostId=' + ((cfg && cfg.hostId) || '-') + '\n' + (lines.slice(-2).join('\n') || '(لا يوجد سطر dlsSignal في سجل التطبيق)');
         try{ UI.changed(); }catch(e){}
       }, function(){});
     }catch(e){}
@@ -27308,11 +27308,30 @@ window.renderHomeView=function(){
     else if(isTeacher()) body = '<div class="nbdev-card"><p class="nbdev-note">إدارة الأجهزة الملحقة متاحة من حساب المدير فقط.</p></div>';
     else {
       body = hostHtml(d.H.view());
+      body += '<div class="nbdev-card" style="margin-top:14px"><h3>🩺 تشخيص الاستقبال</h3><pre id="nbDevDiag" style="direction:ltr;text-align:left;white-space:pre-wrap;word-break:break-all;font:11.5px/1.7 monospace;background:#263238;color:#b2dfdb;border-radius:10px;padding:8px 10px;margin:6px 0 0">page dlsId=' + esc(d.H.cfg.id) + '\n…</pre></div>';
+      setTimeout(hostDiag, 50);
       body += '<div class="nbdev-card" style="margin-top:14px"><h3>📲 هل هذا الجهاز هو الملحق؟</h3><p class="nbdev-note">إذا أردت أن يعمل هذا الجهاز كجهاز ملحق بجهاز رئيسي آخر:</p><div style="margin-top:8px"><button type="button" class="nbdev-btn gray" data-join="1">ربط هذا الجهاز كملحق</button></div></div>';
     }
     var sy = window.scrollY;
     el.innerHTML = head + '<div style="padding:4px 2px 18px">' + body + '</div></div>';
     if(Math.abs(window.scrollY - sy) > 2) window.scrollTo(0, sy);
+  }
+
+  /* تشخيص الجهاز الرئيسي: معرّف الصفحة + حالة خدمة التطبيق + آخر أحداث الشبكة */
+  function hostDiag(){
+    var el = document.getElementById('nbDevDiag'), d = D(), n = window.DaragatNative; if(!el || !d) return;
+    var out = ['page dlsId=' + d.H.cfg.id];
+    if(!n){ el.textContent = out.concat(['(ليس داخل تطبيق الأندرويد)']).join('\n'); return; }
+    Promise.all([
+      Promise.resolve(typeof n.getAttachmentSyncStatus === 'function' ? n.getAttachmentSyncStatus() : null).catch(function(){ return null; }),
+      Promise.resolve(typeof n.getCrashLog === 'function' ? n.getCrashLog() : null).catch(function(){ return null; })
+    ]).then(function(r){
+      var st = r[0]; out.push('app status=' + (typeof st === 'string' ? st : JSON.stringify(st)));
+      var txt = typeof r[1] === 'string' ? r[1] : JSON.stringify(r[1] || ''), arr = null; try{ arr = JSON.parse(txt); }catch(e){}
+      var lines = []; (Array.isArray(arr) ? arr : []).forEach(function(x){ var s = typeof x === 'string' ? x : JSON.stringify(x); if(/dls|nsd|udp|server|host|sync|bind|port/i.test(s)) lines.push(s); });
+      out.push('log:\n' + (lines.slice(-4).join('\n') || '(لا شيء)'));
+      var e2 = document.getElementById('nbDevDiag'); if(e2) e2.textContent = out.join('\n');
+    });
   }
 
   /* ---------- الأحداث ---------- */
