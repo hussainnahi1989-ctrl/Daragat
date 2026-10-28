@@ -18020,7 +18020,7 @@ if(document.readyState==='loading'){
 <!-- ===== AUTO UPDATE NOTIFICATION (small icon in topbar) ===== -->
 <script>
 (function(){
-  const APP_VERSION = "1.33.1";
+  const APP_VERSION = "1.33.2";
   const CHECK_EVERY_MINUTES = 30;
   const LS_ACCEPTED = "daragat_accepted_version";
   const LS_SNOOZE   = "daragat_update_snooze";
@@ -21014,6 +21014,7 @@ var G = (function(){
       try{ r = await window.DaragatNative.dlsSignal(cfg.hostId, packText('o', pc.localDescription), 30000); }catch(e){ r = null; }
       if(typeof r !== 'string' || r.indexOf('DLS1.') < 0){
         try{ pc.close(); }catch(e){}
+        lanDiag();
         throw err(r === 'notfound' ? 'لم يُعثر على الجهاز الرئيسي على الشبكة. افتح البرنامج على الجهاز الرئيسي وتأكد أن الجهازين على نفس الواي فاي.' : 'تعذر الوصول إلى الجهاز الرئيسي على الشبكة.');
       }
       await pc.setRemoteDescription(unpackText(r, 'a'));
@@ -21022,6 +21023,22 @@ var G = (function(){
       connecting = false;
       return await attach(pc, dc, (cfg && cfg.code) || '', name || (cfg && cfg.name), full);
     } finally { connecting = false; }
+  }
+
+  /* nb-v1.33.2: سطر التشخيص من تطبيق الأندرويد (سبب فشل البحث) يظهر على شاشة الاتصال نفسها */
+  function lanDiag(){
+    try{
+      var n = window.DaragatNative; if(!n || typeof n.getCrashLog !== 'function') return;
+      Promise.resolve(n.getCrashLog()).then(function(raw){
+        var txt = typeof raw === 'string' ? raw : JSON.stringify(raw || '');
+        var arr = null; try{ arr = JSON.parse(txt); }catch(e){}
+        var lines = [];
+        (Array.isArray(arr) ? arr : (arr && (arr.events || arr.log || arr.items)) || []).forEach(function(x){ var s = typeof x === 'string' ? x : JSON.stringify(x); if(/dls|nsd|udp|scan|wifi|network|socket/i.test(s)) lines.push(s); });
+        if(!lines.length){ var m = txt.match(/dlsSignal[^"\\]*/g); if(m) lines = m; }
+        window.__dlsLastDiag = lines.slice(-3).join('\n') || '(لا يوجد سطر dlsSignal في سجل التطبيق)';
+        try{ UI.changed(); }catch(e){}
+      }, function(){});
+    }catch(e){}
   }
 
   /* ---- guest session lifecycle */
@@ -21349,6 +21366,9 @@ function updateLock(){
   if(!lockEl || lockEl.style.display === 'none') return;
   var i = G.info();
   q('[data-msg]', lockEl).textContent = i.msg || 'جاري الاتصال…';
+  var dg = q('[data-diag]', lockEl);
+  if(!dg){ dg = document.createElement('pre'); dg.setAttribute('data-diag', '1'); dg.style.cssText = 'direction:ltr;text-align:left;white-space:pre-wrap;word-break:break-all;font:11px/1.6 monospace;color:#80cbc4;background:rgba(0,0,0,.25);border-radius:8px;padding:6px 8px;margin:10px 0 0;max-height:120px;overflow:auto;display:none'; q('[data-msg]', lockEl).after(dg); }
+  if(window.__dlsLastDiag && i.st !== 'live'){ dg.textContent = window.__dlsLastDiag; dg.style.display = ''; } else dg.style.display = 'none';
   q('[data-ico]', lockEl).textContent = i.st === 'lost' ? '🔴' : (i.st === 'waiting' ? '⏳' : '📡');
 }
 var badgeEl = null;
