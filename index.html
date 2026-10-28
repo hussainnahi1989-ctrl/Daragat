@@ -6112,7 +6112,7 @@ body.theme-dark .grc-badge{background:linear-gradient(180deg,#2c3944,#202a32);bo
     <button type="button" class="top-search-btn" onclick="openStudentSearch()" title="بحث عن طالب" aria-label="بحث عن طالب">🔍</button>
     <button type="button" class="quick-theme-btn" onclick="toggleUiTheme()" title="تبديل الوضع" aria-label="تبديل الوضع"><span class="ui-theme-icon">🌙</span></button>
     <button type="button" id="btnWifi" class="top-search-btn" onclick="typeof openWifiFromBar==='function'&&openWifiFromBar()" title="المزامنة">📡<span id="wifiDot" style="display:none;position:absolute;top:2px;left:2px;width:8px;height:8px;border-radius:50%;background:#e53935"></span></button>
-    <button type="button" id="btnAttachmentTop" class="top-search-btn attachment-top-btn" onclick="openAttachmentJoin()" title="الدخول كجهاز ملحق" aria-label="الدخول كجهاز ملحق">🔗</button>
+    <button type="button" id="btnAttachmentTop" class="top-search-btn attachment-top-btn" onclick="(window.openDevicesModule&&window.__appStarted?openDevicesModule:openAttachmentJoin)()" title="الأجهزة الملحقة" aria-label="الأجهزة الملحقة">🔗</button>
     <button type="button" id="btnNotif" class="top-search-btn" onclick="openNotifPanel();event.stopPropagation();" title="الإشعارات">🔔<i id="notifDot" class="notif-red-dot" hidden></i></button>
     <a id="btnFacebook" class="logout-top-btn portal-fb-top" href="#" target="_blank" rel="noopener noreferrer" hidden>فيسبوك</a>
     
@@ -6154,7 +6154,7 @@ body.theme-dark .grc-badge{background:linear-gradient(180deg,#2c3944,#202a32);bo
     <button type="button" data-nav="records" onclick="closeGlobalNav();openRecordsModule()"><span>📑</span>القيود</button>
     <button type="button" data-nav="notes" onclick="closeGlobalNav();openNotesModule()"><span>📝</span>الملاحظات</button>
     <button type="button" data-nav="accounts" onclick="closeGlobalNav();openAccountsModule()"><span>💰</span>الحسابات</button>
-    <button type="button" data-nav="barcode" onclick="closeGlobalNav();openBarcodeModule()"><span>📷</span>باركود</button>
+    <button type="button" data-nav="barcode" onclick="closeGlobalNav();openBarcodeModule()"><span>📷</span>باركود</button>     <button type="button" data-nav="devices" onclick="closeGlobalNav();openDevicesModule()"><span>🔗</span>الأجهزة الملحقة</button>
     <button type="button" data-nav="about" onclick="closeGlobalNav();openAboutModule()"><span>ℹ️</span>حول التطبيق</button>
     <button type="button" data-nav="backup" onclick="closeGlobalNav();openBackupModule()"><span>💾</span>النسخة الاحتياطية</button>
     <button type="button" data-nav="settings" onclick="closeGlobalNav();openSettings()"><span>⚙️</span>الإعدادات</button>
@@ -7643,7 +7643,7 @@ function navSectionForView(viewId){
   if(viewId==='view-notes') return 'notes';
   if(viewId==='view-accounts') return 'accounts';
   if(viewId==='view-schoollogs') return 'schoollogs';
-  if(viewId==='view-barcode') return 'barcode';
+  if(viewId==='view-barcode') return 'barcode';   if(viewId==='view-devices') return 'devices';
   if(viewId==='view-schoolorders') return 'schoolorders';
   if(viewId==='view-exam-cards'||viewId==='view-exams') return 'exams';
   if(viewId==='view-home'||viewId==='view-students'||viewId==='view-output') return 'results';
@@ -10003,7 +10003,7 @@ function dashMenuItems(){
     ['📝','الملاحظات','ملاحظات الطلاب','openNotesModule()','linear-gradient(135deg,#5d4037,#a1887f)'],
     ['💰','الحسابات','النقدي والأقساط','openAccountsModule()','linear-gradient(135deg,#c62828,#ef6c00)'],
     ['📁','سجلات المدرسة','صادر ووارد وكتب','openSchoolLogsModule()','linear-gradient(135deg,#1a237e,#5c6bc0)'],
-    ['📷','باركود','مسح نتائج الطلاب','openBarcodeModule()','linear-gradient(135deg,#004d40,#00897b)'],
+    ['📷','باركود','مسح نتائج الطلاب','openBarcodeModule()','linear-gradient(135deg,#004d40,#00897b)'],     ['🔗','الأجهزة الملحقة','ربط أجهزة بلا إنترنت','openDevicesModule()','linear-gradient(135deg,#00695c,#26a69a)'],
     ['📝','الامتحانات','قوائم وأسئلة وجداول','openExamsModule()','linear-gradient(135deg,#01579b,#29b6f6)'],
     ['🖨️','إصدار النتائج','بطاقات الشهادة لكل شعبة','openResultsSectionsFromDashboard()','linear-gradient(135deg,#4a148c,#8e24aa)'],
     ['💾','النسخ الاحتياطي','حفظ واسترجاع ومسح البيانات','openBackupModule()','linear-gradient(135deg,#004d40,#26a69a)'],
@@ -10092,7 +10092,7 @@ function renderDashboard(){
       '<button onclick="closeDashboardSidebar();openRecordsModule()"><span class="dni">📑</span>القيود</button>'+
       '<button onclick="closeDashboardSidebar();openNotesModule()"><span class="dni">📝</span>الملاحظات</button>'+
       '<button onclick="closeDashboardSidebar();openAccountsModule()"><span class="dni">💰</span>الحسابات</button>'+
-      '<button onclick="closeDashboardSidebar();openBarcodeModule()"><span class="dni">📷</span>باركود</button>'+
+      '<button onclick="closeDashboardSidebar();openBarcodeModule()"><span class="dni">📷</span>باركود</button>'+       '<button onclick="closeDashboardSidebar();openDevicesModule()"><span class="dni">🔗</span>الأجهزة الملحقة</button>'+
       '<button onclick="closeDashboardSidebar();openAboutModule()"><span class="dni">ℹ️</span>حول التطبيق</button>'+
       '<button onclick="closeDashboardSidebar();openBackupModule()"><span class="dni">💾</span>النسخة الاحتياطية</button>'+
       '<button onclick="closeDashboardSidebar();openSettings()"><span class="dni">⚙️</span>الإعدادات</button>'+
@@ -18020,7 +18020,7 @@ if(document.readyState==='loading'){
 <!-- ===== AUTO UPDATE NOTIFICATION (small icon in topbar) ===== -->
 <script>
 (function(){
-  const APP_VERSION = "1.32.4";
+  const APP_VERSION = "1.33.0";
   const CHECK_EVERY_MINUTES = 30;
   const LS_ACCEPTED = "daragat_accepted_version";
   const LS_SNOOZE   = "daragat_update_snooze";
@@ -27156,6 +27156,186 @@ window.renderHomeView=function(){
   }; })(window.appGoBack);
 })();
 </script>
+<script>
+/* ===== nb-v1.33.0: قسم «الأجهزة الملحقة» =====
+   واجهة واحدة لربط أجهزة ملحقة بلا إنترنت وإدارتها. تعتمد على وحدة المزامنة المحلية (DLS) نفسها:
+   - كل جهاز يُربط يُحفظ في سجل الأجهزة الموثوقة على الجهاز الرئيسي (لا يُنسى إلا بإلغاء الربط).
+   - عند فتح الجهازين لاحقاً يتعرّف الرئيسي على الملحق برمز الثقة المحفوظ ويقبله دون موافقة أو رمز جديد.
+   - داخل تطبيق الأندرويد يجد الملحق الرئيسي على الواي فاي تلقائياً بلا إنترنت. */
+(function(){
+  'use strict';
+  var VIEW = 'view-devices', timer = null;
+  function D(){ return window.__DLS || null; }
+  function esc(s){ return String(s == null ? '' : s).replace(/[&<>"']/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); }
+  function ar(n){ try{ return typeof toArabicDigits === 'function' ? toArabicDigits(String(n)) : String(n); }catch(e){ return String(n); } }
+  function when(ts){
+    if(!ts) return '—';
+    var d = Date.now() - ts, m = Math.round(d / 60000);
+    if(m < 1) return 'الآن';
+    if(m < 60) return 'قبل ' + ar(m) + ' دقيقة';
+    var h = Math.round(m / 60); if(h < 24) return 'قبل ' + ar(h) + ' ساعة';
+    try{ return new Date(ts).toLocaleDateString('ar-IQ', {dateStyle: 'medium'}); }catch(e){ return new Date(ts).toDateString(); }
+  }
+  function inApp(){ var n = window.DaragatNative; return !!(n && typeof n.dlsSignal === 'function'); }
+  function isTeacher(){ try{ return typeof authRole === 'function' && authRole() === 'teacher'; }catch(e){ return false; } }
+
+  /* ---------- الأنماط ---------- */
+  (function css(){
+    if(document.getElementById('nbDevCss')) return;
+    var s = document.createElement('style'); s.id = 'nbDevCss';
+    s.textContent =
+      '.nbdev-wrap{display:grid;gap:14px}' +
+      '.nbdev-card{background:#fff;border:1px solid #e3e8ec;border-radius:16px;padding:14px 16px;box-shadow:0 2px 10px rgba(0,0,0,.04)}' +
+      '.nbdev-card h3{margin:0 0 6px;font-size:16px}' +
+      '.nbdev-note{color:#546e7a;font-size:13px;line-height:1.9;margin:0}' +
+      '.nbdev-add{display:flex;align-items:center;gap:14px;flex-wrap:wrap;background:linear-gradient(135deg,#004d40,#00897b);color:#fff;border:0}' +
+      '.nbdev-add .nbdev-note{color:#e0f2f1}' +
+      '.nbdev-add h3{color:#fff}' +
+      '.nbdev-add .nbdev-txt{flex:1;min-width:220px}' +
+      '.nbdev-btn{border:0;border-radius:12px;padding:11px 16px;font:900 14px inherit;font-family:inherit;cursor:pointer;background:#00897b;color:#fff}' +
+      '.nbdev-btn.light{background:#fff;color:#00695c}' +
+      '.nbdev-btn.gray{background:#eceff1;color:#37474f}' +
+      '.nbdev-btn.red{background:#ffebee;color:#c62828}' +
+      '.nbdev-btn.sm{padding:7px 11px;font-size:12.5px;border-radius:10px}' +
+      '.nbdev-list{display:grid;gap:10px}' +
+      '.nbdev-item{display:grid;grid-template-columns:auto 1fr auto;gap:12px;align-items:center;border:1px solid #e3e8ec;border-radius:14px;padding:11px 13px;background:#fafcfc}' +
+      '.nbdev-item.on{border-color:#a5d6a7;background:#f1f8f1}' +
+      '.nbdev-ico{width:44px;height:44px;border-radius:12px;display:grid;place-items:center;font-size:22px;background:#e0f2f1;position:relative}' +
+      '.nbdev-ok{position:absolute;bottom:-5px;left:-5px;width:20px;height:20px;border-radius:50%;background:#2e7d32;color:#fff;font-size:12px;font-weight:900;display:grid;place-items:center;border:2px solid #fff}' +
+      '.nbdev-name{font-weight:900;font-size:15px;color:#263238}' +
+      '.nbdev-meta{font-size:12.5px;color:#607d8b;line-height:1.8}' +
+      '.nbdev-dot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-inline-end:5px;vertical-align:middle;background:#b0bec5}' +
+      '.nbdev-dot.live{background:#2e7d32;box-shadow:0 0 0 3px rgba(46,125,50,.18)}' +
+      '.nbdev-acts{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}' +
+      '.nbdev-acts select{border:1px solid #cfd8dc;border-radius:10px;padding:6px 8px;font-family:inherit;font-size:12.5px;background:#fff}' +
+      '.nbdev-empty{text-align:center;color:#78909c;padding:18px 8px;font-size:13.5px;line-height:2}' +
+      '.nbdev-pill{display:inline-block;border-radius:20px;padding:2px 10px;font-size:12px;font-weight:800}' +
+      '.nbdev-pill.g{background:#e8f5e9;color:#2e7d32}.nbdev-pill.o{background:#fff3e0;color:#e65100}.nbdev-pill.b{background:#e3f2fd;color:#1565c0}' +
+      '.nbdev-steps{margin:6px 0 0;padding-inline-start:20px;color:#455a64;font-size:13px;line-height:2}' +
+      '@media(max-width:560px){.nbdev-item{grid-template-columns:auto 1fr}.nbdev-acts{grid-column:1/-1;justify-content:flex-start}}';
+    document.head.appendChild(s);
+  })();
+
+  /* ---------- مكان القسم ---------- */
+  function ensureView(){
+    var el = document.getElementById(VIEW);
+    if(el) return el;
+    var ref = document.getElementById('view-barcode');
+    el = document.createElement('div'); el.className = 'view wide'; el.id = VIEW;
+    if(ref && ref.parentNode) ref.parentNode.insertBefore(el, ref.nextSibling); else document.body.appendChild(el);
+    return el;
+  }
+
+  /* ---------- العرض ---------- */
+  function deviceRow(t, live){
+    var ico = /حاسب|حاسوب|كمبيوتر|لابتوب|pc/i.test(t.name || '') ? '💻' : (/تابلت|لوح|ايباد|آيباد|tab/i.test(t.name || '') ? '📱' : '📲');
+    var st = live
+      ? '<span class="nbdev-dot live"></span><b style="color:#2e7d32">متصل الآن</b>' + (t.rtt != null ? ' · ' + ar(t.rtt) + ' م.ث' : '')
+      : '<span class="nbdev-dot"></span>غير متصل الآن — آخر اتصال: ' + esc(when(t.last));
+    return '<div class="nbdev-item' + (live ? ' on' : '') + '">' +
+      '<div class="nbdev-ico">' + ico + '<span class="nbdev-ok" title="مرتبط">✓</span></div>' +
+      '<div><div class="nbdev-name">' + esc(t.name || 'جهاز ملحق') + ' <span class="nbdev-pill g">✓ مرتبط</span></div>' +
+      '<div class="nbdev-meta">' + st + '<br>رُبط: ' + esc(when(t.added)) + ' · ' + (t.via === 'online' ? 'عبر رمز الإنترنت' : 'بلا إنترنت') + (t.perm === 'ro' ? ' · <span class="nbdev-pill o">قراءة فقط</span>' : '') + '</div></div>' +
+      '<div class="nbdev-acts">' +
+        '<select data-perm="' + esc(t.devId) + '" title="صلاحية الجهاز"><option value="rw"' + (t.perm !== 'ro' ? ' selected' : '') + '>✏️ تعديل</option><option value="ro"' + (t.perm === 'ro' ? ' selected' : '') + '>👁️ قراءة فقط</option></select>' +
+        '<button type="button" class="nbdev-btn red sm" data-forget="' + esc(t.devId) + '">إلغاء الربط</button>' +
+      '</div></div>';
+  }
+
+  function hostHtml(v){
+    var trusted = (v.trusted || []).slice().sort(function(a, b){ return (b.connected - a.connected) || ((b.last || 0) - (a.last || 0)); });
+    var liveN = trusted.filter(function(t){ return t.connected; }).length;
+    var pend = (v.pending || []).map(function(p){
+      return '<div class="nbdev-item" style="border-color:#ffcc80;background:#fff8e1"><div class="nbdev-ico">⏳</div><div><div class="nbdev-name">' + esc(p.name || 'جهاز') + '</div><div class="nbdev-meta">يطلب الربط بهذا الجهاز الآن</div></div>' +
+        '<div class="nbdev-acts"><button type="button" class="nbdev-btn sm" data-ok="' + esc(p.pid) + '">✓ قبول</button><button type="button" class="nbdev-btn gray sm" data-ro="' + esc(p.pid) + '">قبول للقراءة</button><button type="button" class="nbdev-btn red sm" data-no="' + esc(p.pid) + '">رفض</button></div></div>';
+    }).join('');
+    var ready = inApp()
+      ? '<span class="nbdev-pill g">✅ هذا الجهاز جاهز لاستقبال الأجهزة الملحقة تلقائياً بلا إنترنت</span>'
+      : '<span class="nbdev-pill b">ℹ️ الاتصال التلقائي بلا إنترنت يعمل عندما يكون البرنامج مفتوحاً من تطبيق الأندرويد (3.0.2 أو أحدث) على الجهازين</span>';
+    return '<div class="nbdev-wrap">' +
+      '<div class="nbdev-card nbdev-add"><div style="font-size:40px">🔗</div><div class="nbdev-txt"><h3>ربط جهاز ملحق جديد</h3><p class="nbdev-note">بلا إنترنت — يكفي أن يكون الجهازان على نفس الواي فاي (أو نقطة اتصال من أحد الهاتفين). يُربط كل جهاز مرة واحدة فقط ويُحفظ دائماً.</p></div>' +
+        '<button type="button" class="nbdev-btn light" data-add="1">➕ ربط جهاز</button></div>' +
+      (pend ? '<div class="nbdev-card"><h3>⏳ طلبات ربط بانتظار موافقتك</h3><div class="nbdev-list">' + pend + '</div></div>' : '') +
+      '<div class="nbdev-card"><div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:10px"><h3 style="margin:0">📋 الأجهزة المرتبطة (' + ar(trusted.length) + ')</h3>' +
+        (trusted.length ? '<span class="nbdev-pill ' + (liveN ? 'g' : 'b') + '">' + (liveN ? '🟢 ' + ar(liveN) + ' متصل الآن' : 'لا يوجد جهاز متصل الآن') + '</span>' : '') + '</div>' +
+        (trusted.length ? '<div class="nbdev-list">' + trusted.map(function(t){ return deviceRow(t, t.connected); }).join('') + '</div>'
+          : '<div class="nbdev-empty">لا توجد أجهزة ملحقة بعد.<br>اضغط «➕ ربط جهاز» لربط أول جهاز.</div>') +
+      '</div>' +
+      '<div class="nbdev-card"><h3>🔄 كيف يعمل الاتصال التلقائي</h3><p class="nbdev-note">' + ready + '</p>' +
+        '<ol class="nbdev-steps"><li>اربط الجهاز مرة واحدة فقط من «➕ ربط جهاز» بمسح الرمز.</li><li>بعدها كلما فتحت البرنامج على الجهازين — في أي يوم وبأي ترتيب — يتصلان وحدهما دون رمز أو موافقة.</li><li>إذا انقطع الواي فاي يعود الاتصال تلقائياً عند رجوعه، ولا يُنسى الربط أبداً.</li><li>«إلغاء الربط» يزيل الجهاز نهائياً، ويعود ذلك الجهاز إلى بياناته السابقة.</li></ol></div>' +
+      ((v.blocked || []).length ? '<div class="nbdev-card"><h3>🚫 أجهزة محظورة</h3><div class="nbdev-list">' + v.blocked.map(function(b){ return '<div class="nbdev-item"><div class="nbdev-ico">🚫</div><div class="nbdev-name">' + esc(b.name) + '</div><div class="nbdev-acts"><button type="button" class="nbdev-btn gray sm" data-unblock="' + esc(b.devId) + '">إلغاء الحظر</button></div></div>'; }).join('') + '</div></div>' : '') +
+    '</div>';
+  }
+
+  function guestHtml(i){
+    var c = i.cfg || {}, live = i.st === 'live';
+    return '<div class="nbdev-wrap"><div class="nbdev-card">' +
+      '<div class="nbdev-item' + (live ? ' on' : '') + '" style="border:0;background:transparent;padding:0"><div class="nbdev-ico">🖥️<span class="nbdev-ok">✓</span></div>' +
+      '<div><div class="nbdev-name">هذا الجهاز ملحق بـ «' + esc(c.hostName || 'الجهاز الرئيسي') + '» <span class="nbdev-pill g">✓ مرتبط</span></div>' +
+      '<div class="nbdev-meta"><span class="nbdev-dot' + (live ? ' live' : '') + '"></span>' + (live ? 'متصل الآن' + (i.rtt != null ? ' · ' + ar(i.rtt) + ' م.ث' : '') : 'غير متصل — يعيد المحاولة تلقائياً') +
+        '<br>اسم هذا الجهاز: <b>' + esc(c.name || '') + '</b> · الصلاحية: <b>' + (i.perm === 'ro' ? 'قراءة فقط' : 'تعديل') + '</b></div></div><div></div></div>' +
+      '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px"><button type="button" class="nbdev-btn" data-recon="1">🔄 إعادة الاتصال الآن</button><button type="button" class="nbdev-btn red" data-leave="1">الخروج من وضع الجهاز الملحق</button></div>' +
+      '<p class="nbdev-note" style="margin-top:10px">الربط محفوظ على هذا الجهاز. عند فتح البرنامج لاحقاً يتصل بالجهاز الرئيسي تلقائياً ما دام مفتوحاً على نفس الواي فاي.</p>' +
+    '</div></div>';
+  }
+
+  function render(){
+    var el = ensureView(), d = D();
+    var head = '<div class="module-shell"><div class="module-head"><div class="module-title"><span class="mi">🔗</span><div><h2>الأجهزة الملحقة</h2><p>ربط أجهزة إضافية بهذا الجهاز بلا إنترنت، وإدارتها</p></div></div></div>';
+    var body;
+    if(!d) body = '<div class="nbdev-card"><p class="nbdev-note">وحدة الربط غير جاهزة بعد. أعد فتح القسم بعد لحظات.</p></div>';
+    else if(d.G.isGuest()) body = guestHtml(d.G.info());
+    else if(isTeacher()) body = '<div class="nbdev-card"><p class="nbdev-note">إدارة الأجهزة الملحقة متاحة من حساب المدير فقط.</p></div>';
+    else {
+      body = hostHtml(d.H.view());
+      body += '<div class="nbdev-card" style="margin-top:14px"><h3>📲 هل هذا الجهاز هو الملحق؟</h3><p class="nbdev-note">إذا أردت أن يعمل هذا الجهاز كجهاز ملحق بجهاز رئيسي آخر:</p><div style="margin-top:8px"><button type="button" class="nbdev-btn gray" data-join="1">ربط هذا الجهاز كملحق</button></div></div>';
+    }
+    var sy = window.scrollY;
+    el.innerHTML = head + '<div style="padding:4px 2px 18px">' + body + '</div></div>';
+    if(Math.abs(window.scrollY - sy) > 2) window.scrollTo(0, sy);
+  }
+
+  /* ---------- الأحداث ---------- */
+  document.addEventListener('click', function(e){
+    var root = document.getElementById(VIEW); if(!root || !root.contains(e.target)) return;
+    var b = e.target.closest('button'); if(!b) return;
+    var d = D(); if(!d) return;
+    if(b.dataset.add){ d.openHostPanel(); setTimeout(function(){ var o = document.querySelector('[data-a=offline]'); if(o) o.click(); }, 350); return; }
+    if(b.dataset.join){ d.openJoin('off'); return; }
+    if(b.dataset.ok){ d.H.approve(b.dataset.ok, 'rw'); return render(); }
+    if(b.dataset.ro){ d.H.approve(b.dataset.ro, 'ro'); return render(); }
+    if(b.dataset.no){ d.H.reject(b.dataset.no); return render(); }
+    if(b.dataset.unblock){ d.H.unblock(b.dataset.unblock); return render(); }
+    if(b.dataset.forget){
+      var t = (d.H.view().trusted || []).filter(function(x){ return x.devId === b.dataset.forget; })[0];
+      if(confirm('إلغاء ربط «' + ((t && t.name) || 'الجهاز') + '»؟\nلن يتصل هذا الجهاز بعد الآن حتى تربطه من جديد.')){ d.H.forget(b.dataset.forget); render(); }
+      return;
+    }
+    if(b.dataset.recon){ d.G.reconnectNow(); setTimeout(render, 400); return; }
+    if(b.dataset.leave){ if(confirm('الخروج من وضع الجهاز الملحق؟ ستعود بيانات هذا الجهاز السابقة كما كانت.')) d.G.leave(); return; }
+  });
+  document.addEventListener('change', function(e){
+    var s = e.target; if(!s || !s.dataset || !s.dataset.perm) return;
+    var d = D(); if(d){ d.H.setPerm(s.dataset.perm, s.value); render(); }
+  });
+
+  /* ---------- الفتح والتحديث الحي ---------- */
+  function visible(){ var el = document.getElementById(VIEW); return !!(el && getComputedStyle(el).display !== 'none'); }
+  function sig(){ var d = D(); if(!d) return ''; try{ if(d.G.isGuest()){ var i = d.G.info(); return 'g' + i.st + i.perm + i.rtt; } var v = d.H.view(); return JSON.stringify([v.trusted.map(function(t){ return [t.devId, t.connected, t.perm, t.name, t.last > Date.now() - 60000]; }), v.pending.length, v.blocked.length]); }catch(e){ return ''; } }
+  var lastSig = '';
+  function tick(){ if(!visible()){ clearInterval(timer); timer = null; return; } var s = sig(); if(s !== lastSig){ lastSig = s; render(); } }
+  window.openDevicesModule = function(){
+    ensureView(); render(); lastSig = sig();
+    if(typeof navigateTo === 'function') navigateTo(VIEW, {page: 'home'});
+    clearInterval(timer); timer = setInterval(tick, 1500);
+  };
+  if(typeof window.restoreEntry === 'function'){
+    window.restoreEntry = (function(orig){ return function(entry){ var r = orig.apply(this, arguments); try{ if(entry && entry.id === VIEW){ render(); clearInterval(timer); timer = setInterval(tick, 1500); } }catch(e){} return r; }; })(window.restoreEntry);
+  }
+  ensureView();
+})();
+</script>
+
 <script type="text/plain" id="nbJsQrSrc">/* jsQR (Apache-2.0) — قارئ QR احتياطي للمتصفحات التي لا تدعم BarcodeDetector (آيفون، كروم الحاسوب)؛ يُحمَّل عند المسح فقط */
 (function(){var module={exports:{}},exports=module.exports,define=undefined;
 (function webpackUniversalModuleDefinition(root, factory) {
