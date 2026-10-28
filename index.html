@@ -18020,7 +18020,7 @@ if(document.readyState==='loading'){
 <!-- ===== AUTO UPDATE NOTIFICATION (small icon in topbar) ===== -->
 <script>
 (function(){
-  const APP_VERSION = "1.33.3";
+  const APP_VERSION = "1.33.4";
   const CHECK_EVERY_MINUTES = 30;
   const LS_ACCEPTED = "daragat_accepted_version";
   const LS_SNOOZE   = "daragat_update_snooze";
@@ -20736,6 +20736,14 @@ var H = (function(){
     KEYS.forEach(function(k){ if(!(k in shadow)) return; if(sums && sums[k] === Core.hashOf(shadow[k])) return; keys[k] = shadow[k]; });
     peer.link.send({t: 'snap', keys: keys, all: !sums});
     peer.tx = 0; peer.ready = true;
+    /* nb-v1.33.4: عنوان هذا الجهاز على الواي فاي يُرسل للملحق ليحفظه ويتصل به مباشرة في المرات القادمة دون بحث */
+    try{
+      var nat = window.DaragatNative;
+      if(nat && typeof nat.lanInfo === 'function') Promise.resolve(nat.lanInfo()).then(function(li){
+        if(typeof li === 'string'){ try{ li = JSON.parse(li); }catch(e){ li = null; } }
+        if(li && li.ip && li.port && peer.link) peer.link.send({t: 'lan', ip: String(li.ip), port: +li.port, ips: li.ips || []});
+      }, function(){});
+    }catch(e){}
     toast('تم ربط الجهاز الملحق «' + peer.name + '»');
     emit();
   }
@@ -20922,7 +20930,7 @@ var G = (function(){
             Object.keys(m.keys || {}).forEach(function(k){ if(isKey(k)) replaceKey(k, m.keys[k], null); });
             persistAllNow();
             if(!lsGet('daragat_school_setup_v2')) lsSet('daragat_school_setup_v2', '1');
-            cfg = {on: true, code: code || (cfg && cfg.code) || '', name: name || (cfg && cfg.name) || 'جهاز ملحق', token: pendingCfg.token || (cfg && cfg.token) || '', hostName: pendingCfg.hostName || '', hostId: pendingCfg.hostId || '', perm: perm, devId: deviceId(), at: now()};
+            cfg = {on: true, hostAddr: pendingCfg.hostAddr || (cfg && cfg.hostAddr) || '', code: code || (cfg && cfg.code) || '', name: name || (cfg && cfg.name) || 'جهاز ملحق', token: pendingCfg.token || (cfg && cfg.token) || '', hostName: pendingCfg.hostName || '', hostId: pendingCfg.hostId || '', perm: perm, devId: deviceId(), at: now()};
             save(); pend = []; opsRx = 0; lastActivity = now();
             link.send({t: 'ready'});
             if(lostOps){ toast('تنبيه: ' + lostOps + ' تعديل لم يصل إلى الجهاز الرئيسي قبل الانقطاع وتم تجاهله', true); lostOps = 0; }
@@ -20936,6 +20944,7 @@ var G = (function(){
           case 'ro': toast('هذا الجهاز للقراءة فقط: لا تُحفظ تعديلاته', true); break;
           case 'unlinked': toast('أُلغي ربط هذا الجهاز من الجهاز الرئيسي. ستعود بياناتك السابقة.', true); setTimeout(function(){ leave(); }, 1200); break;
           case 'bye': try{ link.close('bye'); }catch(e){} break;
+          case 'lan': if(m.ip && m.port){ var a = String(m.ip) + ':' + (+m.port); if(cfg){ cfg.hostAddr = a; cfg.hostAddrs = (m.ips || []).map(function(x){ return String(x) + ':' + (+m.port); }); save(); } else pendingCfg.hostAddr = a; } break;
         }
       }, function(why){ onClosed(why); done(err('انقطع الاتصال قبل اكتمال المزامنة.')); }, {tolerant: !!tolerant});
       link.send({t: 'hello', v: 1, id: deviceId(), name: name || (cfg && cfg.name) || 'جهاز ملحق', token: (cfg && cfg.token) || null, sums: ((first || full) ? null : ownSums())});
@@ -21011,7 +21020,7 @@ var G = (function(){
       var pc = newPC(), dc = pc.createDataChannel('dls');
       await pc.setLocalDescription(await pc.createOffer()); await waitIce(pc, 2500);
       var r = null;
-      try{ r = await window.DaragatNative.dlsSignal(cfg.hostId, packText('o', pc.localDescription), 30000); }catch(e){ r = null; }
+      try{ r = await window.DaragatNative.dlsSignal(cfg.hostId, packText('o', pc.localDescription), 30000, [cfg.hostAddr || ''].concat(cfg.hostAddrs || []).filter(Boolean).join(',')); }catch(e){ r = null; }
       if(typeof r !== 'string' || r.indexOf('DLS1.') < 0){
         try{ pc.close(); }catch(e){}
         lanDiag();
@@ -21035,7 +21044,7 @@ var G = (function(){
         var lines = [];
         (Array.isArray(arr) ? arr : (arr && (arr.events || arr.log || arr.items)) || []).forEach(function(x){ var s = typeof x === 'string' ? x : JSON.stringify(x); if(/dls|nsd|udp|scan|wifi|network|socket/i.test(s)) lines.push(s); });
         if(!lines.length){ var m = txt.match(/dlsSignal[^"\\]*/g); if(m) lines = m; }
-        window.__dlsLastDiag = 'searching hostId=' + ((cfg && cfg.hostId) || '-') + '\n' + (lines.slice(-2).join('\n') || '(لا يوجد سطر dlsSignal في سجل التطبيق)');
+        window.__dlsLastDiag = 'searching hostId=' + ((cfg && cfg.hostId) || '-') + ' addr=' + ((cfg && cfg.hostAddr) || '-') + '\n' + (lines.slice(-2).join('\n') || '(لا يوجد سطر dlsSignal في سجل التطبيق)');
         try{ UI.changed(); }catch(e){}
       }, function(){});
     }catch(e){}
@@ -27324,9 +27333,11 @@ window.renderHomeView=function(){
     if(!n){ el.textContent = out.concat(['(ليس داخل تطبيق الأندرويد)']).join('\n'); return; }
     Promise.all([
       Promise.resolve(typeof n.getAttachmentSyncStatus === 'function' ? n.getAttachmentSyncStatus() : null).catch(function(){ return null; }),
-      Promise.resolve(typeof n.getCrashLog === 'function' ? n.getCrashLog() : null).catch(function(){ return null; })
+      Promise.resolve(typeof n.getCrashLog === 'function' ? n.getCrashLog() : null).catch(function(){ return null; }),
+      Promise.resolve(typeof n.lanInfo === 'function' ? n.lanInfo() : 'lanInfo غير موجود في هذا الإصدار من التطبيق').catch(function(){ return null; })
     ]).then(function(r){
       var st = r[0]; out.push('app status=' + (typeof st === 'string' ? st : JSON.stringify(st)));
+      out.push('lanInfo=' + (typeof r[2] === 'string' ? r[2] : JSON.stringify(r[2])));
       var txt = typeof r[1] === 'string' ? r[1] : JSON.stringify(r[1] || ''), arr = null; try{ arr = JSON.parse(txt); }catch(e){}
       var lines = []; (Array.isArray(arr) ? arr : []).forEach(function(x){ var s = typeof x === 'string' ? x : JSON.stringify(x); if(/dls|nsd|udp|server|host|sync|bind|port/i.test(s)) lines.push(s); });
       out.push('log:\n' + (lines.slice(-4).join('\n') || '(لا شيء)'));
