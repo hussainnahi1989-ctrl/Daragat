@@ -17119,7 +17119,62 @@ if(document.readyState==='loading'){
       return true;
     }catch(e){ return false; }
   }
-  function fbRef(path){ return fbDb.ref(path); }
+  /* nb-v1.39: إدارة الاتصال بالسحابة — الاتصال المباشر الدائم فقط للحساب المنتظر (تجربة/تفعيل/تجديد/نقل) ليتفعّل فوراً،
+     والحساب المفعّل يُفحص عند الفتح ثم كل ساعة ثم يُغلق الاتصال (لا يستهلك من حد الاتصالات المتزامنة).
+     أي عملية سحابية تعيد الاتصال تلقائياً. */
+  let liveRef=null, liveCb=null, idleT=null, lastCheck=0;
+  function netOn(){ try{ if(fbReady&&fbDb&&fbDb.goOnline) fbDb.goOnline(); }catch(e){} }
+  function netIdle(){ clearTimeout(idleT); idleT=setTimeout(function(){ try{ if(!liveRef && fbReady && fbDb && fbDb.goOffline && isSettled()) fbDb.goOffline(); }catch(e){} },20000); }
+  function fbRef(path){ netOn(); netIdle(); return fbDb.ref(path); }
+  function emailKeyOf(email){ return String(email||"").replace(/\./g,","); }
+  function isSettled(){ try{ const v=canOpenApp(); return !!(v.ok && v.account && v.account.status==="approved"); }catch(e){ return false; } }
+  function stopLive(){ if(liveRef){ try{ liveRef.off("value"); }catch(e){} liveRef=null; netIdle(); } }
+  /* حجز الجهاز: ينجح إذا كان الاشتراك محرراً (بعد تسجيل خروج) أو لهذا الجهاز نفسه */
+  function claimDevice(email,cb){
+    const me=deviceId();
+    try{
+      const ref=fbRef("activation/accounts/"+emailKeyOf(email));
+      ref.child("activeDeviceId").transaction(function(cur){ return (cur===null||cur===undefined||cur===""||cur===me)?me:undefined; },function(err,committed){
+        if(!err&&committed){ try{ ref.update({lastSeenDevice:Object.assign({id:me},deviceInfo()),deviceClaimedAt:firebase.database.ServerValue.TIMESTAMP,deviceReleasedAt:null}); }catch(e){} }
+        cb&&cb(!err&&!!committed);
+      },false);
+    }catch(e){ cb&&cb(false); }
+  }
+  /* تحرير الاشتراك عند تسجيل الخروج: فقط إن كان مسجلاً لهذا الجهاز */
+  function releaseDevice(acc,cb){
+    const me=deviceId();
+    if(!acc||!navigator.onLine||!initFB()||!fbReady){ cb&&cb("offline"); return; }
+    let done=false; const fin=function(r){ if(done) return; done=true; cb&&cb(r); };
+    setTimeout(function(){ fin("timeout"); },7000);
+    try{
+      const ref=fbRef("activation/accounts/"+emailKeyOf(acc.email));
+      ref.child("activeDeviceId").transaction(function(cur){ return cur===me?null:(cur===null||cur===undefined?null:undefined); },function(err,committed,snap){
+        if(err){ fin("error"); return; }
+        if(committed){ try{ ref.update({deviceReleasedAt:firebase.database.ServerValue.TIMESTAMP,releasedDevice:me}); }catch(e){} fin("released"); }
+        else fin("notmine");
+      },false);
+    }catch(e){ fin("error"); }
+  }
+  /* تسجيل الخروج من الحساب (كل أزرار الخروج تمر من هنا) */
+  function doLogout(after){
+    const acc=currentAccount();
+    stopLive();
+    state.activeEmail=null; saveState(state);
+    releaseDevice(acc,function(r){
+      if(r==="released" && acc){ state.accounts=state.accounts.filter(function(a){ return a.email!==acc.email; }); saveState(state); }
+      after&&after(r);
+    });
+  }
+  window.__actLogout=doLogout;
+  function logoutAndResume(){
+    showMsg("جاري تسجيل الخروج وتحرير الاشتراك…","");
+    doLogout(function(r){
+      resume();
+      if(r==="released") showMsg("✅ تم تسجيل الخروج — يمكنك الدخول بحسابك من أي جهاز آخر وسينتقل اشتراكك تلقائياً","ok");
+      else if(r==="offline") showMsg("تم تسجيل الخروج. (لا يوجد إنترنت الآن: نقل الاشتراك لجهاز آخر سيحتاج موافقة الإدارة)","");
+      else hideMsg();
+    });
+  }
 
   // ===== LICENSE LOGIC =====
   function accountFind(email){ return state.accounts.find(a=>a.email===normEmail(email)); }
@@ -17231,6 +17286,10 @@ if(document.readyState==='loading'){
     }
     if(v.schoolName)acc.schoolName=v.schoolName;
     if(v.phone)acc.phone=v.phone;
+    if(v.status==="approved" && !v.activeDeviceId && state.activeEmail===acc.email){
+      /* الاشتراك محرَّر (خرج صاحبه من جهازه): هذا الجهاز يحجزه — وإن سبقه جهاز آخر يُعاد الفحص فوراً */
+      claimDevice(acc.email,function(ok){ if(!ok) setTimeout(function(){ try{ cloudValidateNow(); }catch(e){} },300); });
+    }
     if(v.status==="approved" && (!v.activeDeviceId || v.activeDeviceId === deviceId())){
       acc.status="approved";
       acc.plan=normalizePlan(v.plan||v.planCode||acc.plan);
@@ -17278,6 +17337,7 @@ if(document.readyState==='loading'){
     if(!navigator.onLine){if(done)done(false);return;}
     const acc=currentAccount();
     if(!acc||!initFB()||!fbReady){if(done)done(false);return;}
+    lastCheck=now();
     try{
       fbRef("activation/accounts/"+acc.email.replace(/\./g,",")).once("value",function(snap){
         applyCloudAccount(acc,snap.val(),function(ev){
@@ -17294,14 +17354,23 @@ if(document.readyState==='loading'){
   }
   function listenAccount(acc, cb){
     if(!fbReady||!acc) return;
+    if(cb) liveCb=cb;
+    if(state.activeEmail===acc.email && isSettled()){ stopLive(); return; }   /* مفعّل: بلا اتصال دائم */
+    if(liveRef && liveRef.__email===acc.email) return;                        /* مستمع واحد فقط */
+    stopLive();
     const emailKey = acc.email.replace(/\./g,",");
-    fbRef("activation/accounts/"+emailKey).on("value", function(snap){
+    const r=fbRef("activation/accounts/"+emailKey); r.__email=acc.email; liveRef=r;
+    r.on("value", function(snap){
       applyCloudAccount(acc,snap.val(),function(ev){
-        cb&&cb(ev);
+        liveCb&&liveCb(ev);
         if(ev&&ev.stopped){showOverlay();screenAccountStopped(ev.reason);}
+        if(state.activeEmail===acc.email && isSettled()) setTimeout(stopLive,1500);
       });
     });
   }
+  /* الحساب المفعّل: فحص كل ساعة، وعند الرجوع للبرنامج بعد غياب ربع ساعة */
+  setInterval(function(){ try{ if(isSettled() && navigator.onLine) cloudValidateNow(); }catch(e){} },3600000);
+  document.addEventListener("visibilitychange",function(){ try{ if(document.visibilityState==="visible" && isSettled() && navigator.onLine && now()-lastCheck>900000) cloudValidateNow(); }catch(e){} });
 
   // ===== UI =====
   const overlay = function(){return document.getElementById("actOverlay");};
@@ -17323,28 +17392,179 @@ if(document.readyState==='loading'){
   }
   function validIraqPhone(p){ return /^07[0-9]{9}$/.test(normIraqPhoneLocal(p)); }
 
+  /* ================= nb-v1.39: واجهة التفعيل الجديدة + الدخول بحساب Google ================= */
+  (function actCss(){
+    if(document.getElementById("actCss2")) return;
+    const st=document.createElement("style"); st.id="actCss2";
+    st.textContent=
+      "#actOverlay{background:radial-gradient(1200px 600px at 85% -10%,#1f5f7a55,transparent),radial-gradient(900px 500px at -10% 110%,#5e174f44,transparent),linear-gradient(160deg,#0b1d2a,#10293a 55%,#0e2230)!important}"+
+      "#actOverlay .act-card{max-width:440px!important;margin:max(46px,6vh) auto 30px!important;padding:26px 22px 18px!important;border-radius:24px!important;background:rgba(255,255,255,.06)!important;border:1px solid rgba(255,255,255,.12)!important;box-shadow:0 30px 80px rgba(0,0,0,.45)!important}"+
+      "#actOverlay #actLogo{width:64px;height:64px;margin:0 auto 10px!important;border-radius:18px;display:grid;place-items:center;background:linear-gradient(135deg,#ffd54f,#ff9800);font-size:34px!important;box-shadow:0 10px 26px rgba(255,152,0,.35)}"+
+      "#actOverlay #actTitle{color:#fff!important;font-size:22px!important;font-weight:900}#actOverlay #actSubtitle{color:#b8c7d1;opacity:1!important;line-height:1.8}"+
+      ".act-f{display:grid;gap:12px}.act-lbl{display:block;font-size:12.5px;font-weight:800;color:#9fb3c0;margin:0 0 5px}"+
+      ".act-in{width:100%;box-sizing:border-box;padding:13px 14px;border-radius:13px;border:1.5px solid rgba(255,255,255,.14);background:rgba(0,0,0,.28);color:#fff;font-size:15px;font-family:inherit;outline:none;transition:border-color .15s,box-shadow .15s}"+
+      ".act-in:focus{border-color:#4fc3f7;box-shadow:0 0 0 3px rgba(79,195,247,.18)}.act-in::placeholder{color:#7f95a3}.act-in[readonly]{opacity:.75}"+
+      ".act-in.ltr{direction:ltr;text-align:left}.act-in.ph{direction:ltr;text-align:center;font-family:monospace;font-size:17px;letter-spacing:2px;border-color:#25d36688}"+
+      ".act-pw{position:relative}.act-pw .act-in{padding-left:46px}.act-eye{position:absolute;left:6px;top:50%;transform:translateY(-50%);border:0;background:transparent;color:#9fb3c0;font-size:18px;cursor:pointer;width:36px;height:36px;border-radius:10px}"+
+      ".act-btn{width:100%;border:0;border-radius:14px;padding:14px;font:900 15px inherit;font-family:inherit;cursor:pointer;color:#fff;background:linear-gradient(135deg,#1e88e5,#1565c0);box-shadow:0 8px 20px rgba(21,101,192,.35);transition:transform .1s,filter .15s}"+
+      ".act-btn:active{transform:scale(.98)}.act-btn:hover{filter:brightness(1.07)}.act-btn[disabled]{opacity:.6;cursor:default}"+
+      ".act-btn.green{background:linear-gradient(135deg,#43a047,#2e7d32);box-shadow:0 8px 20px rgba(46,125,50,.35)}.act-btn.wa{background:linear-gradient(135deg,#25d366,#128c4a);box-shadow:0 8px 20px rgba(37,211,102,.3)}"+
+      ".act-btn.orange{background:linear-gradient(135deg,#fb8c00,#e65100);box-shadow:0 8px 20px rgba(230,81,0,.3)}.act-btn.ghost{background:rgba(255,255,255,.09);box-shadow:none;font-weight:800;font-size:14px;padding:12px}"+
+      ".act-g{width:100%;display:flex;align-items:center;justify-content:center;gap:10px;border:0;border-radius:14px;padding:13px;background:#fff;color:#1f1f1f;font:800 15px inherit;font-family:inherit;cursor:pointer;box-shadow:0 8px 22px rgba(0,0,0,.25)}"+
+      ".act-g svg{width:20px;height:20px;flex:0 0 auto}.act-g:active{transform:scale(.98)}.act-g[disabled]{opacity:.65}"+
+      ".act-or{display:flex;align-items:center;gap:10px;color:#7f95a3;font-size:12.5px;font-weight:800;margin:2px 0}.act-or:before,.act-or:after{content:'';flex:1;height:1px;background:rgba(255,255,255,.14)}"+
+      ".act-links{display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;font-size:13px}.act-links a{color:#81d4fa;text-decoration:none;font-weight:800}.act-links a.warm{color:#ffcc80}"+
+      ".act-note{font-size:12.5px;color:#b8c7d1;line-height:1.9;text-align:center;margin:0}"+
+      ".act-box{border-radius:16px;padding:14px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);font-size:13.5px;line-height:1.9}"+
+      ".act-box.info{background:rgba(79,195,247,.08);border-color:rgba(79,195,247,.25)}.act-box.warn{background:rgba(255,183,77,.09);border-color:rgba(255,183,77,.3)}.act-box.bad{background:rgba(239,83,80,.1);border-color:rgba(239,83,80,.3)}.act-box.ok{background:rgba(102,187,106,.1);border-color:rgba(102,187,106,.3)}"+
+      ".act-kv{display:grid;grid-template-columns:auto 1fr;gap:6px 12px;font-size:13px}.act-kv span{color:#9fb3c0}.act-kv b{font-weight:800;overflow:hidden;text-overflow:ellipsis}.act-kv .ltr{direction:ltr;text-align:right;font-family:monospace}"+
+      ".act-state{text-align:center;display:grid;gap:8px;justify-items:center}.act-state .ic{width:74px;height:74px;border-radius:50%;display:grid;place-items:center;font-size:36px;background:rgba(255,255,255,.08)}"+
+      ".act-state h3{margin:0;font-size:18px}.act-live{display:inline-flex;align-items:center;gap:7px;border-radius:20px;padding:5px 12px;background:rgba(34,197,94,.14);color:#86efac;font-size:12.5px;font-weight:800}"+
+      ".act-live i{width:9px;height:9px;border-radius:50%;background:#22c55e;animation:actLive 1.8s infinite}@keyframes actLive{0%{box-shadow:0 0 0 0 rgba(34,197,94,.6)}70%{box-shadow:0 0 0 7px rgba(34,197,94,0)}100%{box-shadow:0 0 0 0 rgba(34,197,94,0)}}"+
+      ".act-row2{display:grid;grid-template-columns:1fr 1fr;gap:10px}.act-who{display:flex;align-items:center;gap:10px;border-radius:14px;padding:10px 12px;background:#fff;color:#1f1f1f;font-size:13.5px}.act-who b{display:block}.act-who .em{direction:ltr;text-align:right;color:#5f6368;font-size:12.5px}"+
+      "#actOverlay #actMsg{border-radius:12px!important;font-weight:700;line-height:1.8}";
+    document.head.appendChild(st);
+    try{ const ov=document.getElementById("actOverlay"); const card=ov&&[].filter.call(ov.children,function(c){ return c.tagName==="DIV"; })[0]; if(card) card.classList.add("act-card"); }catch(e){}
+  })();
+  const G_ICON='<svg viewBox="0 0 48 48" aria-hidden="true"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg>';
+  function gBtn(id,label){ return '<button type="button" class="act-g" id="'+id+'">'+G_ICON+'<span>'+(label||"المتابعة بحساب Google")+'</span></button>'; }
+  function pwField(id,ph){ return '<div class="act-pw"><input id="'+id+'" type="password" class="act-in ltr" placeholder="'+(ph||"")+'" autocomplete="current-password"><button type="button" class="act-eye" data-eye="'+id+'" aria-label="إظهار كلمة السر">👁️</button></div>'; }
+  function wireEyes(){ [].forEach.call(document.querySelectorAll("#actBody [data-eye]"),function(b){ b.onclick=function(){ const i=document.getElementById(b.getAttribute("data-eye")); if(i){ i.type=i.type==="password"?"text":"password"; b.textContent=i.type==="password"?"👁️":"🙈"; } }; }); }
+  function onEnter(id,fn){ const el=document.getElementById(id); if(el) el.addEventListener("keydown",function(e){ if(e.key==="Enter"){ e.preventDefault(); fn(); } }); }
+  function waAdmin(text){ try{ window.open("https://wa.me/9647801381381?text="+encodeURIComponent(text||""),"_blank"); }catch(e){} }
+  function acctBox(acc){
+    acc=acc||currentAccount()||{};
+    return '<div class="act-box"><div class="act-kv"><span>📧 الحساب</span><b class="ltr">'+esc(acc.email||state.activeEmail||"")+'</b>'+(acc.schoolName?'<span>🏫 المدرسة</span><b>'+esc(acc.schoolName)+'</b>':'')+'<span>💻 الجهاز</span><b>'+esc(deviceType())+'</b>'+(acc.phone?'<span>📱 الهاتف</span><b class="ltr">'+esc(acc.phone)+'</b>':'')+'</div></div>';
+  }
+
+  /* ---------- Google: نفس البريد = نفس الحساب (لا يتغير شيء للمفعّلين سابقاً) ---------- */
+  const AUTH_SRC="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js";
+  function loadAuth(){
+    return new Promise(function(res,rej){
+      if(typeof firebase==="undefined"){ rej(new Error("لا يوجد اتصال بالإنترنت")); return; }
+      if(firebase.auth){ res(); return; }
+      const sc=document.createElement("script"); sc.src=AUTH_SRC; sc.onload=function(){ firebase.auth?res():rej(new Error("تعذر تحميل خدمة Google")); }; sc.onerror=function(){ rej(new Error("تعذر تحميل خدمة Google — تحقق من الإنترنت")); }; document.head.appendChild(sc);
+    });
+  }
+  /* معرّف Google للمشروع يُقرأ من إعدادات Firebase نفسها (لا يُكتب يدوياً) */
+  function googleClientId(){
+    /* 1) المعرّف المحفوظ من لوحة التفعيل (G إعداد Google)، 2) وإلا يُقرأ من إعدادات Firebase */
+    return new Promise(function(res){ try{ fbRef("activation/config/googleWebClientId").once("value",function(s){ res(s.val()||""); },function(){ res(""); }); }catch(e){ res(""); } setTimeout(function(){ res(""); },8000); }).then(function(saved){
+      if(saved) return saved;
+      return fetch("https://www.googleapis.com/identitytoolkit/v3/relyingparty/getProjectConfig?key="+encodeURIComponent(FB_CFG.apiKey)).then(function(r){ return r.json(); }).then(function(j){
+        const g=((j&&j.idpConfig)||[]).filter(function(x){ return x&&x.provider==="google.com"; })[0];
+        if(!g||g.enabled===false||!g.clientId) throw new Error("x");
+        return g.clientId;
+      }).catch(function(){ throw new Error("الدخول بحساب Google لم يُجهَّز بعد في لوحة التفعيل (G إعداد Google)"); });
+    });
+  }
+  function inAndroidApp(){ const n=window.DaragatNative; return !!(n&&n.platform==="android") || /;\s*wv\)/i.test(navigator.userAgent||""); }
+  async function googleIdentity(){
+    if(!navigator.onLine) throw new Error("يلزم اتصال بالإنترنت لتسجيل الدخول بحساب Google");
+    if(!initFB()||!fbReady) throw new Error("لا يوجد اتصال بالإنترنت");
+    await loadAuth();
+    const n=window.DaragatNative; let cred=null;
+    if(n && typeof n.googleSignIn==="function"){
+      const cid=await googleClientId();
+      let r=await n.googleSignIn(cid);
+      if(typeof r==="string"){ try{ r=JSON.parse(r); }catch(e){} }
+      if(r==="cancel"||(r&&(r.cancelled||r.canceled))){ const c=new Error(""); c.cancel=true; throw c; }
+      if(!r||!r.idToken) throw new Error((r&&r.error)?("تعذر الدخول بحساب Google: "+r.error):"تعذر الدخول بحساب Google");
+      cred=await firebase.auth().signInWithCredential(firebase.auth.GoogleAuthProvider.credential(r.idToken));
+    } else if(inAndroidApp()){
+      throw new Error("الدخول بحساب Google يحتاج تحديث تطبيق الأندرويد (3.0.7). سجّل الدخول الآن بالبريد وكلمة السر.");
+    } else {
+      const pr=new firebase.auth.GoogleAuthProvider(); try{ pr.setCustomParameters({prompt:"select_account"}); }catch(e){}
+      try{ cred=await firebase.auth().signInWithPopup(pr); }
+      catch(e){ const code=String(e&&e.code||""); if(/popup-closed|cancelled-popup/.test(code)){ const c=new Error(""); c.cancel=true; throw c; } if(/popup-blocked|operation-not-supported|unauthorized-domain/.test(code)) throw new Error(code.indexOf("unauthorized-domain")>=0?"هذا الموقع غير مضاف في إعدادات Google بعد (Authorized domains)":"المتصفح منع نافذة Google — اسمح بالنوافذ المنبثقة أو استخدم البريد وكلمة السر"); throw new Error("تعذر الدخول بحساب Google"+(code?" ("+code+")":"")); }
+    }
+    const u=cred&&cred.user; const email=normEmail(u&&u.email);
+    if(!email) throw new Error("لم نحصل على البريد من حساب Google");
+    const out={email:email,name:(u&&u.displayName)||""};
+    try{ await firebase.auth().signOut(); }catch(e){}
+    return out;
+  }
+  function googleFlow(btn){
+    const b=document.getElementById(btn); if(!b) return;
+    b.onclick=function(){
+      b.disabled=true; showMsg("جاري الدخول بحساب Google…","");
+      googleIdentity().then(function(g){
+        const local=accountFind(g.email);
+        if(local){ hideMsg(); doLocalLogin(local,null); return; }
+        fbRef("activation/accounts/"+emailKeyOf(g.email)).once("value",function(snap){
+          const v=snap.val();
+          if(v){ hideMsg(); loginFromCloud(g.email,v,null); }
+          else screenGoogleRegister(g);
+        },function(err){ b.disabled=false; showMsg("تعذر الاتصال: "+((err&&err.message)||""),"err"); });
+      },function(e){ b.disabled=false; if(e&&e.cancel){ hideMsg(); return; } showMsg((e&&e.message)||"تعذر الدخول بحساب Google","err"); });
+    };
+  }
+
+  /* ---------- الدخول: حساب محلي على هذا الجهاز ---------- */
+  function doLocalLogin(local,pw){
+    state.activeEmail=local.email;
+    if(pw&&!local.password) local.password=pw;
+    const previousDeviceId=local.activeDeviceId;
+    local.activeDeviceId=deviceId();
+    if(!local.deviceHistory) local.deviceHistory=[];
+    if(!local.deviceHistory.find(function(x){ return x.id===deviceId(); })) local.deviceHistory.push({id:deviceId(),registeredAt:now(),info:deviceInfo()});
+    if(local.status==="approved" && previousDeviceId && previousDeviceId!==deviceId()){
+      requestTransfer(local); saveState(state);
+      showMsg("📩 أُرسل طلب نقل الاشتراك لهذا الجهاز إلى الإدارة","ok"); setTimeout(resume,800); return;
+    }
+    saveState(state); initFB(); listenAccount(local); cloudValidateNow();
+    showMsg("✅ تم تسجيل الدخول","ok"); setTimeout(resume,600);
+  }
+  function requestTransfer(acc){
+    acc.status="device_transfer_pending";
+    try{ initFB(); fbRef("activation/accounts/"+emailKeyOf(acc.email)).update({activeDeviceId:deviceId(),status:"device_transfer_pending",transferRequestedAt:firebase.database.ServerValue.TIMESTAMP,lastSeenDevice:Object.assign({id:deviceId()},deviceInfo())}); }catch(e){}
+  }
+  /* ---------- الدخول: حساب موجود في السحابة (جهاز جديد) ---------- */
+  function loginFromCloud(email,v,pw){
+    const stopped=!!(v.accountDisabled||["suspended","disabled","deleted","cancelled"].includes(v.status));
+    const acc={
+      email:email, name:v.name||"", schoolName:v.schoolName||"", passwordHash:v.passwordHash, password:v.password||pw||"",
+      status: stopped?"suspended":(v.status==="approved"?"approved":(v.status||"trial")),
+      accountDisabled:!!v.accountDisabled, disabledReason:v.disabledReason||"",
+      registeredAt:v.registeredAt||now(), expiresAt:v.expiresAt||0, activatedAt:v.activatedAt||0, paidAmount:v.paidAmount||"",
+      plan:normalizePlan(v.plan||v.planCode), phone:v.phone||"", activeDeviceId:deviceId(), cloudConfirmed:true,
+      deviceHistory:v.deviceHistory||[{id:deviceId(),registeredAt:now(),info:deviceInfo()}]
+    };
+    if(v.authProvider) acc.authProvider=v.authProvider;
+    state.accounts=state.accounts.filter(function(a){ return a.email!==email; });
+    state.accounts.push(acc); state.activeEmail=email; saveState(state);
+    const ref=fbRef("activation/accounts/"+emailKeyOf(email));
+    try{ ref.child("deviceHistory").transaction(function(list){ list=list||[]; if(!list.find(function(x){ return x&&x.id===deviceId(); })) list.push({id:deviceId(),registeredAt:now(),info:deviceInfo()}); return list; }); }catch(e){}
+    function finish(msg,kind){ const st=document.getElementById("loginStatus"); if(st) st.textContent=""; showMsg(msg,kind||"ok"); setTimeout(resume,800); }
+    if(stopped){ finish("⛔ هذا الحساب موقوف من الإدارة","err"); return; }
+    if(acc.status==="approved"){
+      /* nb-v1.39: إذا خرج صاحب الحساب من جهازه القديم ينتقل الاشتراك تلقائياً، وإلا يُرسل طلب نقل للإدارة */
+      claimDevice(email,function(ok){
+        if(ok){ acc.status="approved"; acc.activeDeviceId=deviceId(); saveState(state); finish("✅ تم تسجيل الدخول — انتقل اشتراكك إلى هذا الجهاز"); }
+        else { requestTransfer(acc); saveState(state); finish("📩 حسابك مفعّل على جهاز آخر لم يسجّل الخروج — أُرسل طلب نقل الاشتراك للإدارة"); }
+      });
+      return;
+    }
+    try{ ref.update({activeDeviceId:deviceId(),status:acc.status==="trial"||!acc.status?"trial":acc.status}); }catch(e){}
+    finish("✅ تم تسجيل الدخول بنجاح");
+  }
+
   function screenRegister(){
-    title().textContent="إنشاء حساب";
-    subtitle().textContent="أنشئ حسابك لبدء الفترة التجريبية المجانية (3 أيام)";
-    body().innerHTML=`<div style="display:grid;gap:10px">
-      <div style="background:#e3f2fd30;border:1px solid #90caf955;border-radius:10px;padding:10px;font-size:12.5px;color:#bbdefb;line-height:1.7">
-        ⚠️ <b>رقم الهاتف مطلوب</b> لإتمام إنشاء الحساب (للتواصل معك عبر الواتساب عند التفعيل).
-      </div>
-      <input id="rName" placeholder="الاسم الكامل (اختياري)" style="padding:10px 12px;border-radius:8px;border:1px solid #ffffff33;background:#00000040;color:#fff;font-size:14px">
-      <input id="rSchoolName" placeholder="اسم المدرسة * (مطلوب)" required style="padding:10px 12px;border-radius:8px;border:2px solid #64b5f6;background:#00000040;color:#fff;font-size:14px">
-      <input id="rEmail" type="email" placeholder="البريد الإلكتروني" dir="ltr" style="padding:10px 12px;border-radius:8px;border:1px solid #ffffff33;background:#00000040;color:#fff;font-size:14px;text-align:left">
-      <input id="rPass" type="password" placeholder="كلمة السر (4 أحرف فأكثر)" dir="ltr" style="padding:10px 12px;border-radius:8px;border:1px solid #ffffff33;background:#00000040;color:#fff;font-size:14px;text-align:left">
-      <input id="rPass2" type="password" placeholder="تأكيد كلمة السر" dir="ltr" style="padding:10px 12px;border-radius:8px;border:1px solid #ffffff33;background:#00000040;color:#fff;font-size:14px;text-align:left">
-      <label style="font-size:13px;opacity:.95;display:block;margin-top:4px">📱 رقم الهاتف (واتساب) — <span style="color:#ffab91">بدون رمز الدولة</span>
-        <input id="rPhone" type="tel" dir="ltr" maxlength="11" placeholder="07xxxxxxxxx" style="width:100%;margin-top:6px;padding:12px;border-radius:10px;border:2px solid #25D366;background:#00000040;color:#fff;font-size:16px;text-align:center;font-family:monospace;letter-spacing:2px">
-      </label>
-      <button id="rBtn" style="margin-top:6px;padding:12px;border:none;border-radius:10px;background:#1976d2;color:#fff;font-weight:800;cursor:pointer;font-size:15px">✅ إنشاء الحساب وبدء التجربة</button>
-      <div style="text-align:center;margin-top:6px;font-size:13px">
-        لديك حساب بالفعل؟ <a href="#" id="toLogin" style="color:#80d8ff;text-decoration:none;font-weight:700">تسجيل الدخول</a>
-      </div>
-      <div id="rStatus" style="font-size:12px;text-align:center;opacity:.85"></div>
+    title().textContent="إنشاء حساب جديد";
+    subtitle().textContent="ابدأ الفترة التجريبية المجانية (3 أيام) — بدون أي دفع";
+    body().innerHTML=`<div class="act-f">
+      ${gBtn("rGoogle","إنشاء الحساب بحساب Google")}
+      <div class="act-or">أو أنشئ حساباً بالبريد الإلكتروني</div>
+      <div><label class="act-lbl">اسم المدرسة <b style="color:#ffab91">*</b></label><input id="rSchoolName" class="act-in" placeholder="مثال: مدرسة النبراس الابتدائية" required></div>
+      <div><label class="act-lbl">الاسم الكامل (اختياري)</label><input id="rName" class="act-in" placeholder="اسمك"></div>
+      <div><label class="act-lbl">البريد الإلكتروني</label><input id="rEmail" type="email" class="act-in ltr" placeholder="name@example.com" autocomplete="email"></div>
+      <div class="act-row2"><div><label class="act-lbl">كلمة السر</label>${pwField("rPass","4 أحرف فأكثر")}</div><div><label class="act-lbl">تأكيدها</label>${pwField("rPass2","")}</div></div>
+      <div><label class="act-lbl">📱 رقم الهاتف (واتساب) — بدون رمز الدولة <b style="color:#ffab91">*</b></label><input id="rPhone" type="tel" class="act-in ph" maxlength="11" placeholder="07xxxxxxxxx" inputmode="numeric"></div>
+      <button id="rBtn" class="act-btn">✅ إنشاء الحساب وبدء التجربة</button>
+      <div class="act-links" style="justify-content:center">لديك حساب بالفعل؟&nbsp;<a href="#" id="toLogin">تسجيل الدخول</a></div>
+      <div id="rStatus" class="act-note"></div>
     </div>`;
-    hideMsg();
+    hideMsg(); wireEyes(); googleFlow("rGoogle");
     document.getElementById("toLogin").onclick=function(e){e.preventDefault();screenLogin();};
     document.getElementById("rBtn").onclick=function(){
       const name=document.getElementById("rName").value.trim();
@@ -17359,206 +17579,139 @@ if(document.readyState==='loading'){
       if(pw!==pw2){ showMsg("كلمة السر غير متطابقة","err"); return; }
       if(!validIraqPhone(phone)){ showMsg("أدخل رقم هاتف عراقي صحيح يبدأ بـ 07 (11 رقم) بدون رمز الدولة، مثال: 07801381381","err"); return; }
       if(accountFind(email)){ showMsg("يوجد حساب بهذا البريد مسبقاً على هذا الجهاز — سجّل الدخول","err"); return; }
-      document.getElementById("rStatus").textContent="جاري إنشاء الحساب…";
-      const d=deviceInfo();
-      const acc = {
-        email, name, schoolName, password:pw, passwordHash:hashPw(pw), phone,
-        status:"trial", registeredAt:now(), expiresAt:now()+3*86400000, activeDeviceId:deviceId(),
-        deviceHistory:[{id:deviceId(), registeredAt:now(), info:d}]
-      };
-      state.accounts.push(acc); state.activeEmail=email; saveState(state);
-      if(typeof APP!=="undefined"&&APP.school){APP.school.name=schoolName;saveApp();}
-      initFB();
-      syncToCloud(acc,function(cloudReady){
-        // Start the real-time admin/license listener only after the initial
-        // customer record has been written successfully.
-        if(cloudReady) listenAccount(acc);
-      });
-      document.getElementById("rStatus").textContent="";
-      showMsg("✅ تم إنشاء الحساب بنجاح، جاري الدخول...","ok");
-      setTimeout(resume, 600);
+      createAccount({email:email,name:name,schoolName:schoolName,password:pw,phone:phone});
+    };
+  }
+  function createAccount(o){
+    const st=document.getElementById("rStatus"); if(st) st.textContent="جاري إنشاء الحساب…";
+    const d=deviceInfo();
+    const acc = {
+      email:o.email, name:o.name||"", schoolName:o.schoolName, password:o.password||"", passwordHash:hashPw(o.password||("g:"+Math.random().toString(36).slice(2)+now())), phone:o.phone,
+      status:"trial", registeredAt:now(), expiresAt:now()+3*86400000, activeDeviceId:deviceId(),
+      deviceHistory:[{id:deviceId(), registeredAt:now(), info:d}]
+    };
+    if(o.provider) acc.authProvider=o.provider;
+    state.accounts.push(acc); state.activeEmail=o.email; saveState(state);
+    if(typeof APP!=="undefined"&&APP.school){APP.school.name=o.schoolName;saveApp();}
+    initFB();
+    syncToCloud(acc,function(cloudReady){
+      if(cloudReady){ if(acc.authProvider){ try{ fbRef("activation/accounts/"+emailKeyOf(acc.email)).update({authProvider:acc.authProvider}); }catch(e){} } listenAccount(acc); }
+    });
+    if(st) st.textContent="";
+    showMsg("✅ تم إنشاء الحساب بنجاح، جاري الدخول...","ok");
+    setTimeout(resume, 600);
+  }
+  /* حساب Google جديد: نكمل اسم المدرسة ورقم الهاتف فقط (بلا كلمة سر) */
+  function screenGoogleRegister(g){
+    title().textContent="إكمال إنشاء الحساب";
+    subtitle().textContent="خطوة أخيرة: اسم المدرسة ورقم الواتساب";
+    body().innerHTML=`<div class="act-f">
+      <div class="act-who">${G_ICON.replace('<svg','<svg style="width:26px;height:26px"')}<div style="min-width:0"><b>${esc(g.name||"حساب Google")}</b><div class="em">${esc(g.email)}</div></div></div>
+      <div><label class="act-lbl">اسم المدرسة <b style="color:#ffab91">*</b></label><input id="gSchool" class="act-in" placeholder="مثال: مدرسة النبراس الابتدائية"></div>
+      <div><label class="act-lbl">الاسم الكامل</label><input id="gName" class="act-in" value="${esc(g.name||"")}"></div>
+      <div><label class="act-lbl">📱 رقم الهاتف (واتساب) — بدون رمز الدولة <b style="color:#ffab91">*</b></label><input id="gPhone" type="tel" class="act-in ph" maxlength="11" placeholder="07xxxxxxxxx" inputmode="numeric"></div>
+      <button id="gBtn" class="act-btn">✅ إنشاء الحساب وبدء التجربة</button>
+      <button id="gBack" class="act-btn ghost">رجوع</button>
+      <div id="rStatus" class="act-note"></div>
+    </div>`;
+    hideMsg();
+    document.getElementById("gBack").onclick=function(){ screenLogin(); };
+    document.getElementById("gBtn").onclick=function(){
+      const sn=document.getElementById("gSchool").value.trim(), ph=normIraqPhoneLocal(document.getElementById("gPhone").value);
+      if(!sn){ showMsg("اسم المدرسة مطلوب","err"); return; }
+      if(!validIraqPhone(ph)){ showMsg("أدخل رقم هاتف عراقي صحيح يبدأ بـ 07 (11 رقم)","err"); return; }
+      createAccount({email:g.email,name:document.getElementById("gName").value.trim(),schoolName:sn,password:"",phone:ph,provider:"google"});
     };
   }
 
   function screenLogin(){
     title().textContent="تسجيل الدخول";
-    subtitle().textContent="سجّل دخولك للمتابعة";
-    body().innerHTML=`<div style="display:grid;gap:10px">
-      <input id="lEmail" type="email" placeholder="البريد الإلكتروني" dir="ltr" style="padding:10px 12px;border-radius:8px;border:1px solid #ffffff33;background:#00000040;color:#fff;font-size:14px;text-align:left">
-      <input id="lPass" type="password" placeholder="كلمة السر" dir="ltr" style="padding:10px 12px;border-radius:8px;border:1px solid #ffffff33;background:#00000040;color:#fff;font-size:14px;text-align:left">
-      <button id="lBtn" style="margin-top:6px;padding:12px;border:none;border-radius:10px;background:#388e3c;color:#fff;font-weight:800;cursor:pointer;font-size:15px">دخول</button>
-      <div style="text-align:center;font-size:13px">
-        لا تملك حساباً؟ <a href="#" id="toReg" style="color:#80d8ff;text-decoration:none;font-weight:700">إنشاء حساب جديد</a>
-      </div>
-      <div style="text-align:center;font-size:13px">
-        <a href="#" id="toForgot" style="color:#ffab91;text-decoration:none;font-weight:700">🔑 هل نسيت كلمة السر؟</a>
-      </div>
-      <div id="loginStatus" style="font-size:12px;text-align:center;opacity:.8;margin-top:6px"></div>
+    subtitle().textContent="ادخل إلى حساب مدرستك للمتابعة";
+    body().innerHTML=`<div class="act-f">
+      ${gBtn("lGoogle")}
+      <div class="act-or">أو بالبريد الإلكتروني وكلمة السر</div>
+      <div><label class="act-lbl">البريد الإلكتروني</label><input id="lEmail" type="email" class="act-in ltr" placeholder="name@example.com" autocomplete="email"></div>
+      <div><label class="act-lbl">كلمة السر</label>${pwField("lPass","")}</div>
+      <button id="lBtn" class="act-btn green">دخول</button>
+      <div class="act-links"><a href="#" id="toForgot" class="warm">🔑 هل نسيت كلمة السر؟</a><span>لا تملك حساباً؟ <a href="#" id="toReg">إنشاء حساب جديد</a></span></div>
+      <div id="loginStatus" class="act-note"></div>
     </div>`;
-    hideMsg();
+    hideMsg(); wireEyes(); googleFlow("lGoogle");
     document.getElementById("toReg").onclick=function(e){e.preventDefault();screenRegister();};
     document.getElementById("toForgot").onclick=function(e){e.preventDefault();screenForgotPassword();};
-    document.getElementById("lBtn").onclick=function(){
+    function go(){
       const email=normEmail(document.getElementById("lEmail").value);
       const pw=document.getElementById("lPass").value;
       if(!email||!pw){ showMsg("أدخل البريد وكلمة السر","err"); return; }
-      // 1) Check local account first
       const local = accountFind(email);
-      if(local && local.passwordHash === hashPw(pw)){
-        state.activeEmail=email;
-        // Remember plaintext password for admin visibility & sync
-        if(!local.password) local.password=pw;
-        // Update device info, but keep the previous id for transfer detection.
-        const previousDeviceId=local.activeDeviceId;
-        local.activeDeviceId=deviceId();
-        const d=deviceInfo();
-        if(!local.deviceHistory) local.deviceHistory=[];
-        if(!local.deviceHistory.find(x=>x.id===deviceId())){
-          local.deviceHistory.push({id:deviceId(), registeredAt:now(), info:d});
-        }
-        // If account was approved but we're logging in on this device, request transfer
-        if(local.status==="approved" && previousDeviceId && previousDeviceId !== deviceId()){
-          local.status="device_transfer_pending";
-          saveState(state);
-          initFB();
-          const ekey=email.replace(/\./g,",");
-          fbRef("activation/accounts/"+ekey).update({
-            activeDeviceId:deviceId(),
-            status:"device_transfer_pending",
-            transferRequestedAt:firebase.database.ServerValue.TIMESTAMP,
-            lastSeenDevice:{id:deviceId(),...deviceInfo()}
-          });
-          listenAccount(local);
-          showMsg("📩 تم إرسال طلب نقل الجهاز للإدارة","ok");
-          setTimeout(resume,800);
-          return;
-        }
-        saveState(state); initFB(); listenAccount(local); cloudValidateNow();
-        showMsg("✅ تم تسجيل الدخول","ok"); setTimeout(resume, 600);
-        return;
-      }
-      // 2) Try to login via cloud (account created on another device)
+      if(local && local.passwordHash === hashPw(pw)){ doLocalLogin(local,pw); return; }
       document.getElementById("loginStatus").textContent="جاري التحقق من السحابة…";
       initFB();
       if(!fbReady){ showMsg("لا يوجد اتصال بالإنترنت، ولا يوجد حساب محلي بهذا البريد","err"); document.getElementById("loginStatus").textContent=""; return; }
-      const emailKey=email.replace(/\./g,",");
-      fbRef("activation/accounts/"+emailKey).once("value", function(snap){
+      fbRef("activation/accounts/"+emailKeyOf(email)).once("value", function(snap){
         const v=snap.val();
         if(!v){ showMsg("الحساب غير موجود","err"); document.getElementById("loginStatus").textContent=""; return; }
-        if(v.passwordHash !== hashPw(pw)){ showMsg("كلمة السر غير صحيحة","err"); document.getElementById("loginStatus").textContent=""; return; }
-        // Cloud account exists and password correct — create local copy & claim device
-        const acc={
-          email, name:v.name||"", schoolName:v.schoolName||"", passwordHash:v.passwordHash, password:v.password||pw,
-          status: v.accountDisabled||["suspended","disabled","deleted","cancelled"].includes(v.status) ? "suspended" : (v.status==="approved" ? "approved" : (v.status||"trial")),
-          accountDisabled:!!v.accountDisabled,
-          disabledReason:v.disabledReason||"",
-          registeredAt: v.registeredAt||now(),
-          expiresAt: v.expiresAt||0, activatedAt:v.activatedAt||0, paidAmount:v.paidAmount||"",
-          plan:normalizePlan(v.plan||v.planCode), phone:v.phone||"", activeDeviceId:deviceId(),
-          deviceHistory:v.deviceHistory||[{id:deviceId(),registeredAt:now(),info:deviceInfo()}]
-        };
-        // Push new device claim to cloud
-        state.accounts = state.accounts.filter(a=>a.email!==email);
-        state.accounts.push(acc); state.activeEmail=email; saveState(state);
-        fbRef("activation/accounts/"+emailKey+"/deviceHistory").transaction(function(list){
-          list=list||[];
-          if(!list.find(x=>x.id===deviceId())){ list.push({id:deviceId(),registeredAt:now(),info:deviceInfo()}); }
-          return list;
-        });
-        if(acc.status!=="approved"){
-          // Mark pending-device-change on cloud so admin sees it
-          fbRef("activation/accounts/"+emailKey).update({activeDeviceId:deviceId, status:acc.status==="trial"||!acc.status?"trial":acc.status});
-        }else{
-          // Request device transfer — admin must approve
-          acc.status="device_transfer_pending";
-          fbRef("activation/accounts/"+emailKey).update({
-            activeDeviceId:deviceId,
-            status:"device_transfer_pending",
-            transferRequestedAt:firebase.database.ServerValue.TIMESTAMP,
-            lastSeenDevice:{id:deviceId(),...deviceInfo()}
-          });
-          saveState(state);
-        }
-        listenAccount(acc);
-        document.getElementById("loginStatus").textContent="";
-        showMsg("✅ تم تسجيل الدخول بنجاح","ok"); setTimeout(resume,700);
+        if(v.passwordHash !== hashPw(pw)){ showMsg(v.authProvider==="google"?"هذا الحساب أُنشئ بحساب Google — استخدم زر «المتابعة بحساب Google»":"كلمة السر غير صحيحة","err"); document.getElementById("loginStatus").textContent=""; return; }
+        loginFromCloud(email,v,pw);
       }, function(err){ showMsg("تعذر الاتصال: "+err.message,"err"); document.getElementById("loginStatus").textContent=""; });
-    };
+    }
+    document.getElementById("lBtn").onclick=go; onEnter("lPass",go); onEnter("lEmail",function(){ document.getElementById("lPass").focus(); });
   }
-
 
   function screenForgotPassword(){
     title().textContent="استعادة كلمة السر";
     subtitle().textContent="أدخل بريدك ورقم هاتفك المسجّل";
-    body().innerHTML=`<div style="display:grid;gap:10px">
-      <div style="background:#fff3e030;border:1px solid #ffd54f55;border-radius:10px;padding:10px;font-size:12.5px;color:#ffe082;line-height:1.7">
-        🔑 أدخل بريدك الإلكتروني ورقم هاتفك المسجّل (بدون رمز الدولة، يبدأ بـ 07)، وسيتم فتح واتساب للإدارة لطلب إرسال رمز التفعيل.
-      </div>
-      <input id="fpEmail" type="email" placeholder="البريد الإلكتروني" dir="ltr" style="padding:10px 12px;border-radius:8px;border:1px solid #ffffff33;background:#00000040;color:#fff;font-size:14px;text-align:left">
-      <input id="fpPhone" type="tel" placeholder="رقم الهاتف بدون رمز الدولة (مثال: 07801381381)" dir="ltr" maxlength="11" style="padding:10px 12px;border-radius:8px;border:1px solid #ffffff33;background:#00000040;color:#fff;font-size:16px;text-align:center;font-family:monospace;letter-spacing:2px">
-      <button id="fpBtn" style="margin-top:6px;padding:12px;border:none;border-radius:10px;background:#ef6c00;color:#fff;font-weight:800;cursor:pointer;font-size:15px">📲 إرسال طلب الاستعادة</button>
-      <button id="fpBack" style="padding:10px;border:none;border-radius:10px;background:#ffffff22;color:#fff;font-weight:700;cursor:pointer">رجوع لتسجيل الدخول</button>
-      <div id="fpStatus" style="font-size:12px;text-align:center;opacity:.85;margin-top:4px"></div>
+    body().innerHTML=`<div class="act-f">
+      <div class="act-box warn">🔑 أدخل بريدك الإلكتروني ورقم هاتفك المسجّل (يبدأ بـ 07)، وسيُفتح واتساب الإدارة لطلب رمز الاستعادة.</div>
+      <div><label class="act-lbl">البريد الإلكتروني</label><input id="fpEmail" type="email" class="act-in ltr" placeholder="name@example.com"></div>
+      <div><label class="act-lbl">رقم الهاتف المسجّل</label><input id="fpPhone" type="tel" class="act-in ph" maxlength="11" placeholder="07xxxxxxxxx" inputmode="numeric"></div>
+      <button id="fpBtn" class="act-btn orange">📲 إرسال طلب الاستعادة</button>
+      <button id="fpCode" class="act-btn ghost">لديّ الرمز — تعيين كلمة سر جديدة</button>
+      <button id="fpBack" class="act-btn ghost">رجوع لتسجيل الدخول</button>
+      <div id="fpStatus" class="act-note"></div>
     </div>`;
     hideMsg();
     if(state.activeEmail){document.getElementById("fpEmail").value=state.activeEmail;document.getElementById("fpEmail").readOnly=true;}
     document.getElementById("fpBack").onclick=function(){screenLogin();};
+    document.getElementById("fpCode").onclick=function(){ const em=normEmail(document.getElementById("fpEmail").value); screenResetPassword(em); };
     document.getElementById("fpBtn").onclick=function(){
       const email=normEmail(document.getElementById("fpEmail").value);
-      let phone=(document.getElementById("fpPhone").value||"").replace(/[^0-9]/g,"");
-      // Normalize — strip country code if user typed it (964 / 00964 / +964)
-      if(phone.startsWith("00964")) phone=phone.slice(5);
-      else if(phone.startsWith("964")) phone=phone.slice(3);
-      // Now must be 10 digits (no leading 0) or 11 digits starting with 0
-      if(phone.length===10&&!phone.startsWith("0")) phone="0"+phone;
+      let phone=normIraqPhoneLocal(document.getElementById("fpPhone").value);
       if(!email){ showMsg("أدخل البريد الإلكتروني","err"); return; }
       if(!/^07[0-9]{9}$/.test(phone)){ showMsg("أدخل رقم هاتف عراقي صحيح يبدأ بـ 07 (11 رقم) بدون رمز الدولة، مثال: 07801381381","err"); return; }
       initFB();
       if(!fbReady){ showMsg("لا يوجد اتصال بالإنترنت","err"); return; }
-      const ekey=email.replace(/\./g,",");
+      const ekey=emailKeyOf(email);
       document.getElementById("fpStatus").textContent="جاري التحقق…";
       fbRef("activation/accounts/"+ekey).once("value",function(snap){
         const v=snap.val();
         if(!v){ document.getElementById("fpStatus").textContent=""; showMsg("الحساب غير موجود","err"); return; }
-        const regRaw=(v.phone||"").replace(/[^0-9]/g,"");
-        // Normalize registered phone
-        let reg=regRaw;
-        if(reg.startsWith("00964")) reg=reg.slice(5);
-        else if(reg.startsWith("964")) reg=reg.slice(3);
-        if(reg.length===10&&!reg.startsWith("0")) reg="0"+reg;
-        // Compare local numbers (last 10 digits: 7xxxxxxxxx)
-        if(reg.slice(-10)!==phone.slice(-10)){
-          document.getElementById("fpStatus").textContent="";
-          showMsg("رقم الهاتف لا يطابق الحساب","err"); return;
-        }
-        // Mark request
+        const reg=normIraqPhoneLocal(v.phone||"");
+        if(reg.slice(-10)!==phone.slice(-10)){ document.getElementById("fpStatus").textContent=""; showMsg("رقم الهاتف لا يطابق الحساب","err"); return; }
         fbRef("activation/accounts/"+ekey).update({passwordResetRequestedAt:firebase.database.ServerValue.TIMESTAMP},function(err){
           if(err){ document.getElementById("fpStatus").textContent=""; showMsg("خطأ: "+err.message,"err"); return; }
-          const msg=encodeURIComponent("🔑 طلب استعادة كلمة سر في تطبيق الاداره المدرسيه\nالبريد: "+email+"\nالهاتف: "+phone+"\nالاسم: "+(v.name||"غير معروف"));
-          window.open("https://wa.me/9647801381381?text="+msg,"_blank");
-          document.getElementById("fpStatus").textContent="✅ تم فتح واتساب للإدارة — انتظر الرمز (6 أرقام) ثم استخدم شاشة إدخال الرمز.";
+          waAdmin("🔑 طلب استعادة كلمة سر في تطبيق الاداره المدرسيه\nالبريد: "+email+"\nالهاتف: "+phone+"\nالاسم: "+(v.name||"غير معروف"));
+          document.getElementById("fpStatus").textContent="✅ فُتح واتساب الإدارة — عند وصول الرمز (6 أرقام) اضغط «لديّ الرمز».";
         });
       },function(err){ document.getElementById("fpStatus").textContent=""; showMsg("خطأ: "+err.message,"err"); });
     };
   }
 
-  function screenResetPassword(){
+  function screenResetPassword(prefEmail){
     title().textContent="إعادة تعيين كلمة السر";
     subtitle().textContent="أدخل الرمز المُرسَل واختر كلمة سر جديدة";
-    body().innerHTML=`<div style="display:grid;gap:10px">
-      <div style="background:#e3f2fd30;border:1px solid #90caf955;border-radius:10px;padding:10px;font-size:12.5px;color:#bbdefb;line-height:1.7">
-        🔐 أدخل الرمز المكوّن من 6 أرقام الذي أرسلته الإدارة، ثم اختر كلمة سر جديدة (4 أحرف على الأقل).
-      </div>
-      <input id="rpEmail" type="email" placeholder="البريد الإلكتروني" dir="ltr" style="padding:10px 12px;border-radius:8px;border:1px solid #ffffff33;background:#00000040;color:#fff;font-size:14px;text-align:left">
-      <input id="rpKey" type="text" inputmode="numeric" maxlength="6" placeholder="الرمز المكون من 6 أرقام" dir="ltr" style="padding:10px 12px;border-radius:8px;border:1px solid #ffffff33;background:#00000040;color:#fff;font-size:16px;text-align:center;letter-spacing:8px">
-      <input id="rpPass" type="password" placeholder="كلمة السر الجديدة (4 أحرف+)" dir="ltr" style="padding:10px 12px;border-radius:8px;border:1px solid #ffffff33;background:#00000040;color:#fff;font-size:14px;text-align:left">
-      <input id="rpPass2" type="password" placeholder="تأكيد كلمة السر" dir="ltr" style="padding:10px 12px;border-radius:8px;border:1px solid #ffffff33;background:#00000040;color:#fff;font-size:14px;text-align:left">
-      <button id="rpBtn" style="margin-top:6px;padding:12px;border:none;border-radius:10px;background:#388e3c;color:#fff;font-weight:800;cursor:pointer;font-size:15px">✅ حفظ كلمة السر الجديدة</button>
-      <button id="rpBack" style="padding:10px;border:none;border-radius:10px;background:#ffffff22;color:#fff;font-weight:700;cursor:pointer">رجوع لتسجيل الدخول</button>
-      <div id="rpStatus" style="font-size:12px;text-align:center;opacity:.85;margin-top:4px"></div>
+    body().innerHTML=`<div class="act-f">
+      <div class="act-box info">🔐 أدخل الرمز المكوّن من 6 أرقام الذي أرسلته الإدارة، ثم اختر كلمة سر جديدة.</div>
+      <div><label class="act-lbl">البريد الإلكتروني</label><input id="rpEmail" type="email" class="act-in ltr" placeholder="name@example.com"></div>
+      <div><label class="act-lbl">الرمز</label><input id="rpKey" type="text" inputmode="numeric" maxlength="6" class="act-in ph" placeholder="••••••" style="letter-spacing:8px"></div>
+      <div class="act-row2"><div><label class="act-lbl">كلمة السر الجديدة</label>${pwField("rpPass","4 أحرف+")}</div><div><label class="act-lbl">تأكيدها</label>${pwField("rpPass2","")}</div></div>
+      <button id="rpBtn" class="act-btn green">✅ حفظ كلمة السر الجديدة</button>
+      <button id="rpBack" class="act-btn ghost">رجوع لتسجيل الدخول</button>
+      <div id="rpStatus" class="act-note"></div>
     </div>`;
-    hideMsg();
-    if(state.activeEmail){document.getElementById("rpEmail").value=state.activeEmail;document.getElementById("rpEmail").readOnly=true;}
+    hideMsg(); wireEyes();
+    const pe=typeof prefEmail==="string"&&prefEmail?prefEmail:state.activeEmail;
+    if(pe){document.getElementById("rpEmail").value=pe; if(state.activeEmail) document.getElementById("rpEmail").readOnly=true;}
     document.getElementById("rpBack").onclick=function(){screenLogin();};
     document.getElementById("rpBtn").onclick=function(){
       const email=normEmail(document.getElementById("rpEmail").value);
@@ -17571,20 +17724,17 @@ if(document.readyState==='loading'){
       if(p1!==p2){ showMsg("كلمتا السر غير متطابقتين","err"); return; }
       initFB();
       if(!fbReady){ showMsg("لا يوجد اتصال بالإنترنت","err"); return; }
-      const ekey=email.replace(/\./g,",");
+      const ekey=emailKeyOf(email);
       document.getElementById("rpStatus").textContent="جاري التحقق…";
       fbRef("activation/accounts/"+ekey).once("value",function(snap){
         const v=snap.val();
         if(!v){ document.getElementById("rpStatus").textContent=""; showMsg("الحساب غير موجود","err"); return; }
         if(String(v.tempResetKey||"")!==key){ document.getElementById("rpStatus").textContent=""; showMsg("الرمز غير صحيح","err"); return; }
-        // Update passwordHash and clear reset fields
         const newHash=hashPw(p1);
-        const updates={passwordHash:newHash, password:p1, tempResetKey:null, passwordResetRequestedAt:null};
-        fbRef("activation/accounts/"+ekey).update(updates,function(err){
+        fbRef("activation/accounts/"+ekey).update({passwordHash:newHash, password:p1, tempResetKey:null, passwordResetRequestedAt:null},function(err){
           if(err){ document.getElementById("rpStatus").textContent=""; showMsg("خطأ: "+err.message,"err"); return; }
-          // Update local copy if exists
           const local=accountFind(email);
-          if(local){ local.passwordHash=newHash; local.password=p1; saveState(state); }
+          if(local){ local.passwordHash=newHash; local.password=p1; delete local.tempResetKey; saveState(state); }
           document.getElementById("rpStatus").textContent="✅ تم تحديث كلمة السر — يمكنك الآن تسجيل الدخول";
           setTimeout(function(){screenLogin();},1200);
         });
@@ -17592,45 +17742,31 @@ if(document.readyState==='loading'){
     };
   }
 
+  function liveBadge(){ return navigator.onLine?'<span class="act-live"><i></i>متصل — يتفعّل تلقائياً لحظة موافقة الإدارة</span>':'<span class="act-live" style="background:rgba(255,183,77,.14);color:#ffcc80"><i style="background:#ffb74d;animation:none"></i>لا يوجد إنترنت — سيتحقق عند الاتصال</span>'; }
+  function checkNowBtn(id){ const b=document.getElementById(id); if(!b) return; b.onclick=function(){ b.disabled=true; showMsg("جاري التحقق من حالة الحساب…",""); cloudValidateNow(function(ok){ b.disabled=false; if(!ok){ showMsg("تعذر الاتصال بالإنترنت","err"); return; } setTimeout(function(){ const v=canOpenApp(); if(v.ok){ showMsg("🎉 حسابك مفعّل!","ok"); setTimeout(resume,600); } else { showMsg("لم يُفعَّل بعد — سيتفعّل تلقائياً لحظة موافقة الإدارة",""); } },300); }); }; }
+
   function screenTrial(daysLeft){
     title().textContent="النسخة التجريبية";
     subtitle().textContent="متبقي لديك "+daysLeft+" يوم من الفترة التجريبية";
-    body().innerHTML=`<div style="background:#ffecb330;border:1px solid #ffd54f55;border-radius:12px;padding:14px;font-size:13px;line-height:1.8">
-      <b>معلومات الحساب:</b><br>
-      <span style="opacity:.85">📧 البريد:</span> <span dir="ltr" style="font-family:monospace">${esc(state.activeEmail||"")}</span><br>
-      <span style="opacity:.85">💻 الجهاز:</span> ${deviceType()}<br>
-      <span style="opacity:.85">🆓 الحالة:</span> تجريبية (${daysLeft} أيام متبقية)
-    </div>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px">
-      <button id="btnPhone" style="padding:12px;border:none;border-radius:10px;background:#25D366;color:#fff;font-weight:800;cursor:pointer;font-size:14px">💬 طلب تفعيل</button>
-      <button id="btnLogout" style="padding:12px;border:none;border-radius:10px;background:#ffffff22;color:#fff;font-weight:700;cursor:pointer;font-size:14px">خروج</button>
-    </div>
-    <p style="text-align:center;margin-top:14px;font-size:12px;opacity:.75">عند انتهاء الفترة التجريبية ستتم مطالبتك برقم هاتفك للتواصل عبر الواتساب لتفعيل الاشتراك.</p>`;
+    body().innerHTML=`<div class="act-f">${acctBox()}
+      <div class="act-row2"><button id="btnPhone" class="act-btn wa">💬 طلب تفعيل</button><button id="btnLogout" class="act-btn ghost">تسجيل خروج</button></div>
+      <p class="act-note">عند انتهاء الفترة التجريبية ستتم مطالبتك برقم هاتفك للتواصل عبر الواتساب لتفعيل الاشتراك.</p></div>`;
     hideMsg();
-    document.getElementById("btnPhone").onclick=screenPhone;
-    document.getElementById("btnLogout").onclick=function(){ state.activeEmail=null; saveState(state); resume(); };
+    document.getElementById("btnPhone").onclick=function(){ screenExpired(true); };
+    document.getElementById("btnLogout").onclick=logoutAndResume;
     showOverlay();
   }
 
   function screenExpired(early){
-    title().textContent=early?"🔑 تفعيل التطبيق":"انتهت الفترة التجريبية";
-    subtitle().textContent=early?"يمكنك تفعيل التطبيق الآن وعدم انتظار انتهاء الفترة التجريبية. أدخل رقم هاتفك وسنتواصل معك على الواتساب.":"يرجى إدخال رقم هاتفك للتواصل مع الإدارة لتفعيل الاشتراك";
-    body().innerHTML=`<div style="background:#ffcdd240;border:1px solid #ef535055;border-radius:12px;padding:14px;margin-bottom:14px;font-size:13px;line-height:1.9">
-      <b>معلوماتك المسجلة:</b><br>
-      📧 <span dir="ltr" style="font-family:monospace">${esc(state.activeEmail||"")}</span><br>
-      💻 ${deviceType()} (${deviceInfo().os} / ${deviceInfo().browser})<br>
-      🆔 <span class="code" style="font-family:monospace;direction:ltr" dir="ltr">${deviceId()}</span>
-    </div>
-    <div style="display:grid;gap:10px">
-      <label style="font-size:13px;opacity:.9;display:block">📱 رقم الهاتف (واتساب)
-        <input id="fPhone" type="tel" dir="ltr" placeholder="مثال: 07801381381" style="width:100%;margin-top:6px;padding:12px;border-radius:10px;border:2px solid #25D366;background:#00000040;color:#fff;font-size:16px;text-align:center;font-family:monospace;letter-spacing:1px">
-      </label>
-      <button id="btnSendPhone" style="padding:14px;border:none;border-radius:10px;background:#25D366;color:#fff;font-weight:800;cursor:pointer;font-size:16px">📨 إرسال طلب التفعيل</button>
-      <button id="btnLogout2" style="padding:10px;border:none;border-radius:10px;background:#ffffff22;color:#fff;cursor:pointer;font-size:13px">تسجيل خروج</button>
-      <p id="phoneHint" style="font-size:12px;opacity:.8;text-align:center;margin:6px 0 0">سنستخدم رقم الهاتف للتواصل معك عبر واتساب لاستكمال التفعيل.</p>
-    </div>`;
+    title().textContent=early?"🔑 تفعيل التطبيق":"انتهت الفترة";
+    subtitle().textContent=early?"فعّل التطبيق الآن دون انتظار انتهاء الفترة التجريبية — أدخل رقم الواتساب وسنتواصل معك.":"أدخل رقم الواتساب لطلب التفعيل، وسيتفعّل حسابك فور موافقة الإدارة";
+    body().innerHTML=`<div class="act-f">${acctBox()}
+      <div><label class="act-lbl">📱 رقم الهاتف (واتساب)</label><input id="fPhone" type="tel" class="act-in ph" maxlength="11" placeholder="07xxxxxxxxx" inputmode="numeric" value="${esc((currentAccount()&&currentAccount().phone)||"")}"></div>
+      <button id="btnSendPhone" class="act-btn wa">📨 إرسال طلب التفعيل</button>
+      <button id="btnLogout2" class="act-btn ghost">تسجيل خروج</button>
+      <p id="phoneHint" class="act-note">رقم الهاتف للتواصل معك عبر واتساب لاستكمال التفعيل.</p></div>`;
     hideMsg();
-    document.getElementById("btnLogout2").onclick=function(){ state.activeEmail=null; saveState(state); resume(); };
+    document.getElementById("btnLogout2").onclick=logoutAndResume;
     document.getElementById("btnSendPhone").onclick=function(){
       let p=normIraqPhoneLocal(document.getElementById("fPhone").value);
       if(!validIraqPhone(p)){ showMsg("أدخل رقم هاتف عراقي صحيح يبدأ بـ 07 (11 رقم) بدون رمز الدولة، مثال: 07801381381","err"); return; }
@@ -17638,58 +17774,62 @@ if(document.readyState==='loading'){
       acc.phone=p; acc.status="pending";
       saveState(state);
       initFB();
-      const emailKey=acc.email.replace(/\./g,",");
-      fbRef("activation/accounts/"+emailKey).update({
-        phone:p, status:"pending", requestedAt:firebase.database.ServerValue.TIMESTAMP, activeDeviceId:deviceId(),
-        lastSeenDevice:{id:deviceId(),...deviceInfo()}
-      });
+      try{ fbRef("activation/accounts/"+emailKeyOf(acc.email)).update({phone:p, status:"pending", requestedAt:firebase.database.ServerValue.TIMESTAMP, activeDeviceId:deviceId(), lastSeenDevice:Object.assign({id:deviceId()},deviceInfo())}); }catch(e){}
+      listenAccount(acc);
       screenPending();
     };
+    onEnter("fPhone",function(){ document.getElementById("btnSendPhone").click(); });
     showOverlay();
   }
 
   function screenPending(){
+    const acc=currentAccount()||{};
     title().textContent="تم استلام طلبك";
-    subtitle().textContent="جاري التواصل معك عبر الواتساب";
-    body().innerHTML=`<div style="background:#e8f5e940;border:1px solid #66bb6a55;border-radius:14px;padding:18px;text-align:center">
-      <div style="font-size:48px">📞</div>
-      <h3 style="margin:8px 0;color:#a5d6a7">بانتظار مكالمة/رسالة الإدارة</h3>
-      <p style="font-size:13px;line-height:1.9;color:#fff">
-        رقم هاتفك: <span dir="ltr" style="font-family:monospace;background:#00000040;padding:2px 8px;border-radius:6px;color:#80deea">${esc(currentAccount()&&currentAccount().phone||"")}</span><br>
-        سيتواصل معك فريق الدعم قريباً على رقم الواتساب أعلاه لاستكمال التفعيل.
-      </p>
-    </div>
-    <div style="text-align:center;margin-top:14px">
-      <button id="btnLogout3" style="padding:10px 16px;border:none;border-radius:8px;background:#ffffff22;color:#fff;cursor:pointer;font-size:13px">تسجيل خروج</button>
-    </div>`;
-    document.getElementById("btnLogout3").onclick=function(){ state.activeEmail=null; saveState(state); resume(); };
+    subtitle().textContent="سيتواصل معك الدعم على الواتساب لاستكمال التفعيل";
+    body().innerHTML=`<div class="act-f"><div class="act-box ok act-state"><div class="ic">📞</div><h3 style="color:#a5d6a7">بانتظار تفعيل الإدارة</h3>${liveBadge()}
+        <div style="font-size:13px">رقمك: <b dir="ltr" style="font-family:monospace">${esc(acc.phone||"")}</b></div></div>
+      ${acctBox(acc)}
+      <button id="btnWaAdmin" class="act-btn wa">💬 مراسلة الإدارة على واتساب</button>
+      <div class="act-row2"><button id="btnCheck" class="act-btn ghost">🔄 تحقق الآن</button><button id="btnLogout3" class="act-btn ghost">تسجيل خروج</button></div></div>`;
+    document.getElementById("btnLogout3").onclick=logoutAndResume;
+    document.getElementById("btnWaAdmin").onclick=function(){ waAdmin("مرحباً، أرغب بتفعيل اشتراك تطبيق الاداره المدرسيه\nالبريد: "+(acc.email||"")+"\nالمدرسة: "+(acc.schoolName||"")+"\nالهاتف: "+(acc.phone||"")); };
+    checkNowBtn("btnCheck");
+    if(acc.email) listenAccount(acc);
     showOverlay();
   }
 
   function screenAccountStopped(reason){
     title().textContent="⛔ تم إيقاف الحساب";
     subtitle().textContent="لا يمكن متابعة استخدام التطبيق بهذا الحساب";
-    body().innerHTML='<div style="background:#ffcdd240;border:1px solid #ef535055;border-radius:14px;padding:20px;text-align:center;line-height:1.9">'+
-      '<div style="font-size:54px">🛑</div>'+
-      '<h3 style="color:#ffab91;margin:8px 0">تم إيقاف الحساب من الإدارة</h3>'+
-      '<p style="font-size:13px">'+esc(reason||"تم إيقاف أو حذف الحساب")+'</p>'+
-      '<p style="font-size:12px;opacity:.8">تواصل مع الإدارة أو الدعم الفني للاستفسار.</p>'+
-      '<button id="btnStoppedLogout" style="margin-top:10px;padding:10px 18px;border:none;border-radius:8px;background:#ffffff22;color:#fff;cursor:pointer">تسجيل خروج</button></div>';
+    body().innerHTML='<div class="act-f"><div class="act-box bad act-state"><div class="ic">🛑</div><h3 style="color:#ffab91">تم إيقاف الحساب من الإدارة</h3><div style="font-size:13px">'+esc(reason||"تم إيقاف أو حذف الحساب")+'</div></div>'+
+      '<button id="btnWaStop" class="act-btn wa">💬 التواصل مع الإدارة</button><button id="btnStoppedLogout" class="act-btn ghost">تسجيل خروج</button></div>';
+    const w=document.getElementById("btnWaStop"); if(w) w.onclick=function(){ waAdmin("استفسار عن إيقاف حسابي في تطبيق الاداره المدرسيه\nالبريد: "+(state.activeEmail||"")); };
     const b=document.getElementById("btnStoppedLogout");
-    if(b)b.onclick=function(){state.activeEmail=null;saveState(state);resume();};
+    if(b)b.onclick=logoutAndResume;
     showOverlay();
   }
 
   function screenDeviceTransferPending(){
-    title().textContent="بانتظار موافقة الأدمن";
-    subtitle().textContent="تم إرسال طلب نقل الاشتراك لهذا الجهاز";
-    body().innerHTML='<div style="background:#e3f2fd40;border:1px solid #42a5f555;border-radius:14px;padding:18px;text-align:center">' +
-      '<div style="font-size:48px">🔄</div>' +
-      '<h3 style="color:#90caf9;margin:8px 0">طلب نقل اشتراك قيد المراجعة</h3>' +
-      '<p style="font-size:13px;line-height:1.9">تم إرسال طلب نقل الاشتراك لهذا الجهاز. بانتظار موافقة الإدارة. الجهاز القديم سيبقى يعمل لحين الموافقة.</p>' +
-      '<div style="margin-top:14px"><button id="btnLogoutX" style="padding:10px 16px;border:none;border-radius:8px;background:#ffffff22;color:#fff;cursor:pointer;font-size:13px">تسجيل خروج</button></div>' +
-      '</div>';
-    var b=document.getElementById("btnLogoutX"); if(b) b.onclick=function(){state.activeEmail=null;saveState(state);resume();};
+    const acc=currentAccount()||{};
+    title().textContent="نقل الاشتراك لهذا الجهاز";
+    subtitle().textContent="بانتظار موافقة الإدارة";
+    body().innerHTML='<div class="act-f"><div class="act-box info act-state"><div class="ic">🔄</div><h3 style="color:#90caf9">طلب نقل الاشتراك قيد المراجعة</h3>'+liveBadge()+
+      '<div style="font-size:13px;line-height:1.9">حسابك مفعّل على جهاز آخر لم يسجّل الخروج. يبقى الجهاز القديم يعمل حتى توافق الإدارة على النقل.<br><b>للنقل الفوري بلا انتظار:</b> سجّل الخروج من الجهاز القديم ثم اضغط «🔄 تحقق الآن».</div></div>'+acctBox(acc)+
+      '<button id="btnWaTr" class="act-btn wa">💬 مراسلة الإدارة على واتساب</button><div class="act-row2"><button id="btnCheckTr" class="act-btn ghost">🔄 تحقق الآن</button><button id="btnLogoutX" class="act-btn ghost">تسجيل خروج</button></div></div>';
+    document.getElementById("btnWaTr").onclick=function(){ waAdmin("طلب نقل اشتراك تطبيق الاداره المدرسيه إلى جهاز جديد\nالبريد: "+(acc.email||"")+"\nالجهاز الجديد: "+deviceType()); };
+    const cb=document.getElementById("btnCheckTr"); if(cb) cb.onclick=function(){
+      cb.disabled=true; showMsg("جاري التحقق…","");
+      /* إن حرّر الجهاز القديم الاشتراك (سجّل خروجه) ينتقل الآن تلقائياً */
+      initFB(); if(!fbReady){ cb.disabled=false; showMsg("تعذر الاتصال بالإنترنت","err"); return; }
+      fbRef("activation/accounts/"+emailKeyOf(acc.email)).once("value",function(snap){
+        const v=snap.val()||{};
+        if(v.status==="approved" && (!v.activeDeviceId||v.activeDeviceId===deviceId())){ claimDevice(acc.email,function(ok){ cb.disabled=false; if(ok){ acc.status="approved"; acc.activeDeviceId=deviceId(); saveState(state); showMsg("🎉 انتقل اشتراكك إلى هذا الجهاز","ok"); setTimeout(resume,700); } else showMsg("لم يُنقل بعد","" ); }); return; }
+        if(v.status==="device_transfer_pending" && v.releasedDevice && v.deviceReleasedAt){ /* لا شيء */ }
+        cb.disabled=false; applyCloudAccount(acc,v,function(ev){ if(ev&&ev.activated){ showMsg("🎉 تمت الموافقة على النقل","ok"); setTimeout(resume,700); } else showMsg("لم تتم الموافقة بعد — سينتقل تلقائياً لحظة الموافقة",""); });
+      },function(){ cb.disabled=false; showMsg("تعذر الاتصال بالإنترنت","err"); });
+    };
+    var b=document.getElementById("btnLogoutX"); if(b) b.onclick=logoutAndResume;
+    if(acc.email) listenAccount(acc);
     showOverlay();
   }
   function showSchoolSetupOverlay(){
@@ -17756,33 +17896,24 @@ if(document.readyState==='loading'){
     refresh();
   }
   function screenConflict(){
-    title().textContent="الحساب مُفعل على جهاز آخر";
-    subtitle().textContent="";
-    body().innerHTML=`<div style="background:#ffcdd240;border:1px solid #ef535055;border-radius:14px;padding:16px;text-align:center">
-      <div style="font-size:48px">⚠️</div>
-      <h3 style="color:#ef9a9a">هذا الحساب نشط على جهاز آخر</h3>
-      <p style="font-size:13px;line-height:1.9">
-        تم تفعيل اشتراكك على جهاز آخر. يسمح باستخدام الجهاز الجديد فقط. إذا ضغطت "متابعة على هذا الجهاز" فسيتم تسجيل خروج الجهاز الآخر.
-      </p>
-      <div style="display:grid;gap:8px;margin-top:10px">
-        <button id="btnClaim" style="padding:12px;border:none;border-radius:10px;background:#ef6c00;color:#fff;font-weight:800;cursor:pointer">🔄 متابعة على هذا الجهاز (ينقل الاشتراك)</button>
-        <button id="btnLogout4" style="padding:10px;border:none;border-radius:8px;background:#ffffff22;color:#fff;cursor:pointer">تسجيل خروج</button>
-      </div>
-    </div>`;
-    document.getElementById("btnLogout4").onclick=function(){ state.activeEmail=null; saveState(state); resume(); };
+    const acc=currentAccount()||{};
+    title().textContent="الحساب مفعّل على جهاز آخر";
+    subtitle().textContent="اشتراكك يعمل على جهاز واحد في نفس الوقت";
+    body().innerHTML=`<div class="act-f"><div class="act-box bad act-state"><div class="ic">⚠️</div><h3 style="color:#ef9a9a">هذا الحساب نشط الآن على جهاز آخر</h3>
+        <div style="font-size:13px;line-height:1.9">لنقل الاشتراك إلى هذا الجهاز: <b>سجّل الخروج من الجهاز الآخر</b> ثم اضغط «🔄 متابعة على هذا الجهاز» فينتقل فوراً.<br>أو أرسل طلب نقل وتوافق عليه الإدارة.</div></div>
+      ${acctBox(acc)}
+      <button id="btnClaim" class="act-btn orange">🔄 متابعة على هذا الجهاز</button>
+      <button id="btnLogout4" class="act-btn ghost">تسجيل خروج</button></div>`;
+    hideMsg(); document.getElementById("btnLogout4").onclick=logoutAndResume;
     document.getElementById("btnClaim").onclick=function(){
-      const acc=currentAccount(); if(!acc) return;
-      initFB();
-      const emailKey=acc.email.replace(/\./g,",");
-      fbRef("activation/accounts/"+emailKey).update({
-        activeDeviceId:deviceId(),
-        status:acc.status==="approved"?"approved":acc.status,
-        requestedTransfer:false,
-        lastSeenDevice:{id:deviceId(),...deviceInfo()}
+      const a=currentAccount(); if(!a) return;
+      const bt=document.getElementById("btnClaim"); bt.disabled=true; showMsg("جاري التحقق…","");
+      initFB(); if(!fbReady){ bt.disabled=false; showMsg("تعذر الاتصال بالإنترنت","err"); return; }
+      /* nb-v1.39: إن كان الاشتراك محرَّراً ينتقل فوراً، وإلا يُرسل طلب نقل صحيح للإدارة (كان يكتب حالة خاطئة في السحابة) */
+      claimDevice(a.email,function(ok){
+        if(ok){ a.status="approved"; a.activeDeviceId=deviceId(); saveState(state); showMsg("🎉 انتقل اشتراكك إلى هذا الجهاز","ok"); setTimeout(resume,700); return; }
+        requestTransfer(a); a.activeDeviceId=deviceId(); saveState(state); hideMsg(); screenDeviceTransferPending();
       });
-      acc.status="pending"; acc.activeDeviceId=deviceId();
-      saveState(state);
-      screenPending();
     };
     showOverlay();
   }
@@ -17994,7 +18125,7 @@ if(document.readyState==='loading'){
     else if(v.reason==="rejected"){
       title().textContent="تم رفض الاشتراك";
       subtitle().textContent="تواصل مع الإدارة";
-      body().innerHTML=`<div style="background:#ffcdd240;padding:14px;border-radius:10px;text-align:center"><p>تم رفض طلب التفعيل لهذا الحساب.</p><button class="ghost" onclick="(function(){var a=document.getElementById('actOverlay');a.style.display='none';if(window.__actResume)window.__actResume();})()" style="margin-top:10px;padding:10px 16px;border:none;border-radius:8px;background:#ffffff22;color:#fff;cursor:pointer">محاولة مرة أخرى</button></div>`;
+      body().innerHTML=`<div class="act-f"><div class="act-box bad act-state"><div class="ic">✋</div><h3>تم رفض طلب التفعيل لهذا الحساب</h3></div><button class="act-btn wa" onclick="window.open('https://wa.me/9647801381381','_blank')">💬 التواصل مع الإدارة</button><button class="act-btn ghost" onclick="(function(){var a=document.getElementById('actOverlay');a.style.display='none';if(window.__actResume)window.__actResume();})()">محاولة مرة أخرى</button></div>`;
       showOverlay();
     }
     // If no account at all (first launch), show register
@@ -18020,7 +18151,7 @@ if(document.readyState==='loading'){
 <!-- ===== AUTO UPDATE NOTIFICATION (small icon in topbar) ===== -->
 <script>
 (function(){
-  const APP_VERSION = "1.38.0";
+  const APP_VERSION = "1.39.0";
   const CHECK_EVERY_MINUTES = 30;
   const LS_ACCEPTED = "daragat_accepted_version";
   const LS_SNOOZE   = "daragat_update_snooze";
@@ -27250,9 +27381,11 @@ window.nbSmartImport={analyze:analyze,matchGrade:matchGrade,sig:sig,splitGradeSe
     if(!email){ alert('لا يوجد حساب مسجّل الدخول على هذا الجهاز.'); return; }
     var guest=false; try{ guest=!!(window.__DLS&&window.__DLS.G&&window.__DLS.G.isGuest()); }catch(e){}
     if(guest){ alert('هذا الجهاز يعمل كجهاز ملحق. للخروج استخدم «الخروج من وضع الجهاز الملحق» من شارة الاتصال.'); return; }
-    if(!confirm('تسجيل الخروج من الحساب ('+email+')؟\n\nستبقى بيانات المدرسة محفوظة على هذا الجهاز، وللعودة تحتاج البريد الإلكتروني وكلمة السر.')) return;
-    try{ st.activeEmail=null; localStorage.setItem(KEY,JSON.stringify(st)); }catch(e){ alert('تعذر تسجيل الخروج.'); return; }
+    if(!confirm('تسجيل الخروج من الحساب ('+email+')؟\n\nستبقى بيانات المدرسة محفوظة على هذا الجهاز.\nبعد الخروج يمكنك الدخول بحسابك من أي جهاز آخر وينتقل اشتراكك إليه تلقائياً.')) return;
     try{ sessionStorage.setItem('nbAfterLogout','1'); }catch(e){}
+    /* nb-v1.39: الخروج يحرّر الاشتراك من هذا الجهاز في السحابة، فيدخل الزبون من جهاز آخر دون انتظار موافقة */
+    if(typeof window.__actLogout==='function'){ var done=false, go=function(){ if(done) return; done=true; location.reload(); }; try{ window.__actLogout(go); }catch(e){ go(); } setTimeout(go,8000); return; }
+    try{ st.activeEmail=null; localStorage.setItem(KEY,JSON.stringify(st)); }catch(e){ alert('تعذر تسجيل الخروج.'); return; }
     location.reload();
   };
   /* بعد الخروج: تُفتح شاشة «تسجيل الدخول» مباشرة بدل «إنشاء حساب» */

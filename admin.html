@@ -273,6 +273,7 @@ body.admin-dark .stat{box-shadow:0 1px 3px #0008}
     <span class="cfg" id="fbStatus">جاري الاتصال…</span>
     <button class="hbtn key" onclick="switchTab('keygen')">🔑 مفتاح</button>
     <button class="hbtn pass" onclick="openChangePass()">🔒 تغيير كلمة السر</button>
+    <button class="hbtn" onclick="setGoogleClientId()" style="background:#fff;color:#1f1f1f" title="إعداد الدخول بحساب Google">G إعداد Google</button>
     <button class="hbtn set" onclick="switchTab('settings')">⚙️</button>
     <button class="hbtn" id="themeBtn" onclick="toggleAdminTheme()" style="background:#455a64">🌙</button>
     <button class="hbtn logout" onclick="logout()">🚪 خروج</button>
@@ -533,6 +534,17 @@ function changePlan(accountRef, plan, amount){
       renderAll();
     })
     .catch(e=>alert("❌ لم يتم تغيير مدة الاشتراك: "+e.message));
+}
+/* nb-v1.39: معرّف Google (Web client ID) يُحفظ في السحابة مرة واحدة، والبرنامج يقرؤه عند «المتابعة بحساب Google» في تطبيق الأندرويد */
+function setGoogleClientId(){
+  db.ref("activation/config/googleWebClientId").once("value").then(function(snap){
+    const cur=snap.val()||"";
+    const v=prompt("الصق «Web client ID» من Firebase:\nAuthentication ← Sign-in method ← Google ← Web SDK configuration\n(ينتهي بـ .apps.googleusercontent.com)",cur);
+    if(v===null) return;
+    const t=String(v).trim();
+    if(t && !/^[0-9]+-[a-z0-9]+\.apps\.googleusercontent\.com$/i.test(t)){ alert("المعرّف غير صحيح. يجب أن ينتهي بـ .apps.googleusercontent.com"); return; }
+    return db.ref("activation/config/googleWebClientId").set(t||null).then(function(){ alert(t?"✅ حُفظ معرّف Google":"حُذف المعرّف"); });
+  }).catch(function(e){ alert("❌ تعذر الحفظ: "+e.message); });
 }
 function approveTransfer(email){
   if(!confirm("✅ الموافقة على نقل الاشتراك للجهاز الجديد؟\nسيتم إيقاف الجهاز القديم."))return;
@@ -838,7 +850,7 @@ function renderTable(list,title){
       ${r.principalName&&r.name&&r.name!==r.principalName?`<div class="at-sub">${esc(r.name)}</div>`:""}`;
 
     /* 3) الإيميل */
-    const emailCell=`<span class="code at-ltr">${email}</span>`;
+    const emailCell=`<span class="code at-ltr">${email}</span>${r.authProvider==="google"?'<div class="at-sub">🟢 حساب Google</div>':""}${(r.deviceReleasedAt&&!r.activeDeviceId)?'<div class="at-sub">🔓 سجّل الخروج من جهازه — ينتقل لأول جهاز يدخل</div>':""}`;
 
     /* 4) كلمة السر */
     const pwCell=pw
