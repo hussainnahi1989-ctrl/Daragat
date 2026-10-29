@@ -18020,7 +18020,7 @@ if(document.readyState==='loading'){
 <!-- ===== AUTO UPDATE NOTIFICATION (small icon in topbar) ===== -->
 <script>
 (function(){
-  const APP_VERSION = "1.33.4";
+  const APP_VERSION = "1.34.0";
   const CHECK_EVERY_MINUTES = 30;
   const LS_ACCEPTED = "daragat_accepted_version";
   const LS_SNOOZE   = "daragat_update_snooze";
@@ -20670,6 +20670,10 @@ function unpackText(txt, kind){
 /* ---------------------------------------------------------------- UI hooks (filled by part F) */
 var UI = {approval: function(){}, changed: function(){}, lock: function(){}, unlock: function(){}, badge: function(){}};
 
+/* nb-v1.33.5: سجل أحداث الربط (آخر 25 حدثاً، يبقى بعد إعادة الفتح) لمعرفة سبب أي انقطاع */
+function dlog(s){ try{ var k = 'daragat_dls_log_v1', a = JSON.parse(localStorage.getItem(k) || '[]'); var d = new Date(); a.push(('0' + d.getHours()).slice(-2) + ':' + ('0' + d.getMinutes()).slice(-2) + ':' + ('0' + d.getSeconds()).slice(-2) + ' ' + s); if(a.length > 25) a = a.slice(-25); localStorage.setItem(k, JSON.stringify(a)); }catch(e){} }
+window.__dlsLog = function(){ try{ return JSON.parse(localStorage.getItem('daragat_dls_log_v1') || '[]'); }catch(e){ return []; } };
+dlog('page-load' + (window.AndroidDaragat ? ' (app)' : ''));
 /* ================================================================= HOST (الجهاز الرئيسي) */
 var H = (function(){
   var cfg = lsJson(K_HOST, null) || {};
@@ -20700,6 +20704,7 @@ var H = (function(){
     emit(); return peer;
   }
   function onClose(peer, why){
+    dlog('host: link closed (' + why + ') ' + (peer.name || '') + ' after ' + Math.round((now() - peer.since) / 1000) + 's' + (peer.link && peer.link.pc ? ' ice=' + peer.link.pc.iceConnectionState : ''));
     clearTimeout(peer.helloT);
     var was = peer.ready;
     delete peers[peer.pid]; delete pending[peer.pid]; peer.ready = false;
@@ -20722,6 +20727,10 @@ var H = (function(){
     peer.devId = id; peer.name = name; peer.sums = (m.sums && typeof m.sums === 'object') ? m.sums : null;
     if(cfg.blocked[id]){ peer.link.send({t: 'deny', r: 'blocked'}); setTimeout(function(){ peer.link.close('kicked'); }, 400); return; }
     var tr = cfg.trusted[id];
+    if(peer.preOk && !(tr && m.token && tr.token === m.token)){   /* nb-v1.34: دخل بكلمة مرور الاستقبال الصحيحة → يُعتمد فوراً */
+      cfg.trusted[id] = {name: name, token: rid(24), perm: 'rw', added: now(), last: now(), via: 'lan'}; save();
+      peer.perm = 'rw'; dlog('host: approved by password ' + name); welcome(peer); return;
+    }
     if(tr && m.token && tr.token === m.token){ peer.perm = tr.perm || 'rw'; tr.last = now(); tr.name = name; tr.via = peer.via; save(); welcome(peer); return; }
     peer.state = 'pending'; pending[peer.pid] = peer;
     peer.link.send({t: 'wait'}); emit(); try{ UI.approval(peer); }catch(e){}
@@ -20867,9 +20876,24 @@ var H = (function(){
   }
 
   /* nb-v1.32.4: عرض اتصال وصل عبر تطبيق الأندرويد داخل الشبكة المحلية (بلا إنترنت). الثقة تُفحص كالعادة في رسالة hello */
-  async function lanAnswer(offerText){
+  /* nb-v1.34: الاستقبال على الشبكة بكلمة مرور */
+  var badTries = [];
+  function passCheck(pass){
+    if(!cfg.lanOn) return 'not-receiving';
+    var t = now(); badTries = badTries.filter(function(x){ return t - x < 600000; });
+    if(badTries.length >= 5) return 'locked';
+    if(!cfg.lanPass || String(pass) !== String(cfg.lanPass)){ badTries.push(t); return 'bad-pass'; }
+    badTries = []; return 'ok';
+  }
+  function genPass(){ var s = ''; for(var i = 0; i < 6; i++) s += Math.floor(Math.random() * 10); return s; }
+  function setLan(on){ cfg.lanOn = !!on; if(on && !cfg.lanPass) cfg.lanPass = genPass(); save(); dlog('host: receiving ' + (on ? 'on' : 'off')); emit(); }
+  function setLanPass(p){ p = String(p || '').replace(/\D/g, ''); if(p.length < 4 || p.length > 8) return false; cfg.lanPass = p; badTries = []; save(); emit(); return true; }
+  function setLanName(n){ cfg.lanName = String(n || '').trim().slice(0, 40); save(); emit(); }
+  function lanName(){ return cfg.lanName || hostName(); }
+  async function lanAnswer(offerText, preOk){
+    dlog('host: offer received from app' + (preOk ? ' (password ok)' : ''));
     var pc = newPC(), got = false;
-    pc.ondatachannel = function(ev){ got = true; adopt(pc, ev.channel, 'lan'); };
+    pc.ondatachannel = function(ev){ got = true; var pr = adopt(pc, ev.channel, 'lan'); if(preOk) pr.preOk = true; };
     setTimeout(function(){ if(!got){ try{ pc.close(); }catch(e){} } }, 60000);
     await pc.setRemoteDescription(unpackText(offerText, 'o'));
     await pc.setLocalDescription(await pc.createAnswer()); await waitIce(pc, 900);   /* داخل الشبكة تُجمع العناوين خلال أجزاء من الثانية: رد أسرع حتى لا تنتهي مهلة التطبيق */
@@ -20884,7 +20908,7 @@ var H = (function(){
       blocked: Object.keys(cfg.blocked).map(function(id){ return {devId: id, name: cfg.blocked[id]}; })
     };
   }
-  return {enable: enable, disable: disable, renewCode: renewCode, approve: approve, reject: reject, kick: kick, kickAll: kickAll, block: block, unblock: unblock, forget: forget, forgetAll: forgetAll, setPerm: setPerm, manualOffer: manualOffer, lanAnswer: lanAnswer, view: view, onLocalRemove: onLocalRemove, cfg: cfg, isOn: function(){ return !!cfg.on; }, peers: function(){ return peers; }};
+  return {enable: enable, disable: disable, renewCode: renewCode, approve: approve, reject: reject, kick: kick, kickAll: kickAll, block: block, unblock: unblock, forget: forget, forgetAll: forgetAll, setPerm: setPerm, manualOffer: manualOffer, lanAnswer: lanAnswer, passCheck: passCheck, setLan: setLan, setLanPass: setLanPass, setLanName: setLanName, lanName: lanName, view: view, onLocalRemove: onLocalRemove, cfg: cfg, isOn: function(){ return !!cfg.on; }, peers: function(){ return peers; }};
 })();
 
 /* ================================================================= GUEST (الجهاز الملحق) */
@@ -20934,7 +20958,7 @@ var G = (function(){
             save(); pend = []; opsRx = 0; lastActivity = now();
             link.send({t: 'ready'});
             if(lostOps){ toast('تنبيه: ' + lostOps + ' تعديل لم يصل إلى الجهاز الرئيسي قبل الانقطاع وتم تجاهله', true); lostOps = 0; }
-            setSt('live', ''); startSums(); UI.unlock();
+            setSt('live', ''); startSums(); UI.unlock(); dlog('guest: live via ' + (tolerant ? 'qr' : 'lan/online'));
             done(null, {first: first, count: Object.keys(m.keys || {}).length});
             break;
           case 'key': opsRx++; flushLocal(m.k); pend = pend.filter(function(p){ return !(p.k === m.k && p.id <= m.upto); }); if(m.v === null){ lsDel(m.k); delete shadow[m.k]; } else replaceKey(m.k, m.v, replayFor(m.k)); break;
@@ -20953,6 +20977,7 @@ var G = (function(){
     });
   }
   function onClosed(why){
+    dlog('guest: link closed (' + why + ')');
     clearInterval(sumsT); sumsT = null;
     if(role === 'guest'){ role = null; sender = null; }
     lostOps = pend.length; pend = [];
@@ -21023,6 +21048,7 @@ var G = (function(){
       try{ r = await window.DaragatNative.dlsSignal(cfg.hostId, packText('o', pc.localDescription), 30000, [cfg.hostAddr || ''].concat(cfg.hostAddrs || []).filter(Boolean).join(',')); }catch(e){ r = null; }
       if(typeof r !== 'string' || r.indexOf('DLS1.') < 0){
         try{ pc.close(); }catch(e){}
+        dlog('guest: dlsSignal -> ' + String(r).slice(0, 20));
         lanDiag();
         throw err(r === 'notfound' ? 'لم يُعثر على الجهاز الرئيسي على الشبكة. افتح البرنامج على الجهاز الرئيسي وتأكد أن الجهازين على نفس الواي فاي.' : 'تعذر الوصول إلى الجهاز الرئيسي على الشبكة.');
       }
@@ -21042,12 +21068,40 @@ var G = (function(){
         var txt = typeof raw === 'string' ? raw : JSON.stringify(raw || '');
         var arr = null; try{ arr = JSON.parse(txt); }catch(e){}
         var lines = [];
-        (Array.isArray(arr) ? arr : (arr && (arr.events || arr.log || arr.items)) || []).forEach(function(x){ var s = typeof x === 'string' ? x : JSON.stringify(x); if(/dls|nsd|udp|scan|wifi|network|socket/i.test(s)) lines.push(s); });
+        (Array.isArray(arr) ? arr : (arr && (arr.events || arr.log || arr.items)) || []).forEach(function(x){ var s = typeof x === 'string' ? x : JSON.stringify(x); lines.push(s.replace(/"t":\d+,/, '')); });
         if(!lines.length){ var m = txt.match(/dlsSignal[^"\\]*/g); if(m) lines = m; }
-        window.__dlsLastDiag = 'searching hostId=' + ((cfg && cfg.hostId) || '-') + ' addr=' + ((cfg && cfg.hostAddr) || '-') + '\n' + (lines.slice(-2).join('\n') || '(لا يوجد سطر dlsSignal في سجل التطبيق)');
+        window.__dlsLastDiag = 'searching hostId=' + ((cfg && cfg.hostId) || '-') + ' addr=' + ((cfg && cfg.hostAddr) || '-') + '\n' + (lines.slice(-5).join('\n') || '(سجل التطبيق فارغ)') + '\n--- site ---\n' + window.__dlsLog().slice(-6).join('\n');
         try{ UI.changed(); }catch(e){}
       }, function(){});
     }catch(e){}
+  }
+
+  /* nb-v1.34: الربط بجهاز رئيسي مختار من قائمة الشبكة بكلمة مرور */
+  var NET_REASONS = {'bad-pass': 'كلمة المرور غير صحيحة.', 'not-receiving': 'الجهاز الرئيسي لا يستقبل أجهزة جديدة الآن. فعّل «الاستقبال» عليه من قسم الأجهزة الملحقة.', 'locked': 'محاولات خاطئة كثيرة. انتظر 10 دقائق ثم حاول مجدداً.', 'notfound': 'تعذر الوصول إلى الجهاز الرئيسي. تأكد أن البرنامج مفتوح عليه وأن الجهازين على نفس الواي فاي.'};
+  async function joinNet(host, pass, name){
+    var n = window.DaragatNative;
+    if(!n || typeof n.dlsSignal !== 'function') throw err('هذه الطريقة تعمل داخل تطبيق الأندرويد.');
+    if(!host || !host.dlsId) throw err('اختر جهازاً رئيسياً من القائمة.');
+    if(connecting) throw err('هناك محاولة اتصال جارية.');
+    connecting = true;
+    try{
+      setSt('connecting', 'جاري الاتصال بـ «' + (host.name || 'الجهاز الرئيسي') + '»…');
+      var pc = newPC(), dc = pc.createDataChannel('dls');
+      await pc.setLocalDescription(await pc.createOffer()); await waitIce(pc, 2500);
+      var hint = (host.ip && host.port) ? host.ip + ':' + host.port : '';
+      var r = null;
+      try{ r = await n.dlsSignal(host.dlsId, packText('o', pc.localDescription), 30000, hint, String(pass || '')); }catch(e){ r = null; }
+      dlog('guest: joinNet ' + (host.name || host.dlsId) + ' -> ' + String(r).slice(0, 16));
+      if(typeof r !== 'string' || r.indexOf('DLS1.') < 0){ try{ pc.close(); }catch(e){} setSt('idle', ''); throw err(NET_REASONS[r] || 'تعذر الربط بالجهاز الرئيسي.'); }
+      await pc.setRemoteDescription(unpackText(r, 'a'));
+      setSt('connecting', 'جاري إنشاء الاتصال المباشر داخل الشبكة…');
+      try{ await waitOpen(dc, 20000); }catch(e){ try{ pc.close(); }catch(x){} setSt('idle', ''); throw err('تعذر الاتصال المباشر. تأكد أن الجهازين على نفس شبكة الواي فاي.'); }
+      connecting = false;
+      var res = await attach(pc, dc, '', name, true, false);
+      if(cfg && hint && !cfg.hostAddr){ cfg.hostAddr = hint; save(); }
+      afterConnected(res);
+      return res;
+    } finally { connecting = false; }
   }
 
   /* ---- guest session lifecycle */
@@ -21111,7 +21165,7 @@ var G = (function(){
     location.reload();
   }
   function info(){ return {isGuest: isGuest(), st: st, msg: stMsg, perm: perm, cfg: cfg, rtt: link ? link.rtt : null, pend: pend.length, connecting: connecting}; }
-  return {gate: gate, isGuest: isGuest, joinOnline: joinOnline, joinManual: joinManual, connectNew: connectNew, acceptManual: acceptManual, leave: leave, info: info, reconnectNow: function(){ if(!isGuest()) return; stopReconnect(); startReconnect(); }, hasBackup: function(){ return !!lsGet(K_BACKUP); }};
+  return {gate: gate, isGuest: isGuest, joinNet: joinNet, joinOnline: joinOnline, joinManual: joinManual, connectNew: connectNew, acceptManual: acceptManual, leave: leave, info: info, reconnectNow: function(){ if(!isGuest()) return; stopReconnect(); startReconnect(); }, hasBackup: function(){ return !!lsGet(K_BACKUP); }};
 })();
 
 /* ================================================================= UI */
@@ -21415,15 +21469,18 @@ window.openAttachmentQr = function(){ openHostPanel(); };
 window.openAttachmentJoin = function(){ openJoin(); };
 window.__lanGuestGate = G.gate;
 /* nb-v1.32.4: واجهة تطبيق الأندرويد للربط المحلي بلا إنترنت (يستدعيها التطبيق فقط) */
-window.__dlsHostInfo = function(){ try{ var c = H.cfg; return {id: c.id, name: H.view().name, trusted: Object.keys(c.trusted || {}).length, on: !!c.on, guest: G.isGuest()}; }catch(e){ return null; } };
+window.__dlsHostInfo = function(){ try{ var c = H.cfg; return {id: c.id, name: H.lanName(), trusted: Object.keys(c.trusted || {}).length, on: !!c.on, lanOn: !!c.lanOn, receiving: !!c.lanOn, guest: G.isGuest()}; }catch(e){ return null; } };
 window.__dlsAns = window.__dlsAns || {};
-window.__dlsNativeAnswer = function(reqId, offerText){
+window.__dlsNativeAnswer = function(reqId, offerText, pass){
   reqId = String(reqId || '');
   window.__dlsAns[reqId] = {state: 'pending'};
   try{
     if(G.isGuest()) throw new Error('guest');
-    var c = H.cfg; if(!Object.keys(c.trusted || {}).length && !c.on) throw new Error('not-receiving');
-    H.lanAnswer(String(offerText || '')).then(function(a){ window.__dlsAns[reqId] = {state: 'ok', answer: a}; }, function(e){ window.__dlsAns[reqId] = {state: 'error', error: String(e && e.message || e)}; });
+    var c = H.cfg, preOk = false;
+    if(pass !== undefined && pass !== null && String(pass) !== ''){        /* جهاز جديد بكلمة مرور */
+      var chk = H.passCheck(pass); if(chk !== 'ok') throw new Error(chk); preOk = true;
+    } else if(!Object.keys(c.trusted || {}).length && !c.on) throw new Error('not-receiving');   /* إعادة اتصال جهاز مرتبط */
+    H.lanAnswer(String(offerText || ''), preOk).then(function(a){ window.__dlsAns[reqId] = {state: 'ok', answer: a}; }, function(e){ window.__dlsAns[reqId] = {state: 'error', error: String(e && e.message || e)}; });
   }catch(e){ window.__dlsAns[reqId] = {state: 'error', error: String(e && e.message || e)}; }
   setTimeout(function(){ try{ delete window.__dlsAns[reqId]; }catch(e){} }, 60000);
   return true;
@@ -21444,7 +21501,7 @@ window.__dlsNativeAnswer = function(reqId, offerText){
       btn = document.createElement('button'); btn.type = 'button'; btn.id = 'dlsEntry';
       btn.textContent = '🔗 لدي جهاز رئيسي: الدخول كجهاز ملحق';
       btn.style.cssText = 'position:fixed;left:50%;bottom:16px;transform:translateX(-50%);z-index:2147482500;border:0;border-radius:24px;padding:11px 18px;background:#00695c;color:#fff;font:900 13.5px inherit;font-family:inherit;box-shadow:0 6px 20px rgba(0,0,0,.4);cursor:pointer;direction:rtl';
-      btn.onclick = function(){ openJoin('code'); };
+      btn.onclick = function(){ if(typeof window.__dlsOpenNetJoin === 'function' && window.DaragatNative && typeof window.DaragatNative.listHosts === 'function') window.__dlsOpenNetJoin(); else openJoin('code'); };
       document.body.appendChild(btn);
     }
     if(btn) btn.style.display = show ? '' : 'none';
@@ -27241,6 +27298,24 @@ window.renderHomeView=function(){
       '.nbdev-pill{display:inline-block;border-radius:20px;padding:2px 10px;font-size:12px;font-weight:800}' +
       '.nbdev-pill.g{background:#e8f5e9;color:#2e7d32}.nbdev-pill.o{background:#fff3e0;color:#e65100}.nbdev-pill.b{background:#e3f2fd;color:#1565c0}' +
       '.nbdev-steps{margin:6px 0 0;padding-inline-start:20px;color:#455a64;font-size:13px;line-height:2}' +
+      '.nbdev-rx{display:grid;gap:12px}' +
+      '.nbdev-rxrow{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}' +
+      '.nbdev-sw{position:relative;width:58px;height:32px;border-radius:20px;border:0;background:#cfd8dc;cursor:pointer;transition:background .2s;flex:0 0 auto}' +
+      '.nbdev-sw::after{content:"";position:absolute;top:4px;right:4px;width:24px;height:24px;border-radius:50%;background:#fff;box-shadow:0 1px 4px rgba(0,0,0,.25);transition:right .2s}' +
+      '.nbdev-sw.on{background:#2e7d32}.nbdev-sw.on::after{right:30px}' +
+      '.nbdev-pass{font:900 26px/1 monospace;letter-spacing:6px;color:#004d40;background:#e0f2f1;border-radius:12px;padding:10px 16px;direction:ltr;display:inline-block}' +
+      '.nbdev-in{border:1px solid #cfd8dc;border-radius:10px;padding:9px 11px;font-family:inherit;font-size:14px;min-width:0;flex:1}' +
+      '.nbnet-bg{position:fixed;inset:0;z-index:2147483600;background:rgba(10,20,25,.62);display:flex;align-items:center;justify-content:center;padding:14px;direction:rtl}' +
+      '.nbnet-box{background:#fff;color:#263238;border-radius:18px;width:100%;max-width:470px;max-height:92vh;overflow:auto;box-shadow:0 24px 70px rgba(0,0,0,.45)}' +
+      '.nbnet-head{display:flex;align-items:center;justify-content:space-between;padding:14px 16px;border-bottom:1px solid #eceff1;position:sticky;top:0;background:#fff}' +
+      '.nbnet-body{padding:14px 16px 18px;display:grid;gap:12px;font-size:13.5px;line-height:1.9}' +
+      '.nbnet-host{display:flex;align-items:center;gap:12px;width:100%;text-align:right;border:1px solid #e3e8ec;border-radius:14px;padding:11px 13px;background:#fafcfc;cursor:pointer;font-family:inherit}' +
+      '.nbnet-host.sel{border-color:#00897b;background:#e0f2f1;box-shadow:0 0 0 2px rgba(0,137,123,.2)}' +
+      '.nbnet-host[disabled]{opacity:.55;cursor:not-allowed}' +
+      '.nbnet-msg{border-radius:10px;padding:8px 11px;font-size:13px}' +
+      '.nbnet-msg.err{background:#ffebee;color:#c62828}.nbnet-msg.ok{background:#e8f5e9;color:#2e7d32}.nbnet-msg.info{background:#e3f2fd;color:#1565c0}' +
+      '.nbnet-spin{display:inline-block;width:16px;height:16px;border:2px solid #b2dfdb;border-top-color:#00897b;border-radius:50%;animation:nbspin .8s linear infinite;vertical-align:middle;margin-inline-end:6px}' +
+      '@keyframes nbspin{to{transform:rotate(360deg)}}' +
       '@media(max-width:560px){.nbdev-item{grid-template-columns:auto 1fr}.nbdev-acts{grid-column:1/-1;justify-content:flex-start}}';
     document.head.appendChild(s);
   })();
@@ -27280,18 +27355,27 @@ window.renderHomeView=function(){
     }).join('');
     var ready = inApp()
       ? '<span class="nbdev-pill g">✅ هذا الجهاز جاهز لاستقبال الأجهزة الملحقة تلقائياً بلا إنترنت</span>'
-      : '<span class="nbdev-pill b">ℹ️ الاتصال التلقائي بلا إنترنت يعمل عندما يكون البرنامج مفتوحاً من تطبيق الأندرويد (3.0.2 أو أحدث) على الجهازين</span>';
-    return '<div class="nbdev-wrap">' +
-      '<div class="nbdev-card nbdev-add"><div style="font-size:40px">🔗</div><div class="nbdev-txt"><h3>ربط جهاز ملحق جديد</h3><p class="nbdev-note">بلا إنترنت — يكفي أن يكون الجهازان على نفس الواي فاي (أو نقطة اتصال من أحد الهاتفين). يُربط كل جهاز مرة واحدة فقط ويُحفظ دائماً.</p></div>' +
-        '<button type="button" class="nbdev-btn light" data-add="1">➕ ربط جهاز</button></div>' +
+      : '<span class="nbdev-pill b">ℹ️ الاتصال التلقائي بلا إنترنت يعمل عندما يكون البرنامج مفتوحاً من تطبيق الأندرويد (3.0.6 أو أحدث) على الجهازين</span>';
+    var c = (D() && D().H.cfg) || {}, rxOn = !!c.lanOn;
+    var rx = '<div class="nbdev-card"><div class="nbdev-rx">' +
+      '<div class="nbdev-rxrow"><div><h3 style="margin:0">📡 استقبال أجهزة جديدة على الشبكة</h3><p class="nbdev-note">عند التشغيل يظهر هذا الجهاز في قائمة «البحث عن جهاز رئيسي» على الأجهزة الملحقة، ويُربط الجهاز بكلمة المرور أدناه.</p></div>' +
+        '<button type="button" class="nbdev-sw' + (rxOn ? ' on' : '') + '" data-rx="1" aria-label="الاستقبال" title="' + (rxOn ? 'إيقاف الاستقبال' : 'تشغيل الاستقبال') + '"></button></div>' +
+      (rxOn ? '<div class="nbdev-rxrow"><div><div class="nbdev-meta">كلمة مرور الربط</div><span class="nbdev-pass">' + esc(c.lanPass || '------') + '</span></div><button type="button" class="nbdev-btn gray sm" data-pass="1">✏️ تغيير كلمة المرور</button></div>' +
+        '<div class="nbdev-rxrow"><div class="nbdev-meta" style="flex:0 0 auto">اسم هذا الجهاز على الشبكة:</div><input class="nbdev-in" data-lname="1" maxlength="40" value="' + esc((D() && D().H.lanName()) || '') + '"></div>' +
+        '<p class="nbdev-note">' + (inApp() ? '🟢 الاستقبال يعمل — اترك البرنامج مفتوحاً على هذا الجهاز أثناء ربط الأجهزة.' : 'ℹ️ البث على الشبكة يعمل عندما يكون البرنامج مفتوحاً من تطبيق الأندرويد.') + '</p>'
+      : '<p class="nbdev-note">الاستقبال متوقف: لا يمكن ربط أجهزة جديدة بكلمة المرور. <b>الأجهزة المرتبطة سابقاً تتصل تلقائياً دائماً</b> حتى والاستقبال متوقف.</p>') +
+    '</div></div>';
+    return '<div class="nbdev-wrap">' + rx +
+      '<div class="nbdev-card nbdev-add"><div style="font-size:40px">🔗</div><div class="nbdev-txt"><h3>ربط جهاز ملحق برمز QR</h3><p class="nbdev-note">طريقة بديلة بلا إنترنت: مسح رمزين بين الجهازين. يُربط كل جهاز مرة واحدة فقط ويُحفظ دائماً.</p></div>' +
+        '<button type="button" class="nbdev-btn light" data-add="1">➕ ربط برمز QR</button></div>' +
       (pend ? '<div class="nbdev-card"><h3>⏳ طلبات ربط بانتظار موافقتك</h3><div class="nbdev-list">' + pend + '</div></div>' : '') +
       '<div class="nbdev-card"><div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:10px"><h3 style="margin:0">📋 الأجهزة المرتبطة (' + ar(trusted.length) + ')</h3>' +
         (trusted.length ? '<span class="nbdev-pill ' + (liveN ? 'g' : 'b') + '">' + (liveN ? '🟢 ' + ar(liveN) + ' متصل الآن' : 'لا يوجد جهاز متصل الآن') + '</span>' : '') + '</div>' +
         (trusted.length ? '<div class="nbdev-list">' + trusted.map(function(t){ return deviceRow(t, t.connected); }).join('') + '</div>'
-          : '<div class="nbdev-empty">لا توجد أجهزة ملحقة بعد.<br>اضغط «➕ ربط جهاز» لربط أول جهاز.</div>') +
+          : '<div class="nbdev-empty">لا توجد أجهزة ملحقة بعد.<br>شغّل «📡 الاستقبال» أعلاه، ثم ابحث عن هذا الجهاز من الجهاز الملحق.</div>') +
       '</div>' +
       '<div class="nbdev-card"><h3>🔄 كيف يعمل الاتصال التلقائي</h3><p class="nbdev-note">' + ready + '</p>' +
-        '<ol class="nbdev-steps"><li>اربط الجهاز مرة واحدة فقط من «➕ ربط جهاز» بمسح الرمز.</li><li>بعدها كلما فتحت البرنامج على الجهازين — في أي يوم وبأي ترتيب — يتصلان وحدهما دون رمز أو موافقة.</li><li>إذا انقطع الواي فاي يعود الاتصال تلقائياً عند رجوعه، ولا يُنسى الربط أبداً.</li><li>«إلغاء الربط» يزيل الجهاز نهائياً، ويعود ذلك الجهاز إلى بياناته السابقة.</li></ol></div>' +
+        '<ol class="nbdev-steps"><li>شغّل «📡 الاستقبال» هنا، ثم على الجهاز الملحق: «🔍 البحث عن جهاز رئيسي» ← اختر هذا الجهاز ← اكتب كلمة المرور. (أو «➕ ربط برمز QR».)</li><li>بعدها كلما فتحت البرنامج على الجهازين — في أي يوم وبأي ترتيب — يتصلان وحدهما دون رمز أو موافقة.</li><li>إذا انقطع الواي فاي يعود الاتصال تلقائياً عند رجوعه، ولا يُنسى الربط أبداً.</li><li>«إلغاء الربط» يزيل الجهاز نهائياً، ويعود ذلك الجهاز إلى بياناته السابقة.</li></ol></div>' +
       ((v.blocked || []).length ? '<div class="nbdev-card"><h3>🚫 أجهزة محظورة</h3><div class="nbdev-list">' + v.blocked.map(function(b){ return '<div class="nbdev-item"><div class="nbdev-ico">🚫</div><div class="nbdev-name">' + esc(b.name) + '</div><div class="nbdev-acts"><button type="button" class="nbdev-btn gray sm" data-unblock="' + esc(b.devId) + '">إلغاء الحظر</button></div></div>'; }).join('') + '</div></div>' : '') +
     '</div>';
   }
@@ -27314,12 +27398,12 @@ window.renderHomeView=function(){
     var body;
     if(!d) body = '<div class="nbdev-card"><p class="nbdev-note">وحدة الربط غير جاهزة بعد. أعد فتح القسم بعد لحظات.</p></div>';
     else if(d.G.isGuest()) body = guestHtml(d.G.info());
-    else if(isTeacher()) body = '<div class="nbdev-card"><p class="nbdev-note">إدارة الأجهزة الملحقة متاحة من حساب المدير فقط.</p></div>';
+    else if(isTeacher()) body = '<div class="nbdev-card"><p class="nbdev-note">إدارة الأجهزة الملحقة متاحة من حساب المدير فقط.</p><div style="margin-top:8px"><button type="button" class="nbdev-btn" data-netjoin="1">🔍 ربط هذا الجهاز بجهاز رئيسي</button></div></div>';
     else {
       body = hostHtml(d.H.view());
       body += '<div class="nbdev-card" style="margin-top:14px"><h3>🩺 تشخيص الاستقبال</h3><pre id="nbDevDiag" style="direction:ltr;text-align:left;white-space:pre-wrap;word-break:break-all;font:11.5px/1.7 monospace;background:#263238;color:#b2dfdb;border-radius:10px;padding:8px 10px;margin:6px 0 0">page dlsId=' + esc(d.H.cfg.id) + '\n…</pre></div>';
       setTimeout(hostDiag, 50);
-      body += '<div class="nbdev-card" style="margin-top:14px"><h3>📲 هل هذا الجهاز هو الملحق؟</h3><p class="nbdev-note">إذا أردت أن يعمل هذا الجهاز كجهاز ملحق بجهاز رئيسي آخر:</p><div style="margin-top:8px"><button type="button" class="nbdev-btn gray" data-join="1">ربط هذا الجهاز كملحق</button></div></div>';
+      body += '<div class="nbdev-card" style="margin-top:14px"><h3>📲 هل هذا الجهاز هو الملحق؟</h3><p class="nbdev-note">إذا أردت أن يعمل هذا الجهاز كجهاز ملحق بجهاز رئيسي آخر:</p><div style="margin-top:8px;display:flex;gap:8px;flex-wrap:wrap"><button type="button" class="nbdev-btn" data-netjoin="1">🔍 البحث عن جهاز رئيسي على الشبكة</button><button type="button" class="nbdev-btn gray" data-join="1">الربط برمز QR</button></div></div>';
     }
     var sy = window.scrollY;
     el.innerHTML = head + '<div style="padding:4px 2px 18px">' + body + '</div></div>';
@@ -27339,8 +27423,9 @@ window.renderHomeView=function(){
       var st = r[0]; out.push('app status=' + (typeof st === 'string' ? st : JSON.stringify(st)));
       out.push('lanInfo=' + (typeof r[2] === 'string' ? r[2] : JSON.stringify(r[2])));
       var txt = typeof r[1] === 'string' ? r[1] : JSON.stringify(r[1] || ''), arr = null; try{ arr = JSON.parse(txt); }catch(e){}
-      var lines = []; (Array.isArray(arr) ? arr : []).forEach(function(x){ var s = typeof x === 'string' ? x : JSON.stringify(x); if(/dls|nsd|udp|server|host|sync|bind|port/i.test(s)) lines.push(s); });
-      out.push('log:\n' + (lines.slice(-4).join('\n') || '(لا شيء)'));
+      var lines = []; (Array.isArray(arr) ? arr : []).forEach(function(x){ var s = typeof x === 'string' ? x : JSON.stringify(x); lines.push(s.replace(/"t":\d+,/, '')); });
+      out.push('app log:\n' + (lines.slice(-8).join('\n') || '(لا شيء)'));
+      out.push('site log:\n' + ((window.__dlsLog && window.__dlsLog().slice(-8).join('\n')) || '(لا شيء)'));
       var e2 = document.getElementById('nbDevDiag'); if(e2) e2.textContent = out.join('\n');
     });
   }
@@ -27352,6 +27437,9 @@ window.renderHomeView=function(){
     var d = D(); if(!d) return;
     if(b.dataset.add){ d.openHostPanel(); setTimeout(function(){ var o = document.querySelector('[data-a=offline]'); if(o) o.click(); }, 350); return; }
     if(b.dataset.join){ d.openJoin('off'); return; }
+    if(b.dataset.netjoin){ openNetJoin(); return; }
+    if(b.dataset.rx){ d.H.setLan(!d.H.cfg.lanOn); render(); return; }
+    if(b.dataset.pass){ var np = prompt('كلمة مرور جديدة للربط (4 إلى 8 أرقام):', d.H.cfg.lanPass || ''); if(np === null) return; if(!d.H.setLanPass(np)) alert('كلمة المرور يجب أن تكون من 4 إلى 8 أرقام.'); render(); return; }
     if(b.dataset.ok){ d.H.approve(b.dataset.ok, 'rw'); return render(); }
     if(b.dataset.ro){ d.H.approve(b.dataset.ro, 'ro'); return render(); }
     if(b.dataset.no){ d.H.reject(b.dataset.no); return render(); }
@@ -27365,9 +27453,73 @@ window.renderHomeView=function(){
     if(b.dataset.leave){ if(confirm('الخروج من وضع الجهاز الملحق؟ ستعود بيانات هذا الجهاز السابقة كما كانت.')) d.G.leave(); return; }
   });
   document.addEventListener('change', function(e){
-    var s = e.target; if(!s || !s.dataset || !s.dataset.perm) return;
-    var d = D(); if(d){ d.H.setPerm(s.dataset.perm, s.value); render(); }
+    var s = e.target; if(!s || !s.dataset) return;
+    var d = D(); if(!d) return;
+    if(s.dataset.perm){ d.H.setPerm(s.dataset.perm, s.value); render(); }
+    if(s.dataset.lname){ d.H.setLanName(s.value); }
   });
+
+  /* ---------- نافذة «البحث عن جهاز رئيسي» على الجهاز الملحق ---------- */
+  function openNetJoin(){
+    var d = D(); if(!d) return;
+    var n = window.DaragatNative;
+    if(!n || typeof n.listHosts !== 'function'){ alert('البحث عن الأجهزة على الشبكة يعمل داخل تطبيق الأندرويد (3.0.6 أو أحدث). استخدم «الربط برمز QR».'); d.openJoin('off'); return; }
+    var old = document.getElementById('nbNetJoin'); if(old) old.remove();
+    var bg = document.createElement('div'); bg.id = 'nbNetJoin'; bg.className = 'nbnet-bg';
+    var savedName = ''; try{ savedName = localStorage.getItem('daragat_dev_name_v1') || ''; }catch(e){}
+    bg.innerHTML = '<div class="nbnet-box"><div class="nbnet-head"><b style="font-size:16px">🔍 الربط بجهاز رئيسي</b><button type="button" data-x="1" style="border:0;background:#eceff1;border-radius:50%;width:32px;height:32px;font-size:16px;cursor:pointer">✕</button></div>' +
+      '<div class="nbnet-body">' +
+        '<div><div class="nbdev-meta">اسم هذا الجهاز (يظهر عند المدير)</div><input class="nbdev-in" data-dname="1" style="width:100%;box-sizing:border-box" maxlength="40" placeholder="مثال: تابلت الأستاذ أحمد" value="' + esc(savedName) + '"></div>' +
+        '<div style="display:flex;justify-content:space-between;align-items:center"><b>الأجهزة الرئيسية على الشبكة</b><button type="button" class="nbdev-btn gray sm" data-scan="1">🔄 بحث مجدداً</button></div>' +
+        '<div data-list style="display:grid;gap:8px"></div>' +
+        '<div data-passbox style="display:none"><div class="nbdev-meta">كلمة المرور (تظهر على الجهاز الرئيسي في قسم الأجهزة الملحقة)</div><div style="display:flex;gap:8px"><input class="nbdev-in" data-pw="1" inputmode="numeric" autocomplete="off" maxlength="8" style="font:900 20px monospace;letter-spacing:4px;direction:ltr;text-align:center"><button type="button" class="nbdev-btn" data-go="1">ربط</button></div></div>' +
+        '<div data-msg></div>' +
+        '<p class="nbdev-note" style="font-size:12px">لا يظهر الجهاز الرئيسي؟ تأكد أن البرنامج مفتوح عليه، و«📡 الاستقبال» مفعّل، والجهازين على نفس الواي فاي. <a href="#" data-qr="1">أو استخدم الربط برمز QR</a></p>' +
+      '</div></div>';
+    document.body.appendChild(bg);
+    var list = bg.querySelector('[data-list]'), msg = bg.querySelector('[data-msg]'), passbox = bg.querySelector('[data-passbox]'), pw = bg.querySelector('[data-pw]'), sel = null, busy = false;
+    function say(t, k){ msg.innerHTML = t ? '<div class="nbnet-msg ' + (k || 'info') + '">' + t + '</div>' : ''; }
+    function close(){ bg.remove(); }
+    function scan(){
+      sel = null; passbox.style.display = 'none'; say('');
+      list.innerHTML = '<div class="nbnet-msg info"><span class="nbnet-spin"></span>جاري البحث في الشبكة…</div>';
+      Promise.resolve(n.listHosts(7000)).then(function(r){
+        if(typeof r === 'string'){ try{ r = JSON.parse(r); }catch(e){ r = []; } }
+        r = Array.isArray(r) ? r : [];
+        if(!document.body.contains(bg)) return;
+        if(!r.length){ list.innerHTML = '<div class="nbnet-msg err">لم يُعثر على جهاز رئيسي. افتح البرنامج على الجهاز الرئيسي وفعّل «📡 الاستقبال» من قسم الأجهزة الملحقة، ثم اضغط «🔄 بحث مجدداً».</div>'; return; }
+        list.innerHTML = r.map(function(x, i){
+          var rcv = x.receiving !== false;
+          return '<button type="button" class="nbnet-host" data-i="' + i + '"' + (rcv ? '' : ' disabled') + '><span style="font-size:26px">🖥️</span><span style="flex:1"><b>' + esc(x.name || 'جهاز رئيسي') + '</b><br><span class="nbdev-meta">' + esc(x.ip || '') + (rcv ? ' · <span style="color:#2e7d32">يستقبل الآن</span>' : ' · الاستقبال متوقف') + '</span></span></button>';
+        }).join('');
+        [].forEach.call(list.querySelectorAll('[data-i]'), function(btn){
+          btn.onclick = function(){ sel = r[+btn.getAttribute('data-i')]; [].forEach.call(list.children, function(c){ c.classList.toggle('sel', c === btn); }); passbox.style.display = ''; say(''); pw.value = ''; pw.focus(); };
+        });
+        if(r.length === 1 && r[0].receiving !== false) list.querySelector('[data-i]').click();
+      }, function(){ list.innerHTML = '<div class="nbnet-msg err">تعذر البحث. حاول مجدداً.</div>'; });
+    }
+    function go(){
+      if(busy || !sel) return;
+      var pass = String(pw.value || '').replace(/\D/g, ''), nm = String(bg.querySelector('[data-dname]').value || '').trim() || 'جهاز ملحق';
+      if(pass.length < 4){ say('اكتب كلمة المرور (4 إلى 8 أرقام).', 'err'); return; }
+      try{ localStorage.setItem('daragat_dev_name_v1', nm); }catch(e){}
+      busy = true; say('<span class="nbnet-spin"></span>جاري الربط بـ «' + esc(sel.name || 'الجهاز الرئيسي') + '»…', 'info');
+      d.G.joinNet(sel, pass, nm).then(function(){
+        say('✅ تم الربط. هذا الجهاز الآن ملحق بـ «' + esc(sel.name || 'الجهاز الرئيسي') + '» وسيتصل تلقائياً في كل مرة.', 'ok');
+        setTimeout(close, 1600);
+      }, function(e){ busy = false; say(esc((e && e.message) || 'تعذر الربط.'), 'err'); });
+    }
+    bg.addEventListener('click', function(e){
+      var t = e.target;
+      if(t === bg || t.closest('[data-x]')){ if(!busy) close(); return; }
+      if(t.closest('[data-scan]')){ if(!busy) scan(); return; }
+      if(t.closest('[data-go]')){ go(); return; }
+      if(t.closest('[data-qr]')){ e.preventDefault(); close(); d.openJoin('off'); return; }
+    });
+    pw.addEventListener('keydown', function(e){ if(e.key === 'Enter') go(); });
+    scan();
+  }
+  window.__dlsOpenNetJoin = openNetJoin;
 
   /* ---------- الفتح والتحديث الحي ---------- */
   function visible(){ var el = document.getElementById(VIEW); return !!(el && getComputedStyle(el).display !== 'none'); }
