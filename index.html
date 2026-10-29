@@ -18020,7 +18020,7 @@ if(document.readyState==='loading'){
 <!-- ===== AUTO UPDATE NOTIFICATION (small icon in topbar) ===== -->
 <script>
 (function(){
-  const APP_VERSION = "1.36.0";
+  const APP_VERSION = "1.37.0";
   const CHECK_EVERY_MINUTES = 30;
   const LS_ACCEPTED = "daragat_accepted_version";
   const LS_SNOOZE   = "daragat_update_snooze";
@@ -19643,6 +19643,8 @@ window.ABOUT_SUPPORT_PHONE = ABOUT_SUPPORT_PHONE;
     }finally{ PDF_BUSY = false; }
   }
 
+  /* nb-v1.37: تطبيق الأستاذ يحتاج PDF حقيقياً من إطار الطباعة (لا طابعة مباشرة في تطبيقه) — إضافة فقط */
+  window.__nbPdfFromFrame = function(frame, filename){ return buildPdfFromSnapshot(frameSnapshot(frame), filename); };
   function requestPdfForPrintAction(action, filename, destination){
     if(PDF_BUSY) return;
     PDF_REQUEST = {filename: filename || pdfSafeName('طباعة'), destination: destination || null, started: Date.now()};
@@ -20907,7 +20909,7 @@ var H = (function(){
     if(m.t === 'tpush'){
       var res = U.applyPush(peer.teacherId, Array.isArray(m.items) ? m.items : []);
       dlog('host: teacher push applied=' + res.applied + ' rejected=' + res.rejected);
-      peer.link.send({t: 'tack', id: m.id, applied: res.applied, rejected: res.rejected, att: res.att || 0, attOk: !!res.attOk});
+      peer.link.send({t: 'tack', id: m.id, applied: res.applied, rejected: res.rejected, att: res.att || 0, attOk: !!res.attOk, qyd: res.qyd || 0, qydOk: !!res.qydOk, qp: res.qp || 0, qpOk: !!res.qpOk});
       peer.link.send({t: 'tpkg', pkg: U.buildPackage(peer.teacherId)});
       try{ doRefresh(); }catch(e){}
       emit(); return;
@@ -27408,7 +27410,26 @@ window.renderHomeView=function(){
       '.nbnet-msg.err{background:#ffebee;color:#c62828}.nbnet-msg.ok{background:#e8f5e9;color:#2e7d32}.nbnet-msg.info{background:#e3f2fd;color:#1565c0}' +
       '.nbnet-spin{display:inline-block;width:16px;height:16px;border:2px solid #b2dfdb;border-top-color:#00897b;border-radius:50%;animation:nbspin .8s linear infinite;vertical-align:middle;margin-inline-end:6px}' +
       '@keyframes nbspin{to{transform:rotate(360deg)}}' +
-      '@media(max-width:560px){.nbdev-item{grid-template-columns:auto 1fr}.nbdev-acts{grid-column:1/-1;justify-content:flex-start}}';
+      '@media(max-width:560px){.nbdev-item{grid-template-columns:auto 1fr}.nbdev-acts{grid-column:1/-1;justify-content:flex-start}}' +
+      /* nb-v1.37: التصميم المنظم */
+      '.nbd-stats{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}.nbd-stat{background:#fff;border:1px solid #e3e8ec;border-radius:16px;padding:12px 14px;box-shadow:0 2px 10px rgba(0,0,0,.04);border-top:4px solid #1565c0}.nbd-stat b{display:block;font-size:24px;line-height:1.25;color:#263238}.nbd-stat span{font-size:12.5px;color:#607d8b;font-weight:800}.nbd-stat.g{border-top-color:#2e7d32}.nbd-stat.p{border-top-color:#6a1b9a}.nbd-stat.x{border-top-color:#90a4ae}' +
+      '.nbd-tabs{display:flex;gap:6px;background:#fff;border:1px solid #e3e8ec;border-radius:16px;padding:5px;box-shadow:0 2px 10px rgba(0,0,0,.04)}.nbd-tab{flex:1;border:0;background:transparent;border-radius:12px;padding:11px 8px;font:900 14px inherit;font-family:inherit;color:#546e7a;cursor:pointer}.nbd-tab small{display:inline-block;min-width:20px;border-radius:10px;background:#eceff1;color:#455a64;padding:0 6px;font-size:11.5px}.nbd-tab.on{background:#e0f2f1;color:#00695c}.nbd-tab.on small{background:#00897b;color:#fff}' +
+      '.nbd-head{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:10px}.nbd-head h3{margin:0}' +
+      '.nbd-list{display:grid;gap:0;border:1px solid #e3e8ec;border-radius:14px;overflow:hidden}' +
+      '.nbd-row{display:grid;grid-template-columns:auto 1fr auto;gap:12px;align-items:center;padding:12px 14px;background:#fff;border-bottom:1px solid #eef2f4}.nbd-row:last-child{border-bottom:0}.nbd-row.live{background:linear-gradient(90deg,#fff,#f1faf2)}.nbd-row.pend{background:#fff8e1}' +
+      '.nbd-ic{width:46px;height:46px;border-radius:14px;display:grid;place-items:center;font-size:22px;background:#eef3f6;position:relative}.nbd-row.live .nbd-ic{background:#e8f5e9}' +
+      '.nbd-st{position:absolute;bottom:-3px;left:-3px;width:15px;height:15px;border-radius:50%;background:#b0bec5;border:2.5px solid #fff}.nbd-st.on{background:#22c55e;box-shadow:0 0 0 0 rgba(34,197,94,.6);animation:nbdpulse 1.8s infinite}' +
+      '@keyframes nbdpulse{0%{box-shadow:0 0 0 0 rgba(34,197,94,.55)}70%{box-shadow:0 0 0 8px rgba(34,197,94,0)}100%{box-shadow:0 0 0 0 rgba(34,197,94,0)}}' +
+      '.nbd-tx{min-width:0}.nbd-nm{font-weight:900;font-size:15px;color:#263238}.nbd-mt{font-size:12.5px;color:#607d8b;line-height:1.8}.nbd-live{color:#16a34a}' +
+      '.nbd-act{display:flex;gap:6px;align-items:center;flex-wrap:wrap;justify-content:flex-end}.nbd-act select{border:1px solid #cfd8dc;border-radius:10px;padding:7px 8px;font-family:inherit;font-size:12.5px;background:#fff}' +
+      '.nbd-warnc{border-color:#ffcc80}.nbd-help summary{cursor:pointer;font-weight:900;font-size:15px;color:#37474f}.nbd-help[open] summary{margin-bottom:6px}' +
+      '@media(max-width:700px){.nbd-stats{grid-template-columns:repeat(2,1fr)}.nbd-row{grid-template-columns:auto 1fr}.nbd-act{grid-column:1/-1;justify-content:flex-start}.nbd-tab{font-size:12.5px;padding:10px 4px}}' +
+      /* الوضع الليلي في البرنامج */
+      'html[data-ui-skin^="night"] .nbdev-card,html[data-ui-skin^="night"] .nbd-stat,html[data-ui-skin^="night"] .nbd-tabs{background:#1c1820;border-color:#3a2f3a;color:#f3e9e4}' +
+      'html[data-ui-skin^="night"] .nbd-row{background:#1c1820;border-color:#2f2630}html[data-ui-skin^="night"] .nbd-row.live{background:linear-gradient(90deg,#1c1820,#14271a)}html[data-ui-skin^="night"] .nbd-list{border-color:#3a2f3a}' +
+      'html[data-ui-skin^="night"] .nbd-nm,html[data-ui-skin^="night"] .nbd-stat b,html[data-ui-skin^="night"] .nbdev-name,html[data-ui-skin^="night"] .nbdev-card h3,html[data-ui-skin^="night"] .nbd-help summary{color:#fff4ec}html[data-ui-skin^="night"] .nbd-mt,html[data-ui-skin^="night"] .nbd-stat span,html[data-ui-skin^="night"] .nbdev-note,html[data-ui-skin^="night"] .nbdev-meta{color:#c9b8b4}' +
+      'html[data-ui-skin^="night"] .nbd-ic{background:#2a2230}html[data-ui-skin^="night"] .nbd-st{border-color:#1c1820}html[data-ui-skin^="night"] .nbd-tab{color:#c9b8b4}html[data-ui-skin^="night"] .nbd-tab.on{background:#123a35;color:#7fe0d3}' +
+      'html[data-ui-skin^="night"] .ust-t{background:#221d26;border-color:#3a2f3a}html[data-ui-skin^="night"] .nbd-act select,html[data-ui-skin^="night"] .nbdev-in{background:#2a2230;color:#f3e9e4;border-color:#4a3c48}';
     document.head.appendChild(s);
   })();
 
@@ -27422,54 +27443,58 @@ window.renderHomeView=function(){
     return el;
   }
 
-  /* ---------- العرض ---------- */
+  /* ---------- العرض (nb-v1.37: تنظيم القسم في تبويبات واضحة + نقطة خضراء لكل جهاز متصل) ---------- */
+  var TAB = 'dev'; try{ TAB = localStorage.getItem('nbdev_tab_v1') || 'dev'; }catch(e){}
+  function devIcon(name){ return /حاسب|حاسوب|كمبيوتر|لابتوب|pc/i.test(name || '') ? '💻' : (/تابلت|لوح|ايباد|آيباد|tab/i.test(name || '') ? '📱' : '📲'); }
   function deviceRow(t, live){
-    var ico = /حاسب|حاسوب|كمبيوتر|لابتوب|pc/i.test(t.name || '') ? '💻' : (/تابلت|لوح|ايباد|آيباد|tab/i.test(t.name || '') ? '📱' : '📲');
-    var st = live
-      ? '<span class="nbdev-dot live"></span><b style="color:#2e7d32">متصل الآن</b>' + (t.rtt != null ? ' · ' + ar(t.rtt) + ' م.ث' : '')
-      : '<span class="nbdev-dot"></span>غير متصل الآن — آخر اتصال: ' + esc(when(t.last));
-    return '<div class="nbdev-item' + (live ? ' on' : '') + '">' +
-      '<div class="nbdev-ico">' + ico + '<span class="nbdev-ok" title="مرتبط">✓</span></div>' +
-      '<div><div class="nbdev-name">' + esc(t.name || 'جهاز ملحق') + ' <span class="nbdev-pill g">✓ مرتبط</span></div>' +
-      '<div class="nbdev-meta">' + st + '<br>رُبط: ' + esc(when(t.added)) + ' · ' + (t.via === 'online' ? 'عبر رمز الإنترنت' : 'بلا إنترنت') + (t.perm === 'ro' ? ' · <span class="nbdev-pill o">قراءة فقط</span>' : '') + '</div></div>' +
-      '<div class="nbdev-acts">' +
-        '<select data-perm="' + esc(t.devId) + '" title="صلاحية الجهاز"><option value="rw"' + (t.perm !== 'ro' ? ' selected' : '') + '>✏️ تعديل</option><option value="ro"' + (t.perm === 'ro' ? ' selected' : '') + '>👁️ قراءة فقط</option></select>' +
-        '<button type="button" class="nbdev-btn red sm" data-forget="' + esc(t.devId) + '">إلغاء الربط</button>' +
-      '</div></div>';
+    return '<div class="nbd-row' + (live ? ' live' : '') + '">' +
+      '<div class="nbd-ic">' + devIcon(t.name) + '<i class="nbd-st' + (live ? ' on' : '') + '" title="' + (live ? 'متصل الآن' : 'غير متصل') + '"></i></div>' +
+      '<div class="nbd-tx"><div class="nbd-nm">' + esc(t.name || 'جهاز ملحق') + (t.perm === 'ro' ? ' <span class="nbdev-pill o">👁️ قراءة فقط</span>' : '') + '</div>' +
+        '<div class="nbd-mt">' + (live ? '<b class="nbd-live">● متصل الآن</b>' + (t.rtt != null ? ' · ' + ar(t.rtt) + ' م.ث' : '') : 'غير متصل · آخر اتصال: ' + esc(when(t.last))) + ' · رُبط ' + esc(when(t.added)) + (t.via === 'online' ? ' عبر الإنترنت' : '') + '</div></div>' +
+      '<div class="nbd-act"><select data-perm="' + esc(t.devId) + '" title="صلاحية الجهاز"><option value="rw"' + (t.perm !== 'ro' ? ' selected' : '') + '>✏️ تعديل</option><option value="ro"' + (t.perm === 'ro' ? ' selected' : '') + '>👁️ قراءة فقط</option></select>' +
+        '<button type="button" class="nbdev-btn red sm" data-forget="' + esc(t.devId) + '">إلغاء الربط</button></div></div>';
   }
-
   function hostHtml(v){
     var trusted = (v.trusted || []).filter(function(t){ return t.role !== 'teacher'; }).sort(function(a, b){ return (b.connected - a.connected) || ((b.last || 0) - (a.last || 0)); });
     var liveN = trusted.filter(function(t){ return t.connected; }).length;
-    var pend = (v.pending || []).map(function(p){
-      return '<div class="nbdev-item" style="border-color:#ffcc80;background:#fff8e1"><div class="nbdev-ico">⏳</div><div><div class="nbdev-name">' + esc(p.name || 'جهاز') + '</div><div class="nbdev-meta">يطلب الربط بهذا الجهاز الآن</div></div>' +
-        '<div class="nbdev-acts"><button type="button" class="nbdev-btn sm" data-ok="' + esc(p.pid) + '">✓ قبول</button><button type="button" class="nbdev-btn gray sm" data-ro="' + esc(p.pid) + '">قبول للقراءة</button><button type="button" class="nbdev-btn red sm" data-no="' + esc(p.pid) + '">رفض</button></div></div>';
-    }).join('');
-    var ready = inApp()
-      ? '<span class="nbdev-pill g">✅ هذا الجهاز جاهز لاستقبال الأجهزة الملحقة تلقائياً بلا إنترنت</span>'
-      : '<span class="nbdev-pill b">ℹ️ الاتصال التلقائي بلا إنترنت يعمل عندما يكون البرنامج مفتوحاً من تطبيق الأندرويد (3.0.6 أو أحدث) على الجهازين</span>';
-    var c = (D() && D().H.cfg) || {}, rxOn = !!c.lanOn;
-    var rx = '<div class="nbdev-card"><div class="nbdev-rx">' +
-      '<div class="nbdev-rxrow"><div><h3 style="margin:0">📡 استقبال أجهزة جديدة على الشبكة</h3><p class="nbdev-note">عند التشغيل يظهر هذا الجهاز في قائمة «البحث عن جهاز رئيسي» على الأجهزة الملحقة، ويُربط الجهاز بكلمة المرور أدناه.</p></div>' +
-        '<button type="button" class="nbdev-sw' + (rxOn ? ' on' : '') + '" data-rx="1" aria-label="الاستقبال" title="' + (rxOn ? 'إيقاف الاستقبال' : 'تشغيل الاستقبال') + '"></button></div>' +
-      (rxOn ? '<div class="nbdev-rxrow"><div><div class="nbdev-meta">كلمة مرور الربط</div><span class="nbdev-pass">' + esc(c.lanPass || '------') + '</span></div><button type="button" class="nbdev-btn gray sm" data-pass="1">✏️ تغيير كلمة المرور</button></div>' +
-        '<div class="nbdev-rxrow"><div class="nbdev-meta" style="flex:0 0 auto">اسم هذا الجهاز على الشبكة:</div><input class="nbdev-in" data-lname="1" maxlength="40" value="' + esc((D() && D().H.lanName()) || '') + '"></div>' +
-        '<p class="nbdev-note">' + (inApp() ? '🟢 الاستقبال يعمل — اترك البرنامج مفتوحاً على هذا الجهاز أثناء ربط الأجهزة.' : 'ℹ️ البث على الشبكة يعمل عندما يكون البرنامج مفتوحاً من تطبيق الأندرويد.') + '</p>'
-      : '<p class="nbdev-note">الاستقبال متوقف: لا يمكن ربط أجهزة جديدة بكلمة المرور. <b>الأجهزة المرتبطة سابقاً تتصل تلقائياً دائماً</b> حتى والاستقبال متوقف.</p>') +
-    '</div></div>';
-    return '<div class="nbdev-wrap">' + rx + (window.__UST ? window.__UST.cardHtml() : '') +
-      '<div class="nbdev-card nbdev-add"><div style="font-size:40px">🔗</div><div class="nbdev-txt"><h3>ربط جهاز ملحق برمز QR</h3><p class="nbdev-note">طريقة بديلة بلا إنترنت: مسح رمزين بين الجهازين. يُربط كل جهاز مرة واحدة فقط ويُحفظ دائماً.</p></div>' +
+    var tN = window.__UST ? window.__UST.count() : 0;
+    var c = (D() && D().H.cfg) || {}, rxOn = !!c.lanOn, pendN = (v.pending || []).length;
+    var tab = TAB === 'ust' || TAB === 'add' ? TAB : 'dev';
+    var stats = '<div class="nbd-stats">' +
+      '<div class="nbd-stat"><b>' + ar(trusted.length) + '</b><span>📱 أجهزة مرتبطة</span></div>' +
+      '<div class="nbd-stat g"><b>' + ar(liveN) + '</b><span><i class="nbd-st on" style="position:static;display:inline-block;vertical-align:middle"></i> متصل الآن</span></div>' +
+      '<div class="nbd-stat p"><b>' + ar(tN) + '</b><span>👨‍🏫 معلمون</span></div>' +
+      '<div class="nbd-stat ' + (rxOn ? 'g' : 'x') + '"><b>' + (rxOn ? '📡' : '⏸️') + '</b><span>' + (rxOn ? 'الاستقبال يعمل' : 'الاستقبال متوقف') + '</span></div></div>';
+    var tabs = '<div class="nbd-tabs">' + [['dev', '📱 الأجهزة', trusted.length + (pendN ? ' + ' + pendN : '')], ['ust', '👨‍🏫 تطبيق الأستاذ', tN], ['add', '➕ ربط جهاز جديد', '']].map(function(x){ return '<button type="button" class="nbd-tab' + (tab === x[0] ? ' on' : '') + '" data-dtab="' + x[0] + '">' + x[1] + (x[2] !== '' ? ' <small>' + ar(x[2]) + '</small>' : '') + '</button>'; }).join('') + '</div>';
+    var body = '';
+    if(tab === 'dev'){
+      var pend = (v.pending || []).map(function(p){
+        return '<div class="nbd-row pend"><div class="nbd-ic">⏳</div><div class="nbd-tx"><div class="nbd-nm">' + esc(p.name || 'جهاز') + '</div><div class="nbd-mt">يطلب الربط بهذا الجهاز الآن</div></div>' +
+          '<div class="nbd-act"><button type="button" class="nbdev-btn sm" data-ok="' + esc(p.pid) + '">✓ قبول</button><button type="button" class="nbdev-btn gray sm" data-ro="' + esc(p.pid) + '">قبول للقراءة</button><button type="button" class="nbdev-btn red sm" data-no="' + esc(p.pid) + '">رفض</button></div></div>';
+      }).join('');
+      if(pend) body += '<div class="nbdev-card nbd-warnc"><h3>⏳ طلبات ربط بانتظار موافقتك</h3><div class="nbd-list">' + pend + '</div></div>';
+      body += '<div class="nbdev-card"><div class="nbd-head"><h3>📋 الأجهزة المرتبطة</h3>' + (trusted.length ? '<span class="nbdev-pill ' + (liveN ? 'g' : 'b') + '">' + (liveN ? ar(liveN) + ' من ' + ar(trusted.length) + ' متصل الآن' : 'لا يوجد جهاز متصل الآن') + '</span>' : '') + '</div>' +
+        (trusted.length ? '<div class="nbd-list">' + trusted.map(function(t){ return deviceRow(t, t.connected); }).join('') + '</div>'
+          : '<div class="nbdev-empty">لا توجد أجهزة ملحقة بعد.<br><button type="button" class="nbdev-btn" data-dtab="add" style="margin-top:8px">➕ ربط جهاز جديد</button></div>') + '</div>';
+      if((v.blocked || []).length) body += '<div class="nbdev-card"><h3>🚫 أجهزة محظورة</h3><div class="nbd-list">' + v.blocked.map(function(b){ return '<div class="nbd-row"><div class="nbd-ic">🚫</div><div class="nbd-tx"><div class="nbd-nm">' + esc(b.name) + '</div></div><div class="nbd-act"><button type="button" class="nbdev-btn gray sm" data-unblock="' + esc(b.devId) + '">إلغاء الحظر</button></div></div>'; }).join('') + '</div></div>';
+      body += '<details class="nbdev-card nbd-help"><summary>❔ كيف يعمل الاتصال التلقائي؟</summary><ol class="nbdev-steps"><li>من تبويب «➕ ربط جهاز جديد» شغّل الاستقبال، ثم على الجهاز الملحق: «🔍 البحث عن جهاز رئيسي» ← اختر هذا الجهاز ← اكتب كلمة المرور.</li><li>بعدها كلما فتحت البرنامج على الجهازين — في أي يوم وبأي ترتيب — يتصلان وحدهما دون رمز أو موافقة.</li><li>إذا انقطع الواي فاي يعود الاتصال تلقائياً عند رجوعه، ولا يُنسى الربط أبداً.</li><li>«إلغاء الربط» يزيل الجهاز نهائياً، ويعود ذلك الجهاز إلى بياناته السابقة.</li></ol>' +
+        '<p class="nbdev-note">' + (inApp() ? '✅ هذا الجهاز جاهز لاستقبال الأجهزة الملحقة تلقائياً بلا إنترنت.' : 'ℹ️ الاتصال التلقائي بلا إنترنت يعمل عندما يكون البرنامج مفتوحاً من تطبيق الأندرويد (3.0.6 أو أحدث) على الجهازين.') + '</p></details>';
+    } else if(tab === 'ust'){
+      body += window.__UST ? window.__UST.cardHtml() : '<div class="nbdev-card"><p class="nbdev-note">غير متاح.</p></div>';
+    } else {
+      body += '<div class="nbdev-card"><div class="nbdev-rx">' +
+        '<div class="nbdev-rxrow"><div><h3 style="margin:0">📡 استقبال أجهزة جديدة على الشبكة</h3><p class="nbdev-note">عند التشغيل يظهر هذا الجهاز في قائمة «البحث عن جهاز رئيسي» على الأجهزة الملحقة، ويُربط الجهاز بكلمة المرور.</p></div>' +
+          '<button type="button" class="nbdev-sw' + (rxOn ? ' on' : '') + '" data-rx="1" aria-label="الاستقبال" title="' + (rxOn ? 'إيقاف الاستقبال' : 'تشغيل الاستقبال') + '"></button></div>' +
+        (rxOn ? '<div class="nbdev-rxrow"><div><div class="nbdev-meta">كلمة مرور الربط</div><span class="nbdev-pass">' + esc(c.lanPass || '------') + '</span></div><button type="button" class="nbdev-btn gray sm" data-pass="1">✏️ تغيير كلمة المرور</button></div>' +
+          '<div class="nbdev-rxrow"><div class="nbdev-meta" style="flex:0 0 auto">اسم هذا الجهاز على الشبكة:</div><input class="nbdev-in" data-lname="1" maxlength="40" value="' + esc((D() && D().H.lanName()) || '') + '"></div>' +
+          '<p class="nbdev-note">' + (inApp() ? '🟢 الاستقبال يعمل — اترك البرنامج مفتوحاً على هذا الجهاز أثناء ربط الأجهزة.' : 'ℹ️ البث على الشبكة يعمل عندما يكون البرنامج مفتوحاً من تطبيق الأندرويد.') + '</p>'
+        : '<p class="nbdev-note">الاستقبال متوقف: لا يمكن ربط أجهزة جديدة بكلمة المرور. <b>الأجهزة المرتبطة سابقاً تتصل تلقائياً دائماً</b> حتى والاستقبال متوقف.</p>') +
+      '</div></div>' +
+      '<div class="nbdev-card nbdev-add"><div style="font-size:36px">🔗</div><div class="nbdev-txt"><h3>ربط جهاز ملحق برمز QR</h3><p class="nbdev-note">طريقة بديلة بلا إنترنت: مسح رمزين بين الجهازين. يُربط كل جهاز مرة واحدة فقط ويُحفظ دائماً.</p></div>' +
         '<button type="button" class="nbdev-btn light" data-add="1">➕ ربط برمز QR</button></div>' +
-      (pend ? '<div class="nbdev-card"><h3>⏳ طلبات ربط بانتظار موافقتك</h3><div class="nbdev-list">' + pend + '</div></div>' : '') +
-      '<div class="nbdev-card"><div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:10px"><h3 style="margin:0">📋 الأجهزة المرتبطة (' + ar(trusted.length) + ')</h3>' +
-        (trusted.length ? '<span class="nbdev-pill ' + (liveN ? 'g' : 'b') + '">' + (liveN ? '🟢 ' + ar(liveN) + ' متصل الآن' : 'لا يوجد جهاز متصل الآن') + '</span>' : '') + '</div>' +
-        (trusted.length ? '<div class="nbdev-list">' + trusted.map(function(t){ return deviceRow(t, t.connected); }).join('') + '</div>'
-          : '<div class="nbdev-empty">لا توجد أجهزة ملحقة بعد.<br>شغّل «📡 الاستقبال» أعلاه، ثم ابحث عن هذا الجهاز من الجهاز الملحق.</div>') +
-      '</div>' +
-      '<div class="nbdev-card"><h3>🔄 كيف يعمل الاتصال التلقائي</h3><p class="nbdev-note">' + ready + '</p>' +
-        '<ol class="nbdev-steps"><li>شغّل «📡 الاستقبال» هنا، ثم على الجهاز الملحق: «🔍 البحث عن جهاز رئيسي» ← اختر هذا الجهاز ← اكتب كلمة المرور. (أو «➕ ربط برمز QR».)</li><li>بعدها كلما فتحت البرنامج على الجهازين — في أي يوم وبأي ترتيب — يتصلان وحدهما دون رمز أو موافقة.</li><li>إذا انقطع الواي فاي يعود الاتصال تلقائياً عند رجوعه، ولا يُنسى الربط أبداً.</li><li>«إلغاء الربط» يزيل الجهاز نهائياً، ويعود ذلك الجهاز إلى بياناته السابقة.</li></ol></div>' +
-      ((v.blocked || []).length ? '<div class="nbdev-card"><h3>🚫 أجهزة محظورة</h3><div class="nbdev-list">' + v.blocked.map(function(b){ return '<div class="nbdev-item"><div class="nbdev-ico">🚫</div><div class="nbdev-name">' + esc(b.name) + '</div><div class="nbdev-acts"><button type="button" class="nbdev-btn gray sm" data-unblock="' + esc(b.devId) + '">إلغاء الحظر</button></div></div>'; }).join('') + '</div></div>' : '') +
-    '</div>';
+      '<div class="nbdev-card"><h3>📲 هل هذا الجهاز هو الملحق؟</h3><p class="nbdev-note">إذا أردت أن يعمل هذا الجهاز كجهاز ملحق بجهاز رئيسي آخر:</p><div style="margin-top:8px;display:flex;gap:8px;flex-wrap:wrap"><button type="button" class="nbdev-btn" data-netjoin="1">🔍 البحث عن جهاز رئيسي على الشبكة</button><button type="button" class="nbdev-btn gray" data-join="1">الربط برمز QR</button></div></div>';
+    }
+    return '<div class="nbdev-wrap">' + stats + tabs + body + '</div>';
   }
 
   function guestHtml(i){
@@ -27493,9 +27518,6 @@ window.renderHomeView=function(){
     else if(isTeacher()) body = '<div class="nbdev-card"><p class="nbdev-note">إدارة الأجهزة الملحقة متاحة من حساب المدير فقط.</p><div style="margin-top:8px"><button type="button" class="nbdev-btn" data-netjoin="1">🔍 ربط هذا الجهاز بجهاز رئيسي</button></div></div>';
     else {
       body = hostHtml(d.H.view());
-      body += '<div class="nbdev-card" style="margin-top:14px"><h3>🩺 تشخيص الاستقبال</h3><pre id="nbDevDiag" style="direction:ltr;text-align:left;white-space:pre-wrap;word-break:break-all;font:11.5px/1.7 monospace;background:#263238;color:#b2dfdb;border-radius:10px;padding:8px 10px;margin:6px 0 0">page dlsId=' + esc(d.H.cfg.id) + '\n…</pre></div>';
-      setTimeout(hostDiag, 50);
-      body += '<div class="nbdev-card" style="margin-top:14px"><h3>📲 هل هذا الجهاز هو الملحق؟</h3><p class="nbdev-note">إذا أردت أن يعمل هذا الجهاز كجهاز ملحق بجهاز رئيسي آخر:</p><div style="margin-top:8px;display:flex;gap:8px;flex-wrap:wrap"><button type="button" class="nbdev-btn" data-netjoin="1">🔍 البحث عن جهاز رئيسي على الشبكة</button><button type="button" class="nbdev-btn gray" data-join="1">الربط برمز QR</button></div></div>';
     }
     var sy = window.scrollY;
     el.innerHTML = head + '<div style="padding:4px 2px 18px">' + body + '</div></div>';
@@ -27527,6 +27549,7 @@ window.renderHomeView=function(){
     var root = document.getElementById(VIEW); if(!root || !root.contains(e.target)) return;
     var b = e.target.closest('button'); if(!b) return;
     var d = D(); if(!d) return;
+    if(b.dataset.dtab){ TAB = b.dataset.dtab; try{ localStorage.setItem('nbdev_tab_v1', TAB); }catch(x){} render(); return; }
     if(b.dataset.add){ d.openHostPanel(); setTimeout(function(){ var o = document.querySelector('[data-a=offline]'); if(o) o.click(); }, 350); return; }
     if(b.dataset.join){ d.openJoin('off'); return; }
     if(b.dataset.netjoin){ openNetJoin(); return; }
@@ -27706,15 +27729,15 @@ window.renderHomeView=function(){
   }
   function removeAssign(id, aid){ var t = get(id); if(!t) return; t.assignments = t.assignments.filter(function(a){ return a.id !== aid; }); save(); }
   /* nb-v1.36: صلاحيات إضافية لأي معلم: الغياب لكل المدرسة (معاون)، أولياء الأمور، صلاحيات المدير (عرض فقط) */
-  function rolesOf(t){ var r = (t && t.roles) || {}; return {att: !!r.att, parents: r.parents === 'all' || r.parents === 'mine' ? r.parents : false, principal: !!r.principal}; }
-  function hasRoles(t){ var r = rolesOf(t); return !!(r.att || r.parents || r.principal); }
-  function setRoles(id, r){ var t = get(id); if(!t) return; r = r || {}; t.roles = {att: !!r.att, parents: r.parents === 'all' || r.parents === 'mine' ? r.parents : false, principal: !!r.principal}; save(); }
+  function rolesOf(t){ var r = (t && t.roles) || {}; return {att: !!r.att, parents: r.parents === 'all' || r.parents === 'mine' ? r.parents : false, principal: !!r.principal, records: !!r.records, questions: !!r.questions}; }
+  function hasRoles(t){ var r = rolesOf(t); return !!(r.att || r.parents || r.principal || r.records || r.questions); }
+  function setRoles(id, r){ var t = get(id); if(!t) return; r = r || {}; t.roles = {att: !!r.att, parents: r.parents === 'all' || r.parents === 'mine' ? r.parents : false, principal: !!r.principal, records: !!r.records, questions: !!r.questions}; save(); }
   function todayKey(d){ d = d || new Date(); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); }
   function named(st){ return st && String(st.name || '').trim(); }
   /* دليل المدرسة: الصفوف والشعب والطلاب (وأرقام أولياء الأمور لمن له الصلاحية) */
   function dirFor(t, r){
     var mine = {}, out = []; t.assignments.forEach(function(a){ mine[a.grade + '|' + a.sectionId] = 1; });
-    var wantAll = r.att || r.principal || r.parents === 'all', labels = [];
+    var wantAll = r.att || r.principal || r.parents === 'all' || r.questions, labels = [];
     try{ labels = gradebookGradeLabels() || []; }catch(e){}
     labels.forEach(function(g){
       var secs = []; try{ secs = gbSectionsForGrade(g) || []; }catch(e){}
@@ -27723,7 +27746,8 @@ window.renderHomeView=function(){
         var isMine = !!mine[g + '|' + sec.id];
         if(!wantAll && !isMine) return;
         var phones = r.parents === 'all' || (r.parents === 'mine' && isMine);
-        sl.push({id: sec.id, label: sec.label || '', students: (sec.students || []).filter(named).map(function(st){
+        var withSt = r.att || r.principal || phones;   /* كاتب الأسئلة وحده لا يحتاج أسماء الطلاب */
+        sl.push({id: sec.id, label: sec.label || '', students: !withSt ? [] : (sec.students || []).filter(named).map(function(st){
           var o = {id: st.id, name: String(st.name).trim()};
           if(phones){ var ph = String(st.guardianPhone || st.phone || '').trim(); if(ph){ o.ph = ph; try{ var w = parentPhoneDigits(ph); if(w) o.wa = w; }catch(e){} } }
           return o;
@@ -27731,7 +27755,7 @@ window.renderHomeView=function(){
       });
       if(!sl.length) return;
       var gd = {grade: g, layout: li.kind, max: li.max, pass: li.pass, flags: li.flags, sections: sl};
-      if(r.principal){ try{ gd.subjects = (gbSubjects(g) || []).slice(); }catch(e){ gd.subjects = []; } }
+      if(r.principal || r.questions){ try{ gd.subjects = (gbSubjects(g) || []).slice(); }catch(e){ gd.subjects = []; } }
       out.push(gd);
     });
     return out;
@@ -27766,6 +27790,19 @@ window.renderHomeView=function(){
     });
     return out;
   }
+  /* nb-v1.37: القيود — الاسم ورقم القيد فقط (الوثائق المصوّرة تبقى على الجهاز الرئيسي لحجمها) */
+  function qaydList(){ var st = (typeof RECORDS_STATE !== 'undefined' && RECORDS_STATE) || {items: []}; return (st.items || []).map(function(r){ var o = {id: r.id, n: String(r.name || ''), no: String(r.recordNo || '')}; if(r.documentImage) o.d = 1; return o; }); }
+  /* nb-v1.37: أوراق الأسئلة — نفس شكل «إنشاء أسئلة» في البرنامج */
+  var QP_KEYS = ['title', 'examMode', 'academicYear', 'date', 'duration', 'saveName', 'grade', 'section', 'subject', 'teacherName', 'note', 'endText'];
+  function cleanPaper(p){
+    p = p || {}; var o = {};
+    QP_KEYS.forEach(function(k){ o[k] = String(p[k] == null ? '' : p[k]).slice(0, k === 'note' || k === 'endText' ? 300 : 120); });
+    o.items = (Array.isArray(p.items) ? p.items : []).slice(0, 10).map(function(it){ it = it || {}; return {text: String(it.text || '').slice(0, 6000), degree: String(it.degree == null ? '' : it.degree).slice(0, 8), branches: (Array.isArray(it.branches) ? it.branches : []).slice(0, 4).map(function(b, i){ b = b || {}; return {label: ['أ', 'ب', 'ج', 'د'][i], text: String(b.text || '').slice(0, 4000), degree: String(b.degree == null ? '' : b.degree).slice(0, 8)}; })}; });
+    o.count = o.items.length || 1; o.generated = true;
+    return o;
+  }
+  function examsState(){ if(typeof EXAMS_STATE === 'undefined') return null; if(!Array.isArray(EXAMS_STATE.savedQuestions)) EXAMS_STATE.savedQuestions = []; return EXAMS_STATE; }
+  function myPapers(t){ var ex = examsState(); if(!ex) return []; var own = 'ust:' + t.id; return ex.savedQuestions.filter(function(p){ return p && p.ownerId === own; }).map(function(p){ var c = cleanPaper(p); c.id = p.id; c.savedAt = p.savedAt || ''; return c; }); }
   function touch(id, device){ var t = get(id); if(!t) return; t.lastSeen = now(); if(device) t.lastDevice = String(device).slice(0, 40); save(); }
 
   /* الحزمة التي تُرسل للمعلم: أسماء طلاب شعبه + القيم القابلة للتعديل فقط من سجلاته */
@@ -27794,10 +27831,13 @@ window.renderHomeView=function(){
     var school = (typeof APP !== 'undefined' && APP.school) || {};
     var pkg = {v: 1, at: now(), hostId: hostCfg().id || '', school: {name: school.name || 'المدرسة', stage: stage(), recordName: recordName()}, teacher: {id: t.id, name: t.name}, assignments: list};
     var r = rolesOf(t);
-    if(r.att || r.parents || r.principal){
-      pkg.roles = r; pkg.dir = dirFor(t, r);
+    if(r.att || r.parents || r.principal || r.records || r.questions){
+      pkg.roles = r;
+      if(r.att || r.parents || r.principal || r.questions) pkg.dir = dirFor(t, r);
       if(r.att || r.principal) pkg.att = attRecent();
       if(r.principal) pkg.recs = allRecs(pkg.dir);
+      if(r.records) pkg.qayd = qaydList();
+      if(r.questions){ pkg.qpapers = myPapers(t); var sch = (typeof APP !== 'undefined' && APP.school) || {}; pkg.hdr = {name: sch.name || '', logo: sch.logo || ''}; }
     }
     return pkg;
   }
@@ -27816,8 +27856,37 @@ window.renderHomeView=function(){
     var t = get(id), res = {applied: 0, rejected: 0};
     if(!t){ res.rejected = (items || []).length; return res; }
     var gbDirty = false, lvDirty = false, attDirty = false, roles = rolesOf(t), STS = ['حاضر', 'غائب', 'مجاز', 'مجاز بعذر'], maxDay = todayKey(new Date(now() + 86400000));
-    res.att = 0; res.attOk = true;
+    res.att = 0; res.attOk = true; res.qyd = 0; res.qydOk = true; res.qp = 0; res.qpOk = true;
+    var qydDirty = false, qpDirty = false;
     (items || []).forEach(function(it){
+      if(it && it.kind === 'qyd'){   /* nb-v1.37: القيود */
+        var rs = (typeof RECORDS_STATE !== 'undefined') ? RECORDS_STATE : null, rid0 = String(it.id || '');
+        if(!roles.records || !rs || !/^rec_[A-Za-z0-9_.-]{1,60}$/.test(rid0)){ res.rejected++; return; }
+        if(!Array.isArray(rs.items)) rs.items = [];
+        var ex = rs.items.filter(function(r){ return r.id === rid0; })[0], nm = String(it.name || '').trim().replace(/\s+/g, ' ').slice(0, 120), no = String(it.no || '').trim().slice(0, 40);
+        if(it.op === 'del'){ if(ex) rs.items = rs.items.filter(function(r){ return r.id !== rid0; }); }
+        else {
+          if(!nm || !no){ res.rejected++; return; }
+          if(ex){ ex.name = nm; ex.recordNo = no; ex.updatedBy = 'تطبيق الأستاذ: ' + t.name; }
+          else if(it.op === 'add') rs.items.push({id: rid0, name: nm, recordNo: no, documentImage: '', grades: {}, createdAt: new Date().toISOString(), by: 'تطبيق الأستاذ: ' + t.name});
+          else { res.rejected++; return; }   /* تعديل قيد حذفه المدير */
+        }
+        res.qyd++; res.applied++; qydDirty = true; return;
+      }
+      if(it && it.kind === 'qp'){   /* nb-v1.37: أوراق الأسئلة */
+        var es = examsState(), qid = String(it.id || ''), own = 'ust:' + t.id;
+        if(!roles.questions || !es || !/^q_[A-Za-z0-9_.-]{1,60}$/.test(qid)){ res.rejected++; return; }
+        var ep = es.savedQuestions.filter(function(p){ return p && p.id === qid; })[0];
+        if(ep && ep.ownerId !== own){ res.rejected++; return; }
+        if(it.op === 'del'){ if(ep) es.savedQuestions = es.savedQuestions.filter(function(p){ return p.id !== qid; }); }
+        else {
+          var np = cleanPaper(it.paper); if(!np.grade || !np.subject){ res.rejected++; return; }
+          np.id = qid; np.editingId = qid; np.ownerId = own; np.ownerName = t.name; np.ownerRole = 'teacher'; np.savedAt = new Date().toISOString(); np.via = 'تطبيق الأستاذ';
+          if(!np.saveName) np.saveName = 'أسئلة ' + np.subject + ' — ' + np.grade;
+          if(ep) Object.assign(ep, np); else es.savedQuestions.push(np);
+        }
+        res.qp++; res.applied++; qpDirty = true; return;
+      }
       if(it && it.kind === 'att'){   /* nb-v1.36: غياب من المعاون — نفس شكل سجل الغياب في البرنامج */
         var sc = sectionOf(it.grade, it.sectionId), d = String(it.date || '');
         var cnt = Object.keys(it.entries || {}).length;
@@ -27870,6 +27939,8 @@ window.renderHomeView=function(){
     if(gbDirty && typeof saveGradebook === 'function') saveGradebook(GRADEBOOK);
     if(lvDirty && typeof saveLevelsState === 'function') saveLevelsState();
     if(attDirty && typeof saveAttendanceState === 'function') saveAttendanceState();
+    if(qydDirty){ try{ rebuildRecordLetterSeq(); }catch(e){} if(typeof saveRecordsState === 'function') saveRecordsState(); }
+    if(qpDirty && typeof saveExamsState === 'function') saveExamsState();
     t.lastSync = now(); t.lastCount = res.applied; save();
     try{ if(window.__nbDevRender) window.__nbDevRender(); }catch(e){}
     return res;
@@ -27900,11 +27971,12 @@ window.renderHomeView=function(){
   function when(ts){ if(!ts) return 'لم يزامن بعد'; var m = Math.round((now() - ts) / 60000); if(m < 1) return 'الآن'; if(m < 60) return 'قبل ' + ar(m) + ' دقيقة'; var h = Math.round(m / 60); if(h < 24) return 'قبل ' + ar(h) + ' ساعة'; try{ return new Date(ts).toLocaleDateString('ar-IQ'); }catch(e){ return ''; } }
   function asgLabel(a){ var sec = sectionOf(a.grade, a.sectionId); return a.subject + ' · ' + a.grade + ' ' + (sec ? (sec.label || '') : '(شعبة محذوفة)'); }
   function cardHtml(){
+    var liveT = {}; try{ (window.__DLS.H.view().trusted || []).forEach(function(x){ if(x.role === 'teacher' && x.connected) liveT[x.teacherId] = 1; }); }catch(e){}
     var rows = S.list.map(function(t){
-      var r = rolesOf(t), rc = (r.att ? '<span class="ust-chip ust-role">📋 الغياب لكل المدرسة</span>' : '') + (r.parents ? '<span class="ust-chip ust-role">👨‍👩‍👧 أولياء الأمور' + (r.parents === 'mine' ? ' (شعبه)' : '') + '</span>' : '') + (r.principal ? '<span class="ust-chip ust-role">🏫 صلاحيات المدير</span>' : '');
+      var r = rolesOf(t), rc = (r.att ? '<span class="ust-chip ust-role">📋 الغياب لكل المدرسة</span>' : '') + (r.parents ? '<span class="ust-chip ust-role">👨‍👩‍👧 أولياء الأمور' + (r.parents === 'mine' ? ' (شعبه)' : '') + '</span>' : '') + (r.principal ? '<span class="ust-chip ust-role">🏫 صلاحيات المدير</span>' : '') + (r.records ? '<span class="ust-chip ust-role">📑 القيود</span>' : '') + (r.questions ? '<span class="ust-chip ust-role">✍️ كتابة الأسئلة</span>' : '');
       var chips = (rc + t.assignments.map(function(a){ return '<span class="ust-chip">' + esc(asgLabel(a)) + (a.levels ? ' 📈' : '') + '</span>'; }).join('')) || '<span class="nbdev-meta">لا مهام بعد — اضغط «📋 المهام»</span>';
       return '<div class="ust-t">' +
-        '<div class="ust-th"><div><div class="nbdev-name">👨‍🏫 ' + esc(t.name) + '</div><div class="nbdev-meta">رمز المعلم: <b class="ust-code">' + esc(t.code) + '</b> · آخر مزامنة: ' + esc(when(t.lastSync)) + (t.lastSync ? ' (' + ar(t.lastCount || 0) + ' خانة)' : '') + (t.lastDevice ? ' · ' + esc(t.lastDevice) : '') + '</div></div>' +
+        '<div class="ust-th"><div><div class="nbdev-name"><span class="nbd-ic" style="width:34px;height:34px;font-size:17px;display:inline-grid;vertical-align:middle;margin-inline-end:8px;border-radius:11px">👨‍🏫<i class="nbd-st' + (liveT[t.id] ? ' on' : '') + '" style="width:12px;height:12px"></i></span>' + esc(t.name) + (liveT[t.id] ? ' <b class="nbd-live" style="font-size:12.5px">● متصل الآن</b>' : '') + '</div><div class="nbdev-meta">رمز المعلم: <b class="ust-code">' + esc(t.code) + '</b> · آخر مزامنة: ' + esc(when(t.lastSync)) + (t.lastSync ? ' (' + ar(t.lastCount || 0) + ' خانة)' : '') + (t.lastDevice ? ' · ' + esc(t.lastDevice) : '') + '</div></div>' +
         '<div class="nbdev-acts"><button type="button" class="nbdev-btn sm" data-ust-asg="' + t.id + '">📋 المهام</button><button type="button" class="nbdev-btn gray sm" data-ust-file="' + t.id + '">📤 ملف المهام</button><button type="button" class="nbdev-btn gray sm" data-ust-more="' + t.id + '">⋯</button></div></div>' +
         '<div class="ust-chips">' + chips + '</div></div>';
     }).join('');
@@ -27944,6 +28016,8 @@ window.renderHomeView=function(){
         '<label class="ust-ck"><input type="checkbox" data-role="att"' + (r0.att ? ' checked' : '') + '> 📋 إدارة الغياب لكل المدرسة (المعاون)</label>' +
         '<div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap"><label class="ust-ck" style="flex:1"><input type="checkbox" data-role="parents"' + (r0.parents ? ' checked' : '') + '> 👨‍👩‍👧 أولياء الأمور (الأرقام، اتصال وواتساب)</label><select class="ust-sel" data-pscope style="width:auto"><option value="all"' + (r0.parents !== 'mine' ? ' selected' : '') + '>كل المدرسة</option><option value="mine"' + (r0.parents === 'mine' ? ' selected' : '') + '>شعبه فقط</option></select></div>' +
         '<label class="ust-ck"><input type="checkbox" data-role="principal"' + (r0.principal ? ' checked' : '') + '> 🏫 صلاحيات المدير (عرض كل السجلات والمستويات والغياب)</label>' +
+        '<label class="ust-ck"><input type="checkbox" data-role="records"' + (r0.records ? ' checked' : '') + '> 📑 إدارة القيود (إضافة وتعديل وبحث وكشوفات التشابه)</label>' +
+        '<label class="ust-ck"><input type="checkbox" data-role="questions"' + (r0.questions ? ' checked' : '') + '> ✍️ كتابة الأسئلة (يطبعها من هاتفه وتُحفظ في «الأسئلة المحفوظة»)</label>' +
         '<div data-rmsg class="nbdev-meta"></div></div>' +
       '<div data-cur></div>' +
       '<div style="border-top:1px solid #eceff1;padding-top:10px"><b>إضافة مهمة</b></div>' +
@@ -27966,7 +28040,7 @@ window.renderHomeView=function(){
     m.addEventListener('change', function(e){
       if(!e.target.closest('[data-role],[data-pscope]')) return;
       var q = function(k){ var x = m.querySelector('[data-role="' + k + '"]'); return !!(x && x.checked); };
-      setRoles(id, {att: q('att'), parents: q('parents') ? (m.querySelector('[data-pscope]').value || 'all') : false, principal: q('principal')});
+      setRoles(id, {att: q('att'), parents: q('parents') ? (m.querySelector('[data-pscope]').value || 'all') : false, principal: q('principal'), records: q('records'), questions: q('questions')});
       m.querySelector('[data-rmsg]').innerHTML = '✅ حُفظت الصلاحيات — تصل للمعلم عند مزامنته القادمة.';
     });
     m.addEventListener('click', function(e){
@@ -28087,8 +28161,9 @@ window.renderHomeView=function(){
   var VKEY = 'ustath_view_v1', VIEW = (function(){ try{ return JSON.parse(localStorage.getItem(VKEY) || '{}') || {}; }catch(e){ return {}; } })(), vWarned = false;
   function saveView(){ try{ localStorage.setItem(VKEY, JSON.stringify(VIEW)); }catch(e){ if(!vWarned){ vWarned = true; try{ toast('مساحة الجهاز لا تكفي لحفظ سجلات المدرسة كاملة؛ ستبقى معروضة حتى إغلاق التطبيق.', true); }catch(x){} } } }
   function viewOf(sc){ return (sc && VIEW[sc.hostId]) || null; }
-  function rolesOf(sc){ var r = (sc && sc.roles) || {}; return {att: !!r.att, parents: r.parents || false, principal: !!r.principal}; }
-  function anyRole(sc){ var r = rolesOf(sc); return !!(r.att || r.parents || r.principal); }
+  function rolesOf(sc){ var r = (sc && sc.roles) || {}; return {att: !!r.att, parents: r.parents || false, principal: !!r.principal, records: !!r.records, questions: !!r.questions}; }
+  function anyRole(sc){ var r = rolesOf(sc); return !!(r.att || r.parents || r.principal || r.records || r.questions); }
+  function mapCount(o){ return Object.keys(o || {}).length; }
   function todayKey(d){ d = d || new Date(); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); }
   function attDirtyCount(sc){ var n = 0; Object.keys(sc.attDirty || {}).forEach(function(d){ n += Object.keys(sc.attDirty[d]).length; }); return n; }
   function asgKey(a){ return a.grade + '|' + a.sectionId + '|' + a.subject; }
@@ -28101,7 +28176,7 @@ window.renderHomeView=function(){
     return r;
   }
   function setPath(o, path, v){ var p = path.split('.'); if(p.length === 3) o[p[0]][p[1]][+p[2]] = v; else o[p[0]][p[1]] = v; }
-  function dirtyCount(sc){ var n = 0; (sc.assignments || []).forEach(function(a){ Object.keys(a.dirty || {}).forEach(function(s){ n += Object.keys(a.dirty[s]).length; }); Object.keys(a.ldirty || {}).forEach(function(s){ n += Object.keys(a.ldirty[s]).length; }); if(a.t1Dirty) n++; }); return n + attDirtyCount(sc); }
+  function dirtyCount(sc){ var n = 0; (sc.assignments || []).forEach(function(a){ Object.keys(a.dirty || {}).forEach(function(s){ n += Object.keys(a.dirty[s]).length; }); Object.keys(a.ldirty || {}).forEach(function(s){ n += Object.keys(a.ldirty[s]).length; }); if(a.t1Dirty) n++; }); return n + attDirtyCount(sc) + mapCount(sc.qydDirty) + mapCount(sc.qpDirty); }
 
   function mergePkg(sc, pkg){
     sc.name = pkg.school.name; sc.stage = pkg.school.stage || sc.stage || D.me.stage; sc.recordName = pkg.school.recordName || recName(sc.stage);
@@ -28117,7 +28192,7 @@ window.renderHomeView=function(){
       return a;
     });
     sc.roles = pkg.roles || {};
-    if(pkg.dir){ VIEW[sc.hostId] = {at: pkg.at, dir: pkg.dir, att: pkg.att || null, recs: pkg.recs || null}; }
+    if(pkg.roles && (pkg.dir || pkg.qayd || pkg.qpapers)){ VIEW[sc.hostId] = {at: pkg.at, dir: pkg.dir || [], att: pkg.att || null, recs: pkg.recs || null, qayd: pkg.qayd || null, qpapers: pkg.qpapers || null, hdr: pkg.hdr || null}; }
     else if(VIEW[sc.hostId]) delete VIEW[sc.hostId];
     saveView();
   }
@@ -28146,9 +28221,15 @@ window.renderHomeView=function(){
     var groups = {};
     Object.keys(sc.attDirty || {}).forEach(function(d){ Object.keys(sc.attDirty[d]).forEach(function(sid){ var e = sc.attDirty[d][sid], k = d + '|' + e.g + '|' + e.sec; var it = groups[k] || (groups[k] = {kind: 'att', date: d, grade: e.g, sectionId: e.sec, entries: {}}); it.entries[sid] = e.s; }); });
     Object.keys(groups).forEach(function(k){ items.push(groups[k]); });
+    /* nb-v1.37: القيود وأوراق الأسئلة */
+    Object.keys(sc.qydDirty || {}).forEach(function(id){ var x = sc.qydDirty[id]; items.push({kind: 'qyd', op: x.op, id: id, name: x.name, no: x.no}); });
+    Object.keys(sc.qpDirty || {}).forEach(function(id){ var x = sc.qpDirty[id]; items.push({kind: 'qp', op: x.op, id: id, paper: x.op === 'del' ? null : x.paper}); });
     return items;
   }
-  function clearDirty(sc, upto, attOk){
+  function clearDirty(sc, upto, ack){
+    var attOk = ack && ack.attOk;
+    if(ack && ack.qydOk) Object.keys(sc.qydDirty || {}).forEach(function(id){ if(sc.qydDirty[id].ts <= upto) delete sc.qydDirty[id]; });
+    if(ack && ack.qpOk) Object.keys(sc.qpDirty || {}).forEach(function(id){ if(sc.qpDirty[id].ts <= upto) delete sc.qpDirty[id]; });
     if(attOk) Object.keys(sc.attDirty || {}).forEach(function(d){ Object.keys(sc.attDirty[d]).forEach(function(sid){ if(sc.attDirty[d][sid].ts <= upto) delete sc.attDirty[d][sid]; }); if(!Object.keys(sc.attDirty[d]).length) delete sc.attDirty[d]; });
     (sc.assignments || []).forEach(function(a){
       Object.keys(a.dirty || {}).forEach(function(sid){ Object.keys(a.dirty[sid]).forEach(function(k){ if(a.dirty[sid][k] <= upto) delete a.dirty[sid][k]; }); if(!Object.keys(a.dirty[sid]).length) delete a.dirty[sid]; });
@@ -28182,15 +28263,20 @@ window.renderHomeView=function(){
     .then(function(out){
       if(out.welcome){ sc.token = out.welcome.token || sc.token; if(out.welcome.fileKey) sc.fileKey = out.welcome.fileKey; }
       if(out.lan && out.lan.ip){ sc.hint = out.lan.ip + ':' + out.lan.port; sc.hints = (out.lan.ips || []).map(function(x){ return x + ':' + out.lan.port; }); }
-      if(out.ack && pushTs) clearDirty(sc, pushTs, !!out.ack.attOk);
+      if(out.ack && pushTs) clearDirty(sc, pushTs, out.ack);
       if(out.pkg) mergePkg(sc, out.pkg);
       sc.lastSync = now(); save();
-      if(!quiet || out.ack) toast(out.ack ? ('✅ أُرسل إلى «' + sc.name + '»: ' + (out.ack.applied - (out.ack.att || 0) > 0 ? ar(out.ack.applied - (out.ack.att || 0)) + ' درجة' : '') + (out.ack.att ? (out.ack.applied - out.ack.att > 0 ? ' و' : '') + ar(out.ack.att) + ' حالة غياب' : '') + (!out.ack.applied ? 'لا جديد' : '')) : '✅ تم تحديث قوائمك من «' + sc.name + '»');
+      if(!quiet || out.ack) toast(out.ack ? ackText(sc, out.ack) : '✅ تم تحديث قوائمك من «' + sc.name + '»');
       return true;
     }, function(e){ if(!quiet) toast((e && e.message) || 'تعذرت المزامنة', true); return false; })
     .then(function(r){ syncing[sc.hostId] = false; render(); return r; });
   }
 
+  function ackText(sc, k){
+    var g = (k.applied || 0) - (k.att || 0) - (k.qyd || 0) - (k.qp || 0), parts = [];
+    if(g > 0) parts.push(ar(g) + ' درجة'); if(k.att) parts.push(ar(k.att) + ' حالة غياب'); if(k.qyd) parts.push(ar(k.qyd) + ' قيد'); if(k.qp) parts.push(ar(k.qp) + ' ورقة أسئلة');
+    return '✅ أُرسل إلى «' + sc.name + '»: ' + (parts.join(' · ') || 'لا جديد') + (k.rejected ? ' (رُفض ' + ar(k.rejected) + ')' : '');
+  }
   /* ---------- الملفات ---------- */
   function pickFile(cb){
     var inp = document.createElement('input'); inp.type = 'file'; inp.accept = '.ustath,.json,application/json'; inp.style.display = 'none';
@@ -28233,7 +28319,7 @@ window.renderHomeView=function(){
       '#ustApp{--bg:#eef3f6;--card:#fff;--tx:#1f2d33;--mut:#607d8b;--mut2:#90a4ae;--bd:#e3e8ec;--bd2:#cfd8dc;--soft:#f0f3f5;--chip:#fff;--chipTx:#37474f;--pri:#00897b;--priS:#e0f2f1;--priT:#00695c;--in:#fafcfc;--h1:#0d47a1;--h2:#00897b;--thBg:#e0f2f1;--thTx:#004d40;--calc:#fff8e1;--g:#eceff1;--gT:#37474f;--sh:rgba(16,42,67,.07);--low:#c62828;--dBd:#ffb74d;--dBg:#fff8e1;--bgB:#fff3e0;--bgBT:#e65100;--blue:#1565c0;--blueS:#e3f2fd;--redS:#ffebee;--grnS:#e8f5e9;--grn:#2e7d32;--orgS:#fff3e0;--org:#ef6c00;--toast:#263238;color-scheme:light}' +
       '#ustApp[data-theme="dark"]{--bg:#0e1419;--card:#172028;--tx:#e7eef3;--mut:#94a7b4;--mut2:#6d808d;--bd:#25313b;--bd2:#34434f;--soft:#1e2830;--chip:#1c2630;--chipTx:#d5e0e7;--pri:#26a69a;--priS:#123a35;--priT:#7fe0d3;--in:#111a21;--h1:#0b2747;--h2:#0b5a52;--thBg:#143a35;--thTx:#a6f0e6;--calc:#3a3218;--g:#25313b;--gT:#d5e0e7;--sh:rgba(0,0,0,.35);--low:#ff7b7b;--dBd:#c98a26;--dBg:#2f2615;--bgB:#3b2a12;--bgBT:#ffb74d;--blue:#64b5f6;--blueS:#13283d;--redS:#3a1a1d;--grnS:#15301b;--grn:#81c784;--orgS:#3a2a14;--org:#ffb74d;--toast:#000;color-scheme:dark}' +
       'html.ust-mode,html.ust-mode body{overflow:hidden!important}' +
-      'html.ust-mode body>*:not(#ustApp){display:none!important}' +
+      'html.ust-mode body>*:not(#ustApp):not(iframe){display:none!important}' +
       '#ustApp{position:fixed;inset:0;z-index:2147483646;display:flex;flex-direction:column;direction:rtl;font-family:inherit;color:var(--tx);background:var(--bg);transition:background .2s}' +
       '#ustApp *{box-sizing:border-box}' +
       '.u-top{background:linear-gradient(135deg,var(--h1),var(--h2));color:#fff;padding:calc(12px + env(safe-area-inset-top)) 14px 14px;box-shadow:0 4px 16px rgba(0,0,0,.18);flex:0 0 auto}' +
@@ -28314,14 +28400,33 @@ window.renderHomeView=function(){
       '.u-day{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:6px}.u-day b{font-size:16px}' +
       '.lvc{display:inline-block;border-radius:8px;padding:2px 7px;font-weight:900;font-size:12px}.lvc.l1{background:var(--redS);color:var(--low)}.lvc.l2{background:var(--orgS);color:var(--org)}.lvc.l3{background:var(--blueS);color:var(--blue)}.lvc.l4{background:var(--grnS);color:var(--grn)}' +
       '.u-thm{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}.u-thm button{border:1.5px solid var(--bd2);background:var(--chip);color:var(--chipTx);border-radius:14px;padding:12px 4px;font:900 14px inherit;font-family:inherit;cursor:pointer}.u-thm button.on{border-color:var(--pri);background:var(--priS);color:var(--priT)}' +
-      '.u-date{display:flex;gap:8px;align-items:center}.u-date .u-in{flex:1;font-weight:800}';
+      '.u-date{display:flex;gap:8px;align-items:center}.u-date .u-in{flex:1;font-weight:800}' +
+      /* nb-v1.37 */
+      '.u-role.qyd{background:linear-gradient(135deg,#6a1b9a,#ad1457)}.u-role.qps{background:linear-gradient(135deg,#00695c,#2e7d32)}' +
+      '.u-qr{display:grid;grid-template-columns:44px 1fr auto;gap:10px;align-items:center;padding:10px 4px;border-bottom:1px solid var(--soft)}.u-qr:last-child{border-bottom:0}' +
+      '.u-qr .L{width:44px;height:44px;border-radius:12px;background:var(--priS);color:var(--priT);display:grid;place-items:center;font-weight:900;font-size:17px;line-height:1}.u-qr .L small{font-size:10.5px;font-weight:800;opacity:.85}' +
+      '.u-qr .nm{font-weight:800;font-size:15px;overflow:hidden;text-overflow:ellipsis}.u-qr .nm.bad{color:var(--low)}.u-qr .sub{font-size:12.5px;color:var(--mut);font-weight:700}.u-qr .no{color:var(--tx);direction:ltr;unicode-bidi:isolate}.u-qr .no.warn{color:var(--org)}.u-qr.dirty .nm:after{content:" ●";color:var(--org);font-size:12px}' +
+      '.u-letters{display:flex;gap:6px;overflow-x:auto;padding-bottom:4px;-webkit-overflow-scrolling:touch}.u-letters .u-chip{flex:0 0 auto;padding:7px 11px}.u-letters .u-chip.dim{opacity:.45}.u-letters small{font-size:11px;opacity:.8}' +
+      '.u-kpis{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:8px}.u-kpi{background:var(--card);border-radius:16px;padding:12px;box-shadow:0 2px 12px var(--sh);border-top:4px solid var(--pri)}.u-kpi b{display:block;font-size:26px;line-height:1.2}.u-kpi span{font-size:12.5px;color:var(--mut);font-weight:800}' +
+      '.u-kpi.w{border-top-color:#ef6c00}.u-kpi.r{border-top-color:#d32f2f}.u-kpi.o{border-top-color:#f9a825}.u-kpi.b{border-top-color:#1565c0}' +
+      '.u-alpha{display:grid;grid-template-columns:repeat(auto-fill,minmax(52px,1fr));gap:6px}.u-alpha button{border:1.5px solid var(--bd);background:var(--chip);color:var(--mut2);border-radius:12px;padding:6px 2px;font-family:inherit;cursor:pointer}.u-alpha button b{display:block;font-size:17px}.u-alpha button small{font-size:11px;font-weight:800}.u-alpha button.has{color:var(--priT);border-color:var(--pri);background:var(--priS)}' +
+      '.u-qp{display:flex;gap:10px;align-items:center;flex-wrap:wrap}.u-qp b{font-size:15.5px}' +
+      '.u-form{display:grid;gap:10px}.u-grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}.u-form .u-in{padding:10px;font-size:15px}' +
+      '.u-qcard{display:grid;gap:8px;border-inline-start:5px solid var(--pri)}.u-qh{display:flex;align-items:center;gap:10px}.u-qh b{font-size:18px;color:var(--priT)}.u-qh label{display:flex;align-items:center;gap:6px;font-size:13px;font-weight:800;color:var(--mut);margin-inline-start:auto}' +
+      '.u-deg{width:70px!important;text-align:center;font-weight:900;padding:8px!important}' +
+      '.u-ta{min-height:96px;resize:vertical;line-height:1.9;font-size:16px}.u-ta.s{min-height:62px;font-size:15px}' +
+      '.u-br{display:grid;grid-template-columns:26px 1fr 64px auto;gap:6px;align-items:start}.u-br b{padding-top:12px;color:var(--priT)}' +
+      '.u-bar2{position:sticky;bottom:calc(8px + env(safe-area-inset-bottom));display:grid;grid-template-columns:repeat(3,1fr);gap:8px;background:var(--card);padding:8px;border-radius:18px;box-shadow:0 6px 24px rgba(0,0,0,.18);z-index:3}.u-bar2 .u-btn{padding:12px 6px;font-size:14px}' +
+      '.u-paperwrap{overflow:hidden;position:relative;border-radius:10px;background:#cfd8dc;padding:2px}.u-paper{width:210mm;transform-origin:top right;background:#fff;color:#111}' +
+      '@media(max-width:420px){.u-grid2{grid-template-columns:1fr}}';
     document.head.appendChild(s);
   }
   var toastT = null;
   function toast(m, err){ var o = document.querySelector('#ustApp .u-toast'); if(o) o.remove(); var t = document.createElement('div'); t.className = 'u-toast' + (err ? ' e' : ''); t.textContent = m; root.appendChild(t); clearTimeout(toastT); toastT = setTimeout(function(){ t.remove(); }, err ? 5200 : 3200); }
   var COLORS = ['#00897b', '#1565c0', '#6a1b9a', '#ef6c00', '#c2185b', '#2e7d32', '#5d4037', '#00838f'];
   function go(page, asg, tab){ if(page !== V.page || asg !== V.asg) V.stack.push({page: V.page, asg: V.asg, tab: V.tab}); V.page = page; V.asg = asg || null; if(tab) V.tab = tab; render(); var m = root && root.querySelector('.u-main'); if(m) m.scrollTop = 0; }
-  function back(){ var m = document.querySelector('#ustApp .u-modal'); if(m){ m.remove(); return true; } if(!V.stack.length) return false; var p = V.stack.pop(); V.page = p.page; V.asg = p.asg; V.tab = p.tab || 'enter'; render(); return true; }
+  function back(){ var m = document.querySelector('#ustApp .u-modal'); if(m){ m.remove(); return true; }
+    if(V.page === 'qpEdit' && ED && ED.changed && !confirm('لديك تعديلات لم تُحفظ في ورقة الأسئلة. الخروج دون حفظ؟')) return true; if(!V.stack.length) return false; var p = V.stack.pop(); V.page = p.page; V.asg = p.asg; V.tab = p.tab || 'enter'; render(); return true; }
 
   function top(title, sub, withBack, right){
     return '<div class="u-top"><div class="u-row">' + (withBack ? '<button class="u-ib" data-a="back" aria-label="رجوع">→</button>' : '<button class="u-ib" data-a="settings" aria-label="الإعدادات">⚙️</button>') +
@@ -28437,7 +28542,7 @@ window.renderHomeView=function(){
   var ST_LIST = [['غائب', 's1', 'غائب'], ['مجاز', 's2', 'مجاز'], ['مجاز بعذر', 's3', 'بعذر']];
   function stCls(v){ return v === 'غائب' ? 's1' : v === 'مجاز' ? 's2' : v === 'مجاز بعذر' ? 's3' : ''; }
   var UIS = {};
-  function ui(sc){ return UIS[sc.hostId] || (UIS[sc.hostId] = {att: {date: todayKey(), g: '', sec: '', q: ''}, par: {g: '', sec: '', q: ''}, sch: {tab: 'rec', g: '', sec: '', sub: '', lvMode: 'monthly', absDate: ''}}); }
+  function ui(sc){ return UIS[sc.hostId] || (UIS[sc.hostId] = {att: {date: todayKey(), g: '', sec: '', q: ''}, par: {g: '', sec: '', q: ''}, sch: {tab: 'rec', g: '', sec: '', sub: '', lvMode: 'monthly', absDate: ''}, qyd: {tab: 'list', q: '', L: '', lim: 150}}); }
   function curSc(){ return D.schools[V.asg && V.asg.h] || null; }
   function norm(x){ return String(x || '').replace(/[ً-ْـ]/g, '').replace(/[أإآٱ]/g, 'ا').replace(/ة/g, 'ه').replace(/ى/g, 'ي').replace(/\s+/g, ' ').trim(); }
   function digits(x){ var v = String(x || ''); try{ v = toWesternDigits(v); }catch(e){} return v.replace(/\D/g, ''); }
@@ -28456,13 +28561,15 @@ window.renderHomeView=function(){
     return '<div class="u-acts"><a class="u-act call" href="tel:' + esc(String(st.ph).replace(/[^\d+]/g, '')) + '">📞 اتصال</a>' + (st.wa ? '<a class="u-act wa" href="https://wa.me/' + esc(st.wa) + '">💬 واتساب</a>' : '') + '</div>';
   }
   function roleTiles(sc){
-    var r = rolesOf(sc), vw = viewOf(sc), out = '';
-    if(!vw || !anyRole(sc)) return '';
+    var r = rolesOf(sc), vw = viewOf(sc) || {dir: []}, out = '';
+    if(!anyRole(sc)) return '';
     var today = todayKey(), c = (r.att || r.principal) ? countsFor(sc, vw, today) : null, n = 0, withPh = 0;
     eachStudent(vw, function(st){ n++; if(st.ph) withPh++; });
     if(r.att) out += '<button type="button" class="u-role att" data-a="role" data-r="att" data-h="' + esc(sc.hostId) + '"><span class="i">📋</span><b>تسجيل الغياب</b><small>اليوم: ' + ar(c['غائب']) + ' غائب' + (attDirtyCount(sc) ? ' · ' + ar(attDirtyCount(sc)) + ' لم يُرسل' : '') + '</small></button>';
     if(r.parents) out += '<button type="button" class="u-role par" data-a="role" data-r="parents" data-h="' + esc(sc.hostId) + '"><span class="i">👨‍👩‍👧</span><b>أولياء الأمور</b><small>' + ar(withPh) + ' رقم من ' + ar(n) + ' طالب</small></button>';
     if(r.principal) out += '<button type="button" class="u-role sch" data-a="role" data-r="school" data-h="' + esc(sc.hostId) + '"><span class="i">🏫</span><b>المدرسة</b><small>السجلات · المستويات · الغياب</small></button>';
+    if(r.records){ var qn = qydItems(sc).length, qu = mapCount(sc.qydDirty); out += '<button type="button" class="u-role qyd" data-a="role" data-r="qayd" data-h="' + esc(sc.hostId) + '"><span class="i">📑</span><b>القيود</b><small>' + ar(qn) + ' قيد' + (qu ? ' · ' + ar(qu) + ' لم يُرسل' : '') + '</small></button>'; }
+    if(r.questions){ var pn = qpPapers(sc).length, pu = mapCount(sc.qpDirty); out += '<button type="button" class="u-role qps" data-a="role" data-r="qp" data-h="' + esc(sc.hostId) + '"><span class="i">✍️</span><b>كتابة الأسئلة</b><small>' + ar(pn) + ' ورقة' + (pu ? ' · ' + ar(pu) + ' لم تُرسل' : '') + '</small></button>'; }
     return out ? '<div class="u-roles">' + out + '</div>' : '';
   }
   function roleTop(sc, title, sub){
@@ -28608,6 +28715,234 @@ window.renderHomeView=function(){
     return html + '</div></div>';
   }
 
+  /* ================= nb-v1.37: 📑 إدارة القيود ================= */
+  function rnorm(x){ try{ return normalizeRecordName(x); }catch(e){ return norm(x).replace(/ؤ/g, 'و').replace(/ئ/g, 'ي'); } }
+  function rletter(x){ try{ return recordFirstLetter(x); }catch(e){ return String(x || '').trim().charAt(0) || 'أ'; } }
+  var LETTERS = ['أ','ب','ت','ث','ج','ح','خ','د','ذ','ر','ز','س','ش','ص','ض','ط','ظ','ع','غ','ف','ق','ك','ل','م','ن','ه','و','ي'];
+  function qydItems(sc){
+    var vw = viewOf(sc), base = (vw && vw.qayd) || [], dirty = sc.qydDirty || {}, seen = {}, out = [];
+    base.forEach(function(r){ seen[r.id] = 1; var d = dirty[r.id]; if(d && d.op === 'del') return; out.push(d ? {id: r.id, n: d.name, no: d.no, d: r.d, dirty: 1} : r); });
+    Object.keys(dirty).forEach(function(id){ var d = dirty[id]; if(!seen[id] && d.op !== 'del') out.push({id: id, n: d.name, no: d.no, dirty: 1}); });
+    /* تسلسل الحروف: نفس طريقة البرنامج */
+    var groups = {}; out.forEach(function(r){ r.L = rletter(r.n); r.k = rnorm(r.n); (groups[r.L] = groups[r.L] || []).push(r); });
+    Object.keys(groups).forEach(function(L){ groups[L].sort(function(a, b){ return a.k.localeCompare(b.k, 'ar'); }).forEach(function(r, i){ r.seq = i + 1; }); });
+    out.sort(function(a, b){ return (LETTERS.indexOf(a.L) - LETTERS.indexOf(b.L)) || (a.seq - b.seq); });
+    return out;
+  }
+  function qydAnalysis(items){
+    var byName = {}, byNo = {};
+    items.forEach(function(r){ (byName[r.k] = byName[r.k] || []).push(r); var no = String(r.no || '').trim(); if(no) (byNo[no] = byNo[no] || []).push(r); });
+    var dupNames = Object.keys(byName).filter(function(k){ return byName[k].length > 1; }).map(function(k){ return byName[k]; });
+    var dupNos = Object.keys(byNo).filter(function(k){ return byNo[k].length > 1; }).map(function(k){ return {no: k, list: byNo[k]}; });
+    /* الأسماء المتشابهة: اسم يحتوي اسماً آخر (نفس قاعدة البرنامج) — مجمّعة */
+    var keys = Object.keys(byName), parent = {}, flag = {};
+    function f(x){ while(parent[x] && parent[x] !== x) x = parent[x]; return x; }
+    keys.forEach(function(k){ parent[k] = k; });
+    for(var i = 0; i < keys.length; i++) for(var j = i + 1; j < keys.length; j++){ var A = keys[i], B = keys[j]; if(A.length < 3 || B.length < 3) continue; if(A.indexOf(B) >= 0 || B.indexOf(A) >= 0){ parent[f(A)] = f(B); flag[A] = flag[B] = 1; } }
+    var cl = {}; Object.keys(flag).forEach(function(k){ var r = f(k); (cl[r] = cl[r] || []).push(k); });
+    var similar = Object.keys(cl).map(function(r){ var l = []; cl[r].forEach(function(k){ l = l.concat(byName[k]); }); return l; });
+    var conflictIds = {}; dupNos.forEach(function(g){ g.list.forEach(function(r){ conflictIds[r.id] = 1; }); }); similar.forEach(function(g){ g.forEach(function(r){ conflictIds[r.id] = 1; }); });
+    return {byName: byName, byNo: byNo, dupNames: dupNames, dupNos: dupNos, similar: similar, conflicts: mapCount(conflictIds), docs: items.filter(function(r){ return r.d; }).length};
+  }
+  function qydRow(r, an){
+    var dn = an.byName[r.k] && an.byName[r.k].length > 1, dno = r.no && an.byNo[String(r.no).trim()] && an.byNo[String(r.no).trim()].length > 1;
+    return '<div class="u-qr' + (r.dirty ? ' dirty' : '') + '"><span class="L">' + esc(r.L) + '<small>' + ar(r.seq) + '</small></span><div style="min-width:0"><div class="nm' + (dn ? ' bad' : '') + '">' + esc(r.n) + (r.d ? ' <span title="له وثيقة">📎</span>' : '') + '</div><div class="sub">رقم القيد: <b class="no' + (dno ? ' warn' : '') + '">' + esc(r.no || '—') + '</b>' + (dn ? ' · <span class="u-pill s1">اسم مكرر</span>' : '') + (dno ? ' · <span class="u-pill s2">رقم مكرر</span>' : '') + '</div></div>' +
+      '<div class="u-acts"><button type="button" class="u-act call" data-a="qyd-edit" data-id="' + esc(r.id) + '">✏️</button><button type="button" class="u-act off" style="color:var(--low)" data-a="qyd-del" data-id="' + esc(r.id) + '">🗑️</button></div></div>';
+  }
+  function qydResults(sc, u){
+    var items = qydItems(sc), an = qydAnalysis(items), q = rnorm(u.q), dq = String(u.q || '').trim(), list = items;
+    if(q || dq) list = items.filter(function(r){ return (q && r.k.indexOf(q) >= 0) || (dq && String(r.no || '').indexOf(dq) >= 0); });
+    else if(u.L) list = items.filter(function(r){ return r.L === u.L; });
+    var lim = u.lim || 150, more = list.length > lim;
+    return '<div class="u-note" style="margin-bottom:4px">' + ar(list.length) + ' قيد' + ((q || dq) ? ' مطابق' : '') + '</div>' + (list.slice(0, lim).map(function(r){ return qydRow(r, an); }).join('') || '<div class="u-empty">لا توجد قيود مطابقة.</div>') +
+      (more ? '<button type="button" class="u-btn g" style="width:100%;margin-top:8px" data-a="qyd-more">عرض المزيد (' + ar(list.length - lim) + ')</button>' : '');
+  }
+  function renderQayd(sc){
+    var u = ui(sc).qyd || (ui(sc).qyd = {tab: 'list', q: '', L: '', lim: 150}), items = qydItems(sc), un = mapCount(sc.qydDirty);
+    var html = roleTop(sc, '📑 القيود', esc(sc.name) + ' · ' + ar(items.length) + ' قيد') + '<div class="u-main"><div class="u-wrap">' +
+      '<div class="u-tabs"><button type="button" class="u-tab' + (u.tab === 'list' ? ' on' : '') + '" data-pk="qyd-tab" data-v="list">🗂️ القيود</button><button type="button" class="u-tab' + (u.tab === 'rep' ? ' on' : '') + '" data-pk="qyd-tab" data-v="rep">📊 الكشوفات</button></div>' +
+      (un ? '<button type="button" class="u-btn" data-a="sync" data-h="' + esc(sc.hostId) + '">📤 إرسال ' + ar(un) + ' تعديل إلى المدرسة</button>' : '');
+    if(!viewOf(sc) || !viewOf(sc).qayd){ return html + '<div class="u-card u-empty">لم تصل القيود بعد. اضغط «🔄 مزامنة».</div></div></div>'; }
+    if(u.tab === 'rep') return html + qydReports(sc, items) + '</div></div>';
+    var cnt = {}; items.forEach(function(r){ cnt[r.L] = (cnt[r.L] || 0) + 1; });
+    html += '<div class="u-search"><input class="u-in" data-q="qyd" placeholder="ابحث باسم الطالب أو رقم القيد…" value="' + esc(u.q) + '" autocomplete="off"></div>' +
+      '<div class="u-card u-fg" data-pickers' + (u.q ? ' style="display:none"' : '') + '><div class="u-letters"><button type="button" class="u-chip' + (!u.L ? ' on' : '') + '" data-pk="qyd-L" data-v="">الكل</button>' + LETTERS.map(function(L){ return '<button type="button" class="u-chip' + (u.L === L ? ' on' : '') + (cnt[L] ? '' : ' dim') + '" data-pk="qyd-L" data-v="' + L + '">' + L + (cnt[L] ? '<small> ' + ar(cnt[L]) + '</small>' : '') + '</button>'; }).join('') + '</div></div>' +
+      '<button type="button" class="u-btn" data-a="qyd-add" style="width:100%">➕ إضافة قيد جديد</button>' +
+      '<div class="u-card" data-res="qyd">' + qydResults(sc, u) + '</div>';
+    return html + '</div></div>';
+  }
+  function grpCard(title, cls, groups, labelFn){
+    if(!groups.length) return '<div class="u-card"><div class="u-day"><b>' + title + '</b><span class="u-pill s3">لا يوجد ✅</span></div></div>';
+    return '<div class="u-card"><div class="u-day"><b>' + title + '</b><span class="u-pill ' + cls + '">' + ar(groups.length) + ' مجموعة</span></div>' + groups.slice(0, 60).map(function(g){ var list = g.list || g; return '<div class="u-grp"><span>' + esc(labelFn(g)) + '</span><span>' + ar(list.length) + '</span></div>' + list.map(function(r){ return '<div class="u-pr"><div><div class="nm">' + esc(r.n) + '</div><div class="sub">رقم القيد: <b>' + esc(r.no || '—') + '</b> · ' + esc(r.L) + ' / ' + ar(r.seq) + '</div></div><div class="u-acts"><button type="button" class="u-act call" data-a="qyd-edit" data-id="' + esc(r.id) + '">✏️ تصحيح</button></div></div>'; }).join(''); }).join('') + (groups.length > 60 ? '<p class="u-note">… و' + ar(groups.length - 60) + ' مجموعة أخرى</p>' : '') + '</div>';
+  }
+  function qydReports(sc, items){
+    var an = qydAnalysis(items), cnt = {}; items.forEach(function(r){ cnt[r.L] = (cnt[r.L] || 0) + 1; });
+    return '<div class="u-kpis"><div class="u-kpi"><b>' + ar(items.length) + '</b><span>📁 القيود المخزّنة</span></div><div class="u-kpi w"><b>' + ar(an.conflicts) + '</b><span>⚠️ متضاربة / متشابهة</span></div><div class="u-kpi r"><b>' + ar(an.dupNames.length) + '</b><span>👥 أسماء مكررة</span></div><div class="u-kpi o"><b>' + ar(an.dupNos.length) + '</b><span>🔢 أرقام قيد مكررة</span></div><div class="u-kpi b"><b>' + ar(an.docs) + '</b><span>📎 لها وثائق</span></div></div>' +
+      grpCard('🔢 أرقام قيد مكررة', 's2', an.dupNos, function(g){ return 'رقم القيد ' + g.no; }) +
+      grpCard('👥 أسماء مكررة', 's1', an.dupNames, function(g){ return g[0].n; }) +
+      grpCard('🔍 أسماء متشابهة', 's3', an.similar, function(g){ return 'متشابهة مع: ' + g[0].n; }) +
+      '<div class="u-card"><div class="u-day"><b>🔤 توزيع الأسماء حسب الحروف</b></div><div class="u-alpha">' + LETTERS.map(function(L){ return '<button type="button" class="' + (cnt[L] ? 'has' : '') + '" data-pk="qyd-goL" data-v="' + L + '"><b>' + L + '</b><small>' + ar(cnt[L] || 0) + '</small></button>'; }).join('') + '</div></div>';
+  }
+  function qydForm(sc, id){
+    var items = qydItems(sc), r = id ? items.filter(function(x){ return x.id === id; })[0] : null;
+    var names = []; eachStudent(viewOf(sc), function(st){ if(names.length < 3000) names.push(st.name); });
+    var m = document.createElement('div'); m.className = 'u-modal';
+    m.innerHTML = '<div class="u-sheet"><div style="display:flex;justify-content:space-between;align-items:center"><b style="font-size:17px">' + (r ? '✏️ تعديل القيد' : '➕ إضافة قيد') + '</b><button type="button" class="u-btn g sm" data-x="1">✕</button></div>' +
+      '<div><label class="u-lbl">اسم الطالب</label><input class="u-in" data-f="n" list="ustQydNames" maxlength="120" autocomplete="off" value="' + esc(r ? r.n : '') + '">' + (names.length ? '<datalist id="ustQydNames">' + names.map(function(n){ return '<option value="' + esc(n) + '">'; }).join('') + '</datalist>' : '') + '</div>' +
+      '<div><label class="u-lbl">رقم القيد</label><input class="u-in" data-f="no" maxlength="40" autocomplete="off" style="font-weight:900;letter-spacing:1px" value="' + esc(r ? r.no : '') + '"></div>' +
+      '<div data-warn></div><button type="button" class="u-btn" data-ok="1">💾 حفظ القيد</button></div>';
+    root.appendChild(m);
+    var inN = m.querySelector('[data-f=n]'), inNo = m.querySelector('[data-f=no]'), warn = m.querySelector('[data-warn]');
+    function check(){
+      var k = rnorm(inN.value), no = String(inNo.value || '').trim(), w = [];
+      if(no){ var sameNo = items.filter(function(x){ return x.id !== id && String(x.no).trim() === no; }); if(sameNo.length) w.push('<div class="u-msg e">⚠️ رقم القيد مستخدم لـ: ' + sameNo.slice(0, 5).map(function(x){ return '<b>' + esc(x.n) + '</b>'; }).join('، ') + '</div>'); }
+      if(k.length >= 3){
+        var same = items.filter(function(x){ return x.id !== id && x.k === k; }); if(same.length) w.push('<div class="u-msg e">⚠️ الاسم نفسه مسجّل برقم: ' + same.slice(0, 5).map(function(x){ return '<b>' + esc(x.no) + '</b>'; }).join('، ') + '</div>');
+        var sim = items.filter(function(x){ return x.id !== id && x.k !== k && x.k.length >= 3 && (x.k.indexOf(k) >= 0 || k.indexOf(x.k) >= 0); }); if(sim.length) w.push('<div class="u-msg i">ℹ️ أسماء مشابهة: ' + sim.slice(0, 5).map(function(x){ return esc(x.n) + ' (' + esc(x.no) + ')'; }).join('، ') + '</div>');
+      }
+      warn.innerHTML = w.join('');
+    }
+    inN.addEventListener('input', check); inNo.addEventListener('input', check); check(); inN.focus();
+    m.addEventListener('click', function(e){
+      if(e.target === m || e.target.closest('[data-x]')){ m.remove(); return; }
+      if(!e.target.closest('[data-ok]')) return;
+      var n = String(inN.value || '').trim().replace(/\s+/g, ' '), no = String(inNo.value || '').trim();
+      try{ no = toWesternDigits(no); }catch(x){}
+      if(!n){ toast('اكتب اسم الطالب.', true); inN.focus(); return; }
+      if(!no){ toast('اكتب رقم القيد.', true); inNo.focus(); return; }
+      sc.qydDirty = sc.qydDirty || {};
+      var rid = id || ('rec_u' + now().toString(36) + Math.random().toString(36).slice(2, 6)), prev = sc.qydDirty[rid];
+      var isNew = !id || (prev && prev.op === 'add');
+      sc.qydDirty[rid] = {op: isNew ? 'add' : 'edit', name: n, no: no, ts: now()};
+      save(); m.remove(); render(); toast(id ? '✅ عُدّل القيد — يصل للمدرسة عند المزامنة' : '✅ أُضيف القيد — يصل للمدرسة عند المزامنة');
+    });
+  }
+  function qydDelete(sc, id){
+    var r = qydItems(sc).filter(function(x){ return x.id === id; })[0]; if(!r) return;
+    if(!confirm('حذف قيد «' + r.n + '» (رقم ' + r.no + ')؟' + (r.d ? '\nتنبيه: لهذا القيد وثيقة مرفوعة على جهاز المدرسة وستُحذف معه.' : ''))) return;
+    sc.qydDirty = sc.qydDirty || {};
+    var prev = sc.qydDirty[id], onHost = ((viewOf(sc) || {}).qayd || []).some(function(x){ return x.id === id; });
+    if(prev && prev.op === 'add' && !onHost) delete sc.qydDirty[id]; else sc.qydDirty[id] = {op: 'del', ts: now()};
+    save(); render(); toast('🗑️ حُذف القيد — يُحذف من المدرسة عند المزامنة');
+  }
+
+  /* ================= nb-v1.37: ✍️ كتابة الأسئلة ================= */
+  var QP_TITLES = ['امتحان نصف السنة', 'امتحان نهاية السنة', 'امتحان الدور الثاني', 'امتحان الدور الثالث', 'امتحان شهري'];
+  var QP_DUR = ['نصف ساعة', 'ساعة واحدة', 'ساعة ونصف', 'ساعتان', 'ساعتان ونصف', 'ثلاث ساعات'];
+  var QP_SHORT = ['س١/', 'س٢/', 'س٣/', 'س٤/', 'س٥/', 'س٦/', 'س٧/', 'س٨/', 'س٩/', 'س١٠/'], QP_BR = ['أ', 'ب', 'ج', 'د'];
+  function qpPapers(sc){
+    var vw = viewOf(sc), base = (vw && vw.qpapers) || [], dirty = sc.qpDirty || {}, seen = {}, out = [];
+    base.forEach(function(p){ seen[p.id] = 1; var d = dirty[p.id]; if(d && d.op === 'del') return; out.push(d ? Object.assign({}, d.paper, {id: p.id, dirty: 1}) : p); });
+    Object.keys(dirty).forEach(function(id){ var d = dirty[id]; if(!seen[id] && d.op !== 'del') out.push(Object.assign({}, d.paper, {id: id, dirty: 1})); });
+    return out.sort(function(a, b){ return String(b.savedAt || b.at || '').localeCompare(String(a.savedAt || a.at || '')); });
+  }
+  function yearOpts(v){
+    try{ if(typeof seatingAcademicYearOptions === 'function') return seatingAcademicYearOptions(v); }catch(e){}
+    var y = new Date().getFullYear(), out = ''; for(var k = y - 2; k <= y + 2; k++){ var t = k + ' / ' + (k + 1); out += '<option' + (t === v ? ' selected' : '') + '>' + t + '</option>'; } return out;
+  }
+  function defYear(){ var d = new Date(), y = d.getMonth() >= 7 ? d.getFullYear() : d.getFullYear() - 1; return y + ' / ' + (y + 1); }
+  function newPaper(sc){
+    var vw = viewOf(sc), a0 = (sc.assignments || [])[0] || {}, gd = gradeOf(vw, a0.grade) || ((vw && vw.dir) || [])[0] || {};
+    return {title: 'امتحان نصف السنة', examMode: 'written', academicYear: defYear(), date: todayKey(), duration: 'ساعة واحدة', saveName: '', grade: gd.grade || '', section: (a0.grade === gd.grade && a0.sectionId) || ((gd.sections || [])[0] || {}).id || '', subject: (a0.grade === gd.grade && a0.subject) || ((gd.subjects || [])[0] || ''), teacherName: sc.teacherName || D.me.name || '', note: 'أجب عن خمسة أسئلة فقط', endText: 'مع تمنياتي لكم بالنجاح والتوفيق', items: [{text: '', degree: '', branches: []}]};
+  }
+  var ED = null;   /* الورقة المفتوحة للتحرير */
+  function renderQp(sc){
+    var list = qpPapers(sc), un = mapCount(sc.qpDirty);
+    var html = roleTop(sc, '✍️ الأسئلة', esc(sc.name) + ' · ' + ar(list.length) + ' ورقة') + '<div class="u-main"><div class="u-wrap">' +
+      '<button type="button" class="u-btn" data-a="qp-new" style="width:100%;padding:15px">➕ ورقة أسئلة جديدة</button>' +
+      (un ? '<button type="button" class="u-btn b" data-a="sync" data-h="' + esc(sc.hostId) + '">📤 إرسال ' + ar(un) + ' ورقة إلى «الأسئلة المحفوظة» في المدرسة</button>' : '');
+    if(!list.length) html += '<div class="u-card u-empty">لا توجد أوراق أسئلة بعد.<br>اكتب ورقتك، واطبعها من هاتفك، وتُحفظ في «الأسئلة المحفوظة» على جهاز المدرسة عند المزامنة.</div>';
+    else html += list.map(function(p){ return '<div class="u-card u-qp"><div style="flex:1;min-width:0"><b>' + esc(p.saveName || ('أسئلة ' + p.subject)) + '</b><div class="u-note">' + esc(p.subject) + ' — ' + esc(p.grade) + ' · ' + esc(p.title) + ' · ' + ar((p.items || []).length) + ' سؤال</div>' + (p.dirty ? '<span class="u-badge">لم تُرسل بعد</span>' : '<span class="u-pill s3">✓ محفوظة في المدرسة</span>') + '</div>' +
+      '<div class="u-acts" style="flex-wrap:wrap;justify-content:flex-end"><button type="button" class="u-act call" data-a="qp-open" data-id="' + esc(p.id) + '">✏️ فتح</button><button type="button" class="u-act wa" style="background:var(--pri)" data-a="qp-print" data-id="' + esc(p.id) + '">🖨️ طباعة</button><button type="button" class="u-act off" style="color:var(--low)" data-a="qp-del" data-id="' + esc(p.id) + '">🗑️</button></div></div>'; }).join('');
+    return html + '</div></div>';
+  }
+  function opt(v, cur, lbl){ return '<option value="' + esc(v) + '"' + (String(v) === String(cur) ? ' selected' : '') + '>' + esc(lbl == null ? v : lbl) + '</option>'; }
+  function renderQpEdit(sc){
+    if(!ED || ED.h !== sc.hostId){ V.page = 'qp'; return renderQp(sc); }
+    var p = ED.p, vw = viewOf(sc), dir = (vw && vw.dir) || [], gd = gradeOf(vw, p.grade);
+    var html = top(ED.id ? '✏️ تعديل ورقة الأسئلة' : '✍️ ورقة أسئلة جديدة', esc(p.subject || '') + (p.grade ? ' — ' + esc(p.grade) : ''), true) + '<div class="u-main"><div class="u-wrap">' +
+      '<div class="u-card u-form"><div class="u-sec" style="margin:0">📄 معلومات الورقة</div>' +
+        '<div class="u-grid2"><div><label class="u-lbl">عنوان الامتحان</label><select class="u-in" data-qf="title">' + QP_TITLES.map(function(t){ return opt(t, p.title); }).join('') + '</select></div>' +
+        '<div><label class="u-lbl">طريقة الامتحان</label><select class="u-in" data-qf="examMode">' + opt('written', p.examMode, 'تحريري') + opt('oral', p.examMode, 'شفوي') + '</select></div>' +
+        '<div><label class="u-lbl">الصف</label><select class="u-in" data-qf="grade" data-re="1">' + dir.map(function(g){ return opt(g.grade, p.grade, 'الصف ' + g.grade); }).join('') + '</select></div>' +
+        '<div><label class="u-lbl">الشعبة</label><select class="u-in" data-qf="section">' + opt('', p.section, '—') + ((gd && gd.sections) || []).map(function(x){ return opt(x.id, p.section, 'شعبة ' + x.label); }).join('') + '</select></div>' +
+        '<div style="grid-column:1/-1"><label class="u-lbl">المادة</label><select class="u-in" data-qf="subject" data-re="1">' + ((gd && gd.subjects) || []).map(function(x){ return opt(x, p.subject); }).join('') + '</select></div>' +
+        '<div><label class="u-lbl">العام الدراسي</label><select class="u-in" data-qf="academicYear">' + yearOpts(p.academicYear) + '</select></div>' +
+        '<div><label class="u-lbl">التاريخ</label><input type="date" class="u-in" data-qf="date" value="' + esc(p.date) + '"></div>' +
+        '<div><label class="u-lbl">وقت الامتحان</label><select class="u-in" data-qf="duration">' + QP_DUR.map(function(t){ return opt(t, p.duration); }).join('') + '</select></div>' +
+        '<div><label class="u-lbl">اسم معلم المادة</label><input class="u-in" data-qf="teacherName" maxlength="80" value="' + esc(p.teacherName) + '"></div>' +
+        '<div style="grid-column:1/-1"><label class="u-lbl">اسم حفظ الأسئلة</label><input class="u-in" data-qf="saveName" maxlength="100" placeholder="مثال: أسئلة نصف السنة ' + esc(p.subject || '') + '" value="' + esc(p.saveName) + '"></div>' +
+        '<div style="grid-column:1/-1"><label class="u-lbl">ملاحظة قبل الأسئلة</label><input class="u-in" data-qf="note" maxlength="200" value="' + esc(p.note) + '"></div>' +
+        '<div style="grid-column:1/-1"><label class="u-lbl">عبارة نهاية الورقة</label><input class="u-in" data-qf="endText" maxlength="200" value="' + esc(p.endText) + '"></div></div></div>';
+    html += p.items.map(function(it, i){
+      return '<div class="u-card u-qcard"><div class="u-qh"><b>' + QP_SHORT[i] + '</b><label>الدرجة <input class="u-in u-deg" inputmode="numeric" maxlength="4" data-qi="' + i + '" data-qk="degree" value="' + esc(it.degree) + '"></label>' + (p.items.length > 1 ? '<button type="button" class="u-act off" style="color:var(--low)" data-a="qp-rmq" data-i="' + i + '">حذف</button>' : '') + '</div>' +
+        '<textarea class="u-in u-ta" data-qi="' + i + '" data-qk="text" placeholder="اكتب نص السؤال">' + esc(it.text) + '</textarea>' +
+        (it.branches || []).map(function(b, j){ return '<div class="u-br"><b>' + QP_BR[j] + '/</b><textarea class="u-in u-ta s" data-qi="' + i + '" data-bj="' + j + '" data-qk="text" placeholder="نص الفرع ' + QP_BR[j] + '">' + esc(b.text) + '</textarea><input class="u-in u-deg" inputmode="numeric" maxlength="4" placeholder="درجة" data-qi="' + i + '" data-bj="' + j + '" data-qk="degree" value="' + esc(b.degree) + '"><button type="button" class="u-act off" style="color:var(--low)" data-a="qp-rmb" data-i="' + i + '" data-j="' + j + '">✕</button></div>'; }).join('') +
+        ((it.branches || []).length < 4 ? '<button type="button" class="u-btn g sm" data-a="qp-addb" data-i="' + i + '">➕ فرع ' + QP_BR[(it.branches || []).length] + '</button>' : '') + '</div>';
+    }).join('');
+    if(p.items.length < 10) html += '<button type="button" class="u-btn g" data-a="qp-addq">➕ إضافة سؤال (' + QP_SHORT[p.items.length] + ')</button>';
+    html += '<div class="u-card" data-prev style="display:none"></div>';
+    html += '<div class="u-bar2"><button type="button" class="u-btn" data-a="qp-save">💾 حفظ</button><button type="button" class="u-btn g" data-a="qp-prev">👁️ معاينة</button><button type="button" class="u-btn b" data-a="qp-print-ed">🖨️ طباعة</button></div>';
+    return html + '</div></div>';
+  }
+  function qpInput(t){
+    if(!ED) return false;
+    var f = t.getAttribute('data-qf'), i = t.getAttribute('data-qi'), v = t.value;
+    if(f){ ED.p[f] = v; if(f === 'grade'){ var gd = gradeOf(viewOf(D.schools[ED.h]), v); ED.p.section = ((gd && gd.sections) || [])[0] ? gd.sections[0].id : ''; ED.p.subject = ((gd && gd.subjects) || [])[0] || ''; } ED.changed = true; return f === 'grade' || f === 'subject'; }
+    if(i != null){ var it = ED.p.items[+i]; if(!it) return false; var j = t.getAttribute('data-bj'), k = t.getAttribute('data-qk'); if(j != null){ if(it.branches[+j]) it.branches[+j][k] = v; } else it[k] = v; ED.changed = true; }
+    return false;
+  }
+  function qpValid(p){ if(!p.grade || !p.subject){ toast('اختر الصف والمادة.', true); return false; } if(!p.items.some(function(it){ return String(it.text || '').trim(); })){ toast('اكتب سؤالاً واحداً على الأقل.', true); return false; } return true; }
+  function qpCleanForSave(p){ var c = clone(p); c.items = c.items.map(function(it){ return {text: String(it.text || '').trim(), degree: String(it.degree || '').trim(), branches: (it.branches || []).map(function(b, j){ return {label: QP_BR[j], text: String(b.text || '').trim(), degree: String(b.degree || '').trim()}; })}; }); c.count = c.items.length; if(!String(c.saveName || '').trim()) c.saveName = 'أسئلة ' + c.title.replace('امتحان ', '') + ' — ' + c.subject + ' — ' + c.grade; c.at = new Date().toISOString(); return c; }
+  function qpSave(sc){
+    if(!qpValid(ED.p)) return false;
+    var id = ED.id || ('q_u' + now().toString(36) + Math.random().toString(36).slice(2, 6)), c = qpCleanForSave(ED.p);
+    sc.qpDirty = sc.qpDirty || {}; sc.qpDirty[id] = {op: 'save', paper: c, ts: now()}; ED.id = id; ED.p.saveName = c.saveName; ED.changed = false;
+    save(); toast('💾 حُفظت الورقة — تصل إلى «الأسئلة المحفوظة» في المدرسة عند المزامنة'); return true;
+  }
+  /* سياق المدرسة أثناء بناء الورقة (اسم المدرسة وشعارها وشُعبها) — في الذاكرة فقط ثم يُعاد كما كان */
+  function withSchool(sc, fn){
+    var vw = viewOf(sc) || {}, hdr = vw.hdr || {}, hasApp = typeof APP !== 'undefined' && APP && APP.school;
+    var o = hasApp ? {n: APP.school.name, l: APP.school.logo, st: APP.school.stage} : null, oSec = window.gbSectionsForGrade, oQ = (typeof EXAMS_STATE !== 'undefined') ? EXAMS_STATE.questions : null;
+    try{
+      if(hasApp){ APP.school.name = hdr.name || sc.name || ''; APP.school.logo = hdr.logo || ''; if(sc.stage) APP.school.stage = sc.stage; }
+      window.gbSectionsForGrade = function(g){ var gd = gradeOf(vw, g); return gd ? gd.sections.map(function(x){ return {id: x.id, label: x.label, students: []}; }) : []; };
+      return fn();
+    } finally {
+      if(hasApp){ APP.school.name = o.n; APP.school.logo = o.l; APP.school.stage = o.st; }
+      window.gbSectionsForGrade = oSec; if(typeof EXAMS_STATE !== 'undefined') EXAMS_STATE.questions = oQ;
+    }
+  }
+  function qpPreview(sc, p){
+    var box = root.querySelector('[data-prev]'); if(!box) return;
+    var c = qpCleanForSave(p); c.generated = true;
+    var inner = ''; try{ inner = withSchool(sc, function(){ return questionPaperInner(c); }); }catch(e){ inner = '<div class="u-msg e">تعذرت المعاينة.</div>'; }
+    box.style.display = ''; box.innerHTML = '<div class="u-day"><b>👁️ معاينة الورقة</b><button type="button" class="u-btn g sm" data-a="qp-prev-x">إخفاء</button></div><div class="u-paperwrap"><div class="u-paper"><div class="question-preview-frame"><article class="question-paper-preview">' + inner + '</article></div></div></div>';
+    fitPaper(); box.scrollIntoView({behavior: 'smooth', block: 'start'});
+  }
+  function fitPaper(){ var w = root.querySelector('.u-paperwrap'), pp = w && w.querySelector('.u-paper'); if(!pp) return; var s = Math.min(1, (w.clientWidth - 4) / pp.scrollWidth); pp.style.transform = 'scale(' + s + ')'; w.style.height = Math.ceil(pp.scrollHeight * s + 6) + 'px'; }
+  function b64(blob){ return new Promise(function(res){ var fr = new FileReader(); fr.onload = function(){ var d = String(fr.result || ''); res(d.slice(d.indexOf(',') + 1)); }; fr.onerror = function(){ res(''); }; fr.readAsDataURL(blob); }); }
+  var printing = false;
+  function qpPrint(sc, paper){
+    if(printing) return; if(!qpValid(paper)) return;
+    var c = qpCleanForSave(paper); c.generated = true;
+    var name = String(c.saveName || 'أسئلة').replace(/[\\\/:*?"<>|]+/g, ' ').slice(0, 60) + '.pdf';
+    var n = window.DaragatNative, nativePrint = n && typeof n.printHtml === 'function';
+    var orig = window.printIframeNow, got = false;
+    printing = true; toast(nativePrint ? '🖨️ جاري فتح الطباعة…' : '⏳ جاري تجهيز ملف PDF للطباعة…');
+    window.printIframeNow = function(frame){
+      window.printIframeNow = orig; got = true;
+      if(nativePrint){ printing = false; try{ orig(frame); }catch(e){} return; }
+      Promise.resolve().then(function(){ if(typeof window.__nbPdfFromFrame !== 'function') throw new Error('مولّد PDF غير متاح'); return window.__nbPdfFromFrame(frame, name); }).then(function(blob){
+        if(n && typeof n.saveFile === 'function') return b64(blob).then(function(d){ return n.saveFile(d, name); }).then(function(r){ toast(r === 'ok' || r === true || r == null ? '✅ جُهّز ملف PDF — اختر الطباعة أو أرسله' : '✅ جُهّز ملف PDF'); });
+        var a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = name; root.appendChild(a); a.click(); setTimeout(function(){ try{ URL.revokeObjectURL(a.href); a.remove(); }catch(e){} }, 8000);
+        toast('✅ جُهّز ملف PDF');
+      }).catch(function(e){ toast('تعذر تجهيز ملف الطباعة: ' + ((e && e.message) || ''), true); }).then(function(){ printing = false; try{ frame.remove(); }catch(e){} });
+    };
+    try{ withSchool(sc, function(){ EXAMS_STATE.questions = c; printQuestionPaper(); }); }
+    catch(e){ window.printIframeNow = orig; printing = false; toast('تعذرت الطباعة.', true); return; }
+    setTimeout(function(){ if(!got){ window.printIframeNow = orig; printing = false; } }, 6000);
+  }
   /* ---------- 🌙 الوضع الليلي ---------- */
   var mq = null; try{ mq = window.matchMedia('(prefers-color-scheme: dark)'); }catch(e){}
   function themeNow(){ var t = D.me.theme || 'auto'; return t === 'auto' ? (mq && mq.matches ? 'dark' : 'light') : t; }
@@ -28631,8 +28966,8 @@ window.renderHomeView=function(){
     var focusS = document.activeElement && document.activeElement.getAttribute && document.activeElement.getAttribute('data-s');
     var main = root.querySelector('.u-main'), y = main ? main.scrollTop : 0, samePage = render._last === V.page + V.tab + JSON.stringify(V.asg);
     var rs = curSc();
-    if((V.page === 'att' || V.page === 'parents' || V.page === 'school') && !rs){ V.page = 'home'; }
-    var html = !D.me.stage || !D.me.name ? renderWelcome() : V.page === 'asg' ? renderAsg() : V.page === 'settings' ? renderSettings() : V.page === 'att' ? renderAtt(rs) : V.page === 'parents' ? renderParents(rs) : V.page === 'school' ? renderSchool(rs) : renderHome();
+    if(/^(att|parents|school|qayd|qp|qpEdit)$/.test(V.page) && !rs){ V.page = 'home'; }
+    var html = !D.me.stage || !D.me.name ? renderWelcome() : V.page === 'asg' ? renderAsg() : V.page === 'settings' ? renderSettings() : V.page === 'att' ? renderAtt(rs) : V.page === 'parents' ? renderParents(rs) : V.page === 'school' ? renderSchool(rs) : V.page === 'qayd' ? renderQayd(rs) : V.page === 'qp' ? renderQp(rs) : V.page === 'qpEdit' ? renderQpEdit(rs) : renderHome();
     applyTheme();
     root.innerHTML = html;
     render._last = V.page + V.tab + JSON.stringify(V.asg);
@@ -28697,6 +29032,7 @@ window.renderHomeView=function(){
       if(k === 'att-g'){ U.att.g = v; U.att.sec = ''; } else if(k === 'att-s') U.att.sec = v;
       else if(k === 'par-g'){ U.par.g = v; U.par.sec = ''; } else if(k === 'par-s') U.par.sec = v;
       else if(k === 'sch-tab') U.sch.tab = v; else if(k === 'sch-g'){ U.sch.g = v; U.sch.sec = ''; } else if(k === 'sch-s') U.sch.sec = v; else if(k === 'sch-sub') U.sch.sub = v; else if(k === 'sch-lvm') U.sch.lvMode = v; else if(k === 'sch-day') U.sch.absDate = v;
+      else if(k === 'qyd-tab'){ U.qyd.tab = v; } else if(k === 'qyd-L'){ U.qyd.L = v; U.qyd.lim = 150; } else if(k === 'qyd-goL'){ U.qyd.tab = 'list'; U.qyd.L = v; U.qyd.q = ''; U.qyd.lim = 150; }
       render(); return;
     }
     if(b.hasAttribute('data-stage')){ [].forEach.call(root.querySelectorAll('[data-stage]'), function(x){ x.classList.toggle('on', x === b); }); root.__stage = b.getAttribute('data-stage'); return; }
@@ -28721,6 +29057,28 @@ window.renderHomeView=function(){
     }
     if(a === 'back'){ back(); return; }
     if(a === 'role'){ go(b.getAttribute('data-r'), {h: b.getAttribute('data-h')}); return; }
+    var xs = curSc();
+    if(xs && /^(qyd|qp)-/.test(a || '')){
+      var xid = b.getAttribute('data-id');
+      if(a === 'qyd-add'){ qydForm(xs, ''); return; }
+      if(a === 'qyd-edit'){ qydForm(xs, xid); return; }
+      if(a === 'qyd-del'){ qydDelete(xs, xid); return; }
+      if(a === 'qyd-more'){ var Uq = ui(xs).qyd; Uq.lim = (Uq.lim || 150) + 300; render(); return; }
+      if(a === 'qp-new'){ ED = {h: xs.hostId, id: '', p: newPaper(xs)}; go('qpEdit', {h: xs.hostId}); return; }
+      if(a === 'qp-open'){ var pp = qpPapers(xs).filter(function(x){ return x.id === xid; })[0]; if(!pp) return; var cp = clone(pp); cp.items = (cp.items && cp.items.length ? cp.items : [{text: '', degree: '', branches: []}]).map(function(it){ return {text: it.text || '', degree: it.degree || '', branches: (it.branches || []).map(function(x){ return {text: x.text || '', degree: x.degree || ''}; })}; }); ED = {h: xs.hostId, id: xid, p: cp}; go('qpEdit', {h: xs.hostId}); return; }
+      if(a === 'qp-print'){ var pq = qpPapers(xs).filter(function(x){ return x.id === xid; })[0]; if(pq) qpPrint(xs, pq); return; }
+      if(a === 'qp-del'){ var pd = qpPapers(xs).filter(function(x){ return x.id === xid; })[0]; if(!pd || !confirm('حذف ورقة «' + (pd.saveName || '') + '»؟ تُحذف أيضاً من «الأسئلة المحفوظة» في المدرسة عند المزامنة.')) return; xs.qpDirty = xs.qpDirty || {}; var onH = (((viewOf(xs) || {}).qpapers) || []).some(function(x){ return x.id === xid; }); if(onH) xs.qpDirty[xid] = {op: 'del', ts: now()}; else delete xs.qpDirty[xid]; save(); render(); return; }
+      if(!ED) return;
+      if(a === 'qp-addq'){ if(ED.p.items.length < 10) ED.p.items.push({text: '', degree: '', branches: []}); render(); var tas = root.querySelectorAll('.u-ta:not(.s)'); if(tas.length) tas[tas.length - 1].focus(); return; }
+      if(a === 'qp-rmq'){ var ri = +b.getAttribute('data-i'); if(String(ED.p.items[ri].text || '').trim() && !confirm('حذف ' + QP_SHORT[ri] + '؟')) return; ED.p.items.splice(ri, 1); render(); return; }
+      if(a === 'qp-addb'){ var bi = ED.p.items[+b.getAttribute('data-i')]; if(bi && bi.branches.length < 4) bi.branches.push({text: '', degree: ''}); render(); return; }
+      if(a === 'qp-rmb'){ var bq = ED.p.items[+b.getAttribute('data-i')]; if(bq) bq.branches.splice(+b.getAttribute('data-j'), 1); render(); return; }
+      if(a === 'qp-save'){ if(qpSave(xs)) render(); return; }
+      if(a === 'qp-prev'){ qpPreview(xs, ED.p); return; }
+      if(a === 'qp-prev-x'){ var pv = root.querySelector('[data-prev]'); if(pv){ pv.style.display = 'none'; pv.innerHTML = ''; } return; }
+      if(a === 'qp-print-ed'){ if(ED.changed || !ED.id){ if(!qpSave(xs)) return; render(); } qpPrint(xs, ED.p); return; }
+      return;
+    }
     if(a === 'theme'){ D.me.theme = themeNow() === 'dark' ? 'light' : 'dark'; save(); render(); return; }
     if(a === 'theme-set'){ D.me.theme = b.getAttribute('data-v'); save(); render(); return; }
     if(a === 'settings'){ root.__stage = D.me.stage; go('settings'); return; }
@@ -28733,6 +29091,7 @@ window.renderHomeView=function(){
   }
   function onChange(e){
     var t = e.target;
+    if(t.matches && t.matches('select[data-qf],input[type=date][data-qf]')){ if(qpInput(t)) render(); return; }
     if(t.matches && t.matches('[data-adate]')){ var asc = curSc(); if(asc && /^\d{4}-\d{2}-\d{2}$/.test(t.value)){ ui(asc).att.date = t.value > todayKey() ? todayKey() : t.value; render(); } return; }
     if(t.matches && t.matches('[data-a="best2"]')){ var c = cur(); if(c){ c.a.term1BestTwo = !!t.checked; c.a.t1Dirty = now(); save(); render(); } return; }
   }
@@ -28755,10 +29114,11 @@ window.renderHomeView=function(){
   function onBlur(e){ var t = e.target; if(t.classList && t.classList.contains('u-sin')) commit(t, false); }
   function onInput(e){
     var t = e.target;
+    if(t.hasAttribute && (t.hasAttribute('data-qf') || t.hasAttribute('data-qi'))){ if(t.tagName !== 'SELECT') qpInput(t); return; }
     if(t.hasAttribute && t.hasAttribute('data-q')){
-      var sc = curSc(); if(!sc) return; var vw = viewOf(sc), k = t.getAttribute('data-q'), U = ui(sc)[k]; U.q = t.value;
+      var sc = curSc(); if(!sc) return; var vw = viewOf(sc), k = t.getAttribute('data-q'), U = ui(sc)[k]; U.q = t.value; if(k === 'qyd') U.lim = 150;
       var res = root.querySelector('[data-res="' + k + '"]'), pk = root.querySelector('[data-pickers]');
-      if(res) res.innerHTML = k === 'att' ? attResults(sc, vw, U) : parResults(sc, vw, U);
+      if(res) res.innerHTML = k === 'att' ? attResults(sc, vw, U) : k === 'qyd' ? qydResults(sc, U) : parResults(sc, vw, U);
       if(pk) pk.style.display = U.q.trim() ? 'none' : '';
       return;
     }
