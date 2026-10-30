@@ -17447,10 +17447,13 @@ if(document.readyState==='loading'){
     });
   }
   /* معرّف Google للمشروع يُقرأ من إعدادات Firebase نفسها (لا يُكتب يدوياً) */
+  /* معرّف Google (Web client ID) لمشروع daragat — عام وليس سرياً */
+  const GOOGLE_WEB_CLIENT_ID="123733341266-8dg3g51buhlm0kuf3fq04c7fokghq7le.apps.googleusercontent.com";
   function googleClientId(){
     /* 1) المعرّف المحفوظ من لوحة التفعيل (G إعداد Google)، 2) وإلا يُقرأ من إعدادات Firebase */
     return new Promise(function(res){ try{ fbRef("activation/config/googleWebClientId").once("value",function(s){ res(s.val()||""); },function(){ res(""); }); }catch(e){ res(""); } setTimeout(function(){ res(""); },8000); }).then(function(saved){
       if(saved) return saved;
+      if(GOOGLE_WEB_CLIENT_ID) return GOOGLE_WEB_CLIENT_ID;
       return fetch("https://www.googleapis.com/identitytoolkit/v3/relyingparty/getProjectConfig?key="+encodeURIComponent(FB_CFG.apiKey)).then(function(r){ return r.json(); }).then(function(j){
         const g=((j&&j.idpConfig)||[]).filter(function(x){ return x&&x.provider==="google.com"; })[0];
         if(!g||g.enabled===false||!g.clientId) throw new Error("x");
@@ -18151,7 +18154,7 @@ if(document.readyState==='loading'){
 <!-- ===== AUTO UPDATE NOTIFICATION (small icon in topbar) ===== -->
 <script>
 (function(){
-  const APP_VERSION = "1.39.0";
+  const APP_VERSION = "1.39.1";
   const CHECK_EVERY_MINUTES = 30;
   const LS_ACCEPTED = "daragat_accepted_version";
   const LS_SNOOZE   = "daragat_update_snooze";
