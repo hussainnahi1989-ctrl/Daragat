@@ -23033,7 +23033,7 @@ document.addEventListener('DOMContentLoaded',patchBridge);
 function esc(s){ return String(s==null?'':s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];}); }
 function envRows(){
   var n=window.DaragatNative||{}, ua=navigator.userAgent||'';
-  var kind=isAndroidApp()?'تطبيق الأندرويد':(/Electron/i.test(ua)?'تطبيق الحاسوب':'متصفح');
+  var kind=(n&&n.platform==='windows')?'تطبيق الويندوز':(isAndroidApp()?'تطبيق الأندرويد':(/Electron|DaragatApp\/[\d.]+ Windows/i.test(ua)?'تطبيق الحاسوب':'متصفح'));
   var chrome=(ua.match(/Chrome\/(\d+)/)||[])[1]||'?';
   var rows=[
     ['نوع التشغيل',kind],

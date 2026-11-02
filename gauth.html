@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="referrer" content="no-referrer">
+<title>الدخول بحساب Google — ادارة المدرسة والامتحانات</title>
+<!-- gauth v1.0 (موقع 1.39.3): صفحة مساعدة لتطبيق الويندوز فقط.
+     جوجل تمنع تسجيل الدخول داخل التطبيقات المضمّنة، فيفتح تطبيق الويندوز هذه الصفحة في متصفح الجهاز،
+     وبعد الدخول تُعيد الصفحة إثبات الدخول (ID token) إلى التطبيق على نفس الجهاز فقط: http://127.0.0.1:<port>/gauth -->
+<style>
+:root{--bg:#061641;--card:rgba(255,255,255,.07);--bd:rgba(255,255,255,.14);--tx:#fff;--mut:#a9bde0;--gold:#f5b82e}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%}
+body{font-family:Tahoma,'Segoe UI',Arial,sans-serif;color:var(--tx);background:radial-gradient(110% 70% at 50% 0%,#14408f 0%,#0a2462 40%,#061641 72%,#030b24 100%);display:flex;align-items:center;justify-content:center;padding:16px}
+.card{width:100%;max-width:420px;background:var(--card);border:1px solid var(--bd);border-radius:26px;padding:30px 22px 22px;text-align:center;box-shadow:0 40px 90px rgba(0,0,0,.5)}
+.ic{width:72px;height:72px;border-radius:20px;margin:0 auto 14px;display:grid;place-items:center;background:#fff;box-shadow:0 12px 30px rgba(0,0,0,.35)}
+.ic svg{width:40px;height:40px}
+h1{font-size:21px;margin:0 0 6px}
+p{color:var(--mut);font-size:13.5px;line-height:1.9;margin:0 0 18px}
+.btn{width:100%;display:flex;align-items:center;justify-content:center;gap:10px;border:0;border-radius:15px;padding:14px;background:#fff;color:#1f1f1f;font:800 15px Tahoma,Arial,sans-serif;cursor:pointer;box-shadow:0 10px 24px rgba(0,0,0,.3)}
+.btn svg{width:20px;height:20px}
+.btn[disabled]{opacity:.6;cursor:default}
+.ghost{margin-top:10px;background:rgba(255,255,255,.08);color:#dbe6fb;box-shadow:none;border:1px solid var(--bd);font-size:13.5px;padding:11px}
+.msg{margin-top:14px;font-size:13px;font-weight:700;line-height:1.8;min-height:20px}
+.msg.err{color:#ffcdd2}.msg.ok{color:#c8f7cb}
+.brand{margin-top:18px;font-size:11.5px;color:#7f95bd}
+</style>
+</head>
+<body>
+<div class="card">
+  <div class="ic"><svg viewBox="0 0 48 48" aria-hidden="true"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg></div>
+  <h1>الدخول بحساب Google</h1>
+  <p id="sub">لتطبيق «ادارة المدرسة والامتحانات» على الحاسوب.<br>اضغط الزر واختر حسابك، ثم ارجع إلى البرنامج.</p>
+  <button class="btn" id="go" type="button">المتابعة بحساب Google</button>
+  <button class="btn ghost" id="cancel" type="button">إلغاء والرجوع للبرنامج</button>
+  <div class="msg" id="msg"></div>
+  <div class="brand">ادارة المدرسة والامتحانات</div>
+</div>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+<script>
+(function(){
+  "use strict";
+  var FB_CFG={apiKey:"AIzaSyAyPSUK_8kOGGCBc2fy1pPNSOzBtwenMi0",authDomain:"daragat.firebaseapp.com",databaseURL:"https://daragat-default-rtdb.europe-west1.firebasedatabase.app",projectId:"daragat",storageBucket:"daragat.firebasestorage.app",messagingSenderId:"123733341266",appId:"1:123733341266:web:fce19012a0781f96b29b8b"};
+  var q=new URLSearchParams(location.search);
+  var port=parseInt(q.get("port")||"",10), st=String(q.get("st")||"");
+  var msg=document.getElementById("msg"), go=document.getElementById("go"), cancel=document.getElementById("cancel");
+  function show(t,k){ msg.textContent=t||""; msg.className="msg"+(k?" "+k:""); }
+  /* المسموح فقط: الرجوع إلى نفس الجهاز (127.0.0.1) على منفذ صحيح، ومع رمز جلسة يولّده التطبيق */
+  var valid = port>=1024 && port<=65535 && /^[A-Za-z0-9_-]{16,128}$/.test(st);
+  if(!valid){
+    go.disabled=true; cancel.style.display="none";
+    show("هذه الصفحة تُفتح من تطبيق الويندوز فقط. ارجع إلى البرنامج واضغط «المتابعة بحساب Google».","err");
+    return;
+  }
+  var back="http://127.0.0.1:"+port+"/gauth?st="+encodeURIComponent(st);
+  function ret(params){ var u=back; Object.keys(params).forEach(function(k){ u+="&"+k+"="+encodeURIComponent(params[k]==null?"":String(params[k])); }); location.replace(u); }
+  cancel.onclick=function(){ ret({cancel:"1"}); };
+  try{ if(!firebase.apps.length) firebase.initializeApp(FB_CFG); }catch(e){}
+  go.onclick=function(){
+    if(typeof firebase==="undefined"||!firebase.auth){ show("تعذر تحميل خدمة Google — تحقق من الإنترنت ثم أعد المحاولة","err"); return; }
+    go.disabled=true; show("جاري فتح نافذة Google…","");
+    var pr=new firebase.auth.GoogleAuthProvider(); try{ pr.setCustomParameters({prompt:"select_account"}); }catch(e){}
+    firebase.auth().signInWithPopup(pr).then(function(res){
+      var c=res&&res.credential, u=res&&res.user;
+      var idToken=c&&c.idToken;
+      if(!idToken||!u||!u.email){ throw new Error("لم نحصل على بيانات الحساب"); }
+      show("✅ تم — جاري الرجوع إلى البرنامج…","ok");
+      var out={idToken:idToken,email:u.email,name:u.displayName||""};
+      try{ firebase.auth().signOut(); }catch(e){}
+      ret(out);
+    }).catch(function(e){
+      go.disabled=false;
+      var code=String(e&&e.code||"");
+      if(/popup-closed|cancelled-popup/.test(code)){ show("أُغلقت نافذة Google. اضغط الزر مرة أخرى.",""); return; }
+      if(/popup-blocked/.test(code)){ show("المتصفح منع النافذة. اسمح بالنوافذ المنبثقة لهذا الموقع ثم أعد المحاولة.","err"); return; }
+      show("تعذر الدخول بحساب Google: "+((e&&e.message)||code||""),"err");
+    });
+  };
+})();
+</script>
+</body>
+</html>
