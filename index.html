@@ -4822,6 +4822,8 @@ img,.splash-logo-container img,.card img,.page img{max-width:100%;height:auto}
     .about-account-item .ai-value{font-size:11.5px;}
     #topbar .topbar-nav{gap:3px!important;}
   }
+
+  svg.nbbc{display:inline-block;vertical-align:-.12em;width:1em;height:1em}
 </style>
 <style id="dynamicPageSize">@page{ size:148.5mm 210mm; margin:0; }</style>
 <script>/** @license
@@ -6609,12 +6611,12 @@ body.theme-dark .grc-badge{background:linear-gradient(180deg,#2c3944,#202a32);bo
     <button type="button" data-nav="records" onclick="closeGlobalNav();openRecordsModule()"><span>📑</span>القيود</button>
     <button type="button" data-nav="notes" onclick="closeGlobalNav();openNotesModule()"><span>📝</span>الملاحظات</button>
     <button type="button" data-nav="accounts" onclick="closeGlobalNav();openAccountsModule()"><span>💰</span>الحسابات</button>
-    <button type="button" data-nav="barcode" onclick="closeGlobalNav();openBarcodeModule()"><span>📷</span>باركود</button>     <button type="button" data-nav="devices" onclick="closeGlobalNav();openDevicesModule()"><span>🔗</span>الأجهزة الملحقة</button>
+    <button type="button" data-nav="barcode" onclick="closeGlobalNav();openBarcodeModule()"><span><svg class="nbbc" viewBox="0 0 24 24" width="1em" height="1em" aria-hidden="true"><path fill="currentColor" d="M2 4h2v16H2zM5 4h1v16H5zM7 4h3v16H7zM11 4h1v16h-1zM13 4h2v16h-2zM16 4h1v16h-1zM18 4h1v16h-1zM20 4h2v16h-2z"/></svg></span>كشف النتائج بالباركود</button>     <button type="button" data-nav="devices" onclick="closeGlobalNav();openDevicesModule()"><span>🔗</span>الأجهزة الملحقة</button>
     <button type="button" data-nav="about" onclick="closeGlobalNav();openAboutModule()"><span>ℹ️</span>حول التطبيق</button>
     <button type="button" data-nav="backup" onclick="closeGlobalNav();openBackupModule()"><span>💾</span>النسخة الاحتياطية</button>
     <button type="button" data-nav="settings" onclick="closeGlobalNav();openSettings()"><span>⚙️</span>الإعدادات</button>
     <button type="button" onclick="toggleUiTheme()"><span class="ui-theme-icon">🌙</span><span class="ui-theme-toggle-text" style="width:auto;height:auto;background:none">الوضع الليلي</span></button>
-    <button type="button" onclick="closeGlobalNav();authLogout()"><span>🚪</span>تسجيل خروج</button>
+    <button type="button" class="nbacc-nav" onclick="closeGlobalNav();nbAccountOpen()"><span>👤</span>الحساب</button>
   </nav>
   <button type="button" class="gnd-back" onclick="closeGlobalNav();requestAppBack()">↩ رجوع إلى الصفحة السابقة</button>
 </aside>
@@ -9905,7 +9907,8 @@ function smartStudentColMap(headers){
   (headers||[]).forEach(function(c,i){
     const t=normH(c);
     if(!t)return;
-    if(/لقب/.test(t)) map.title=i;
+    if(/قيد/.test(t)&&map.registrationNo==null) map.registrationNo=i;
+    else if(/لقب/.test(t)) map.title=i;
     else if(/هاتف|جوال|موبايل|ولي\s*الأمر|ولي\s*الامر|رقم\s*ولي/.test(t)) map.guardianPhone=i;
     else if(/اسم\s*الأم|اسم\s*الام|اسم الأم|الأم$|الام$/.test(t) && !/هاتف|ولي\s*الأ/.test(t)) map.motherName=i;
     else if(/مواليد|ميلاد|تولد/.test(t) && !/محل|مسقط|مكان/.test(t)) map.birthDate=i;
@@ -9962,7 +9965,8 @@ function studentFromMappedRow(row, map){
     id:'st_'+Date.now()+Math.random().toString(36).slice(2,6),
     name:name, title:title, motherName:mother, birthDate:birth, guardianPhone:phone,
     status:status||'مستمر', birthPlace:place, nationalId:nid,
-    careCoverage:/مشمول/.test(care)&&!/غير/.test(care)?'مشمول':'غير مشمول'
+    careCoverage:/مشمول/.test(care)&&!/غير/.test(care)?'مشمول':'غير مشمول',
+    registrationNo:(function(){ var v=String(cell('registrationNo')||'').replace(/\.0$/,'').trim(); try{ v=toWesternDigits(v); }catch(e){} return v.replace(/\s+/g,''); })()
   };
 }
 function ingestStudentGrid(rows, sec){
@@ -10461,7 +10465,7 @@ function dashMenuItems(){
     ['📝','الملاحظات','ملاحظات الطلاب','openNotesModule()','linear-gradient(135deg,#5d4037,#a1887f)'],
     ['💰','الحسابات','النقدي والأقساط','openAccountsModule()','linear-gradient(135deg,#c62828,#ef6c00)'],
     ['📁','سجلات المدرسة','صادر ووارد وكتب','openSchoolLogsModule()','linear-gradient(135deg,#1a237e,#5c6bc0)'],
-    ['📷','باركود','مسح نتائج الطلاب','openBarcodeModule()','linear-gradient(135deg,#004d40,#00897b)'],     ['🔗','الأجهزة الملحقة','ربط أجهزة بلا إنترنت','openDevicesModule()','linear-gradient(135deg,#00695c,#26a69a)'],
+    ['<svg class="nbbc" viewBox="0 0 24 24" width="1em" height="1em" aria-hidden="true"><path fill="currentColor" d="M2 4h2v16H2zM5 4h1v16H5zM7 4h3v16H7zM11 4h1v16h-1zM13 4h2v16h-2zM16 4h1v16h-1zM18 4h1v16h-1zM20 4h2v16h-2z"/></svg>','كشف النتائج بالباركود','مسح باركود بطاقة النتيجة','openBarcodeModule()','linear-gradient(135deg,#004d40,#00897b)'],     ['🔗','الأجهزة الملحقة','ربط أجهزة بلا إنترنت','openDevicesModule()','linear-gradient(135deg,#00695c,#26a69a)'],
     ['📝','الامتحانات','قوائم وأسئلة وجداول','openExamsModule()','linear-gradient(135deg,#01579b,#29b6f6)'],
     ['🖨️','إصدار النتائج','بطاقات الشهادة لكل شعبة','openResultsSectionsFromDashboard()','linear-gradient(135deg,#4a148c,#8e24aa)'],
     ['💾','النسخ الاحتياطي','حفظ واسترجاع ومسح البيانات','openBackupModule()','linear-gradient(135deg,#004d40,#26a69a)'],
@@ -10550,13 +10554,13 @@ function renderDashboard(){
       '<button onclick="closeDashboardSidebar();openRecordsModule()"><span class="dni">📑</span>القيود</button>'+
       '<button onclick="closeDashboardSidebar();openNotesModule()"><span class="dni">📝</span>الملاحظات</button>'+
       '<button onclick="closeDashboardSidebar();openAccountsModule()"><span class="dni">💰</span>الحسابات</button>'+
-      '<button onclick="closeDashboardSidebar();openBarcodeModule()"><span class="dni">📷</span>باركود</button>'+       '<button onclick="closeDashboardSidebar();openDevicesModule()"><span class="dni">🔗</span>الأجهزة الملحقة</button>'+
+      '<button onclick="closeDashboardSidebar();openBarcodeModule()"><span class="dni"><svg class="nbbc" viewBox="0 0 24 24" width="1em" height="1em" aria-hidden="true"><path fill="currentColor" d="M2 4h2v16H2zM5 4h1v16H5zM7 4h3v16H7zM11 4h1v16h-1zM13 4h2v16h-2zM16 4h1v16h-1zM18 4h1v16h-1zM20 4h2v16h-2z"/></svg></span>كشف النتائج بالباركود</button>'+       '<button onclick="closeDashboardSidebar();openDevicesModule()"><span class="dni">🔗</span>الأجهزة الملحقة</button>'+
       '<button onclick="closeDashboardSidebar();openAboutModule()"><span class="dni">ℹ️</span>حول التطبيق</button>'+
       '<button onclick="closeDashboardSidebar();openBackupModule()"><span class="dni">💾</span>النسخة الاحتياطية</button>'+
       '<button onclick="closeDashboardSidebar();openSettings()"><span class="dni">⚙️</span>الإعدادات</button>'+
       '<div style="height:6px"></div>'+
       '<button onclick="toggleUiTheme()"><span class="dni ui-theme-icon">🌙</span><span class="ui-theme-toggle-text">الوضع الليلي</span></button>'+
-      '<button onclick="closeDashboardSidebar();authLogout()"><span class="dni">🚪</span>تسجيل خروج</button>'+
+      '<button class="nbacc-nav" onclick="closeDashboardSidebar();nbAccountOpen()"><span class="dni">👤</span>الحساب</button>'+
       '<button class="ds-exit" onclick="requestAppBack()"><span class="dni">↩</span>رجوع خطوة</button>'+
     '</nav></aside><main class="dashboard-main"><header class="dashboard-top"><div><h1>الموجز العام</h1><p>نظرة شاملة على أعداد الطلاب ونتائج آخر امتحان مسجل</p></div><div class="dashboard-date">'+escapeHtml(dateText)+'</div></header>'+
     '<section class="stats-kpis">'+
@@ -14840,7 +14844,7 @@ function restoreBarcodeView(meta){
 function renderBarcodeHome(){
   barcodeStopScan();
   const el=document.getElementById('view-barcode');if(!el)return;
-  el.innerHTML='<div class="module-shell"><div class="module-head"><div class="module-title"><span class="mi">📷</span><div><h2>باركود</h2><p>امسح رمز بطاقة النتيجة لعرض كشف الطالب مباشرة</p></div></div><button class="material-btn secondary" onclick="appGoBack()">رجوع خطوة</button></div><div class="staff-home-grid">'+
+  el.innerHTML='<div class="module-shell"><div class="module-head"><div class="module-title"><span class="mi"><svg class="nbbc" viewBox="0 0 24 24" width="1em" height="1em" aria-hidden="true"><path fill="currentColor" d="M2 4h2v16H2zM5 4h1v16H5zM7 4h3v16H7zM11 4h1v16h-1zM13 4h2v16h-2zM16 4h1v16h-1zM18 4h1v16h-1zM20 4h2v16h-2z"/></svg></span><div><h2>كشف النتائج بالباركود</h2><p>امسح رمز بطاقة النتيجة لعرض كشف الطالب مباشرة</p></div></div><button class="material-btn secondary" onclick="appGoBack()">رجوع خطوة</button></div><div class="staff-home-grid">'+
     '<button class="staff-module-card info" onclick="openBarcodeResultsScan()"><span>🧾</span><h3>كشف النتائج</h3><p>فتح الكاميرا وقراءة باركود النتيجة. عند التطابق تظهر نتيجة الطالب من كشف النتائج.</p></button>'+
   '</div></div>';
 }
@@ -14919,7 +14923,7 @@ function barcodeSubjectRows(grade,sectionId,studentId){
 function renderBarcodeResultsScan(){
   const el=document.getElementById('view-barcode');if(!el)return;
   BARCODE_SCAN.lastText='';
-  el.innerHTML='<div class="module-shell"><div class="module-head"><div class="module-title"><span class="mi">🧾</span><div><h2>كشف النتائج</h2><p>وجّه الكاميرا إلى الباركود — يُقرأ تلقائياً فور التعرف عليه</p></div></div><button class="material-btn secondary" onclick="barcodeStopScan();openBarcodeModule()">رجوع إلى باركود</button></div>'+
+  el.innerHTML='<div class="module-shell"><div class="module-head"><div class="module-title"><span class="mi">🧾</span><div><h2>كشف النتائج</h2><p>وجّه الكاميرا إلى الباركود — يُقرأ تلقائياً فور التعرف عليه</p></div></div><button class="material-btn secondary" onclick="barcodeStopScan();openBarcodeModule()">رجوع إلى كشف النتائج بالباركود</button></div>'+
     '<div class="barcode-scan-box" id="barcodeScanBox" onclick="barcodeStartCamera()"><video id="barcodeVideo" class="barcode-hidden-video" playsinline webkit-playsinline muted autoplay></video><canvas id="barcodeCanvas"></canvas><div class="barcode-scan-frame"></div><div class="barcode-laser"></div><div class="barcode-scan-hint" id="barcodeScanHint">اضغط هنا أو على تشغيل المسح لفتح الكاميرا</div></div>'+
     '<input id="barcodeCameraInput" type="file" accept="image/*" capture="environment" style="display:none" onchange="barcodeReadFile(this)">'+
     '<input id="barcodeGalleryInput" type="file" accept="image/jpeg,image/png,image/webp,image/gif,.jpg,.jpeg,.png,.webp" style="display:none" onchange="barcodeReadFile(this)">'+
@@ -15198,7 +15202,7 @@ function renderBarcodeFromQr(parsed){
   const rows=(parsed.subjects||[]).map(function(r,i){
     return '<tr><td>'+toArabicDigits(String(i+1))+'</td><td>'+escapeHtml(r.subject)+'</td><td>'+escapeHtml(r.value)+'</td></tr>';
   }).join('');
-  el.innerHTML='<div class="module-shell"><div class="module-head"><div class="module-title"><span class="mi">🧾</span><div><h2>نتيجة من الباركود</h2><p>تم قراءة رمز كشف النتائج</p></div></div><div style="display:flex;gap:8px;flex-wrap:wrap"><button class="material-btn" onclick="openBarcodeResultsScan()">مسح رمز آخر</button><button class="material-btn secondary" onclick="openBarcodeModule()">رجوع إلى باركود</button></div></div>'+
+  el.innerHTML='<div class="module-shell"><div class="module-head"><div class="module-title"><span class="mi">🧾</span><div><h2>نتيجة من الباركود</h2><p>تم قراءة رمز كشف النتائج</p></div></div><div style="display:flex;gap:8px;flex-wrap:wrap"><button class="material-btn" onclick="openBarcodeResultsScan()">مسح رمز آخر</button><button class="material-btn secondary" onclick="openBarcodeModule()">رجوع إلى كشف النتائج بالباركود</button></div></div>'+
     '<div class="barcode-result-card"><h3>'+escapeHtml(parsed.name||'طالب')+'</h3>'+
     '<p>الصف '+escapeHtml(parsed.grade||'—')+' — الشعبة '+escapeHtml(parsed.section||'—')+'</p>'+
     '<p><b>النتيجة:</b> '+escapeHtml(parsed.result||'—')+'</p>'+
@@ -15215,7 +15219,7 @@ function renderBarcodeStudent(hit){
     const n=r.value===''||r.value==null?'—':toArabicDigits(String(r.value));
     return '<tr><td>'+toArabicDigits(String(i+1))+'</td><td>'+escapeHtml(r.subject)+'</td><td>'+n+'</td></tr>';
   }).join('');
-  el.innerHTML='<div class="module-shell"><div class="module-head"><div class="module-title"><span class="mi">🧾</span><div><h2>نتيجة الطالب</h2><p>مطابقة باركود كشف النتائج</p></div></div><div style="display:flex;gap:8px;flex-wrap:wrap"><button class="material-btn" onclick="openBarcodeResultsScan()">مسح رمز آخر</button><button class="material-btn secondary" onclick="openBarcodeModule()">رجوع إلى باركود</button></div></div>'+
+  el.innerHTML='<div class="module-shell"><div class="module-head"><div class="module-title"><span class="mi">🧾</span><div><h2>نتيجة الطالب</h2><p>مطابقة باركود كشف النتائج</p></div></div><div style="display:flex;gap:8px;flex-wrap:wrap"><button class="material-btn" onclick="openBarcodeResultsScan()">مسح رمز آخر</button><button class="material-btn secondary" onclick="openBarcodeModule()">رجوع إلى كشف النتائج بالباركود</button></div></div>'+
     '<div class="barcode-result-card"><h3>'+escapeHtml(st.name||'')+'</h3>'+
     '<p>الصف '+escapeHtml(grade)+' — الشعبة '+escapeHtml(section.label)+'</p>'+
     '<p><b>النتيجة:</b> '+escapeHtml(cls.label||cls.key||'—')+'</p>'+
@@ -18674,6 +18678,39 @@ if(document.readyState==='loading'){
   window.__actReady=true;
   window.__actGetInfo=function(){ const v=canOpenApp(); return {valid:v.ok,reason:v.reason||"",status:v.account&&v.account.status,trial:!!v.trial,daysLeft:v.daysLeft||0,plan:v.account&&v.account.plan,expiresAt:v.account&&v.account.expiresAt,registeredAt:v.account&&v.account.registeredAt,deviceId:deviceId(),email:state.activeEmail}; };
   window.__actOpenOffline=screenOfflineKey;
+  /* nb-v1.47: بيانات قسم «الحساب» — قراءة فقط، وتغيير كلمة السر (السحابة أولاً ثم الجهاز) */
+  window.__actAccount=function(){
+    const acc=currentAccount(); if(!acc) return null;
+    const v=canOpenApp();
+    return {email:acc.email, name:acc.name||"", principalName:acc.principalName||"", schoolName:acc.schoolName||"", phone:acc.phone||"",
+      password:acc.password||"", google:acc.authProvider==="google", status:acc.status||"trial", plan:normalizePlan(acc.plan)||"", planLabel:acc.plan?planLabel(acc.plan):"",
+      registeredAt:acc.registeredAt||0, activatedAt:acc.activatedAt||0, expiresAt:acc.expiresAt||0, trialDays:TRIAL_DAYS,
+      valid:!!v.ok, trial:!!v.trial, daysLeft:v.daysLeft||0, reason:v.reason||"", deviceType:deviceType()};
+  };
+  window.__actCloudPeek=function(cb){
+    const acc=currentAccount(); if(!acc||!navigator.onLine){ cb&&cb(null); return; }
+    initFB(); if(!fbReady){ cb&&cb(null); return; }
+    let done=false; const fin=function(v){ if(done) return; done=true; cb&&cb(v); }; setTimeout(function(){ fin(null); },7000);
+    try{ fbRef("activation/accounts/"+emailKeyOf(acc.email)).once("value",function(snap){
+      const v=snap.val()||null;
+      if(v&&v.password&&!acc.password&&v.passwordHash===acc.passwordHash){ acc.password=v.password; saveState(state); }
+      fin(v?{name:v.name||"",principalName:v.principalName||"",schoolName:v.schoolName||"",phone:v.phone||"",password:(v.passwordHash===acc.passwordHash?(v.password||""):"")}:null);
+    },function(){ fin(null); }); }catch(e){ fin(null); }
+  };
+  window.__actChangePassword=function(oldPw,newPw,cb){
+    const acc=currentAccount(); if(!acc){ cb&&cb("لا يوجد حساب مسجّل"); return; }
+    const canSkipOld=acc.authProvider==="google"&&!acc.password;
+    if(!canSkipOld&&acc.passwordHash!==hashPw(oldPw)){ cb&&cb("كلمة السر الحالية غير صحيحة"); return; }
+    if(String(newPw||"").length<4){ cb&&cb("كلمة السر الجديدة يجب أن تكون 4 أحرف على الأقل"); return; }
+    if(!navigator.onLine){ cb&&cb("تغيير كلمة السر يحتاج اتصالاً بالإنترنت"); return; }
+    initFB(); if(!fbReady){ cb&&cb("تعذر الاتصال بالسحابة"); return; }
+    const h=hashPw(newPw); let done=false; const fin=function(e){ if(done) return; done=true; cb&&cb(e); };
+    setTimeout(function(){ fin("انتهت مهلة الاتصال — حاول مرة أخرى"); },10000);
+    try{ fbRef("activation/accounts/"+emailKeyOf(acc.email)).update({passwordHash:h,password:newPw,passwordChangedAt:firebase.database.ServerValue.TIMESTAMP},function(err){
+      if(err){ fin("تعذر الحفظ: "+err.message); return; }
+      acc.passwordHash=h; acc.password=newPw; saveState(state); fin(null);
+    }); }catch(e){ fin("تعذر الحفظ"); }
+  };
 
   if(document.readyState==="loading") document.addEventListener("DOMContentLoaded",resume);
   else setTimeout(resume,30);
@@ -18685,7 +18722,7 @@ if(document.readyState==='loading'){
 <!-- ===== AUTO UPDATE NOTIFICATION (small icon in topbar) ===== -->
 <script>
 (function(){
-  const APP_VERSION = "1.45.1";
+  const APP_VERSION = "1.47.0";
   const CHECK_EVERY_MINUTES = 30;
   const LS_ACCEPTED = "daragat_accepted_version";
   const LS_SNOOZE   = "daragat_update_snooze";
@@ -20606,6 +20643,7 @@ window.ABOUT_SUPPORT_PHONE = ABOUT_SUPPORT_PHONE;
   // still runs exactly as before.
   function classifyToolButton(btn){
     if(btn.closest('.txe-menu')) return null;
+    if(btn.closest('.nbxl')) return null; /* أزرار إكسل قسم الطلاب تبقى ظاهرة كما هي */
     if(btn.closest('.levels-record-title')) return null; /* سجل المستويات: لكل جدول (الأسبوعي والشهري) أزراره الخاصة */
     if(btn.disabled) return null;
     if(btn.classList.contains('pdf-download-btn')) return 'pdf';
@@ -26950,8 +26988,62 @@ function tableFont(delta){
 }
 /* ---------- ارتفاع الصفوف (العداد الجانبي) ---------- */
 function sheetPages(d){ return [].filter.call(d.querySelectorAll('main.exam-list-page'),function(p){ return p.querySelector(':scope > .sheet-table-wrap table > tbody'); }); }
+/* قوائم الامتحانات: كل ورقة <main class="exam-list-page"> وفيها الجدول مباشرة.
+   عند تغيير ارتفاع الصفوف أو الخط تُعاد توزيع الصفوف على الأوراق (مثل باقي السجلات)،
+   فيكون ارتفاع الصف واحداً في كل الأوراق بدل أن تتمدد صفوف الورقة الأولى وتنضغط صفوف الأخيرة. */
+function examPages(d){ return [].filter.call(d.querySelectorAll('main.exam-list-page'),function(p){ return p.querySelector(':scope > table.exam-list-table > tbody'); }); }
+function examListPaginate(d){
+  var pages=examPages(d); if(!pages.length) return false;
+  if(!d.__nbExamPer){ d.__nbExamPer=pages.length>1?pages[0].querySelector(':scope > table.exam-list-table > tbody').rows.length:999; }
+  var rh=d.getElementById('nbpvRows'), custom=!!(rh&&rh.textContent);
+  var st=d.getElementById('nbpvExamFlow'); if(!st){ st=d.createElement('style'); st.id='nbpvExamFlow'; d.head.appendChild(st); }
+  st.textContent=custom?'main.exam-list-page>table.exam-list-table{flex:0 0 auto!important;height:auto!important}':'';
+  var first=pages[0], last=pages[pages.length-1], tb0=first.querySelector(':scope > table.exam-list-table > tbody');
+  var lastCls=last.className, midCls=pages.length>1?pages[0].className:lastCls.replace(/\bhas-teacher\b/,'')+' continued-page';
+  var tLast=last.querySelector(':scope > table.exam-list-table'), extras=[], after=false;
+  [].forEach.call(last.children,function(ch){ if(ch===tLast){ after=true; return; } if(after) extras.push(ch); });
+  var proto=first.cloneNode(true); proto.querySelector(':scope > table.exam-list-table > tbody').innerHTML='';
+  [].slice.call(proto.children).forEach(function(ch){ if(ch.tagName!=='HEADER'&&!(ch.classList&&ch.classList.contains('exam-list-table'))&&!/exam-list-head|exam-list-meta/.test(ch.className||'')) ch.remove(); });
+  pages.slice(1).forEach(function(p){ var tb=p.querySelector(':scope > table.exam-list-table > tbody'); if(tb){ while(tb.firstChild) tb0.appendChild(tb.firstChild); } p.remove(); });
+  var win=d.defaultView;
+  function limitOf(p){ var r=p.getBoundingClientRect(), z=(p.offsetHeight&&r.height)?r.height/p.offsetHeight:1, cs=win.getComputedStyle(p); return r.bottom-(parseFloat(cs.paddingBottom)||0)*z-1; }
+  function inflowExtraH(){ return extras.reduce(function(h,x){ var ps=win.getComputedStyle(x).position; return (ps==='absolute'||ps==='fixed')?h:h+x.getBoundingClientRect().height; },0); }
+  function newPageAfter(cur){ var np=proto.cloneNode(true); cur.parentNode.insertBefore(np,cur.nextSibling); return np; }
+  function tbOf(p){ return p.querySelector(':scope > table.exam-list-table > tbody'); }
+  var cur=first, guard=0;
+  if(!custom){
+    /* الارتفاع الأصلي: نفس عدد الصفوف في كل ورقة كما صممه البرنامج */
+    var per=d.__nbExamPer, rows=[].slice.call(tb0.rows);
+    first.className=rows.length>per?midCls:lastCls;
+    for(var i=per;i<rows.length;i+=per){ var np=newPageAfter(cur); rows.slice(i,i+per).forEach(function(r){ tbOf(np).appendChild(r); }); cur.className=midCls; np.className=lastCls; cur=np; }
+    cur.className=lastCls; extras.forEach(function(x){ cur.appendChild(x); });
+  } else {
+    first.className=midCls;
+    while(guard++<120){
+      var tb=tbOf(cur), rs=[].slice.call(tb.rows), lim=limitOf(cur), cut=-1;
+      for(var k=0;k<rs.length;k++){ if(rs[k].getBoundingClientRect().bottom>lim+0.5){ cut=k; break; } }
+      if(cut<0||rs.length<2) break;
+      if(cut<1) cut=1;
+      var np2=newPageAfter(cur); np2.className=midCls; rs.slice(cut).forEach(function(r){ tbOf(np2).appendChild(r); }); cur=np2;
+    }
+    /* الورقة الأخيرة: هامشها الأكبر وبطاقة المدرس والإحصائية */
+    cur.className=lastCls; extras.forEach(function(x){ cur.appendChild(x); });
+    guard=0;
+    while(guard++<5){
+      var tbl=tbOf(cur), rl=[].slice.call(tbl.rows), lim2=limitOf(cur)-inflowExtraH(), c2=-1;
+      for(var j=0;j<rl.length;j++){ if(rl[j].getBoundingClientRect().bottom>lim2+0.5){ c2=j; break; } }
+      if(c2<0||rl.length<2) break;
+      if(c2<1) c2=1;
+      var np3=newPageAfter(cur); cur.className=midCls; np3.className=lastCls;
+      rl.slice(c2).forEach(function(r){ tbOf(np3).appendChild(r); }); extras.forEach(function(x){ np3.appendChild(x); }); cur=np3;
+    }
+  }
+  try{ markPages(d); applyFooter(d); }catch(e){}
+  return true;
+}
 function repaginate(){ /* أوراق السجلات: الصفوف تُعاد توزيعها على الأوراق بعد أي تغيير في الارتفاع أو الخط */
   if(!PV||!PV.frame) return false; var d=PV.frame.contentDocument, pages=sheetPages(d);
+  if(!pages.length){ try{ if(examListPaginate(d)) return true; }catch(e){ try{console.warn('nb-exam-pages',e);}catch(_){} } }
   if(!pages.length||typeof window.nbPreviewSheetFix!=='function') return false;
   var first=pages[0], ftb=first.querySelector(':scope > .sheet-table-wrap table > tbody');
   var lastWrap=pages[pages.length-1].querySelector(':scope > .sheet-table-wrap');
@@ -26996,9 +27088,10 @@ function curRowH(){
 function stepRowH(dir){ snap(); var h=curRowH(); setRowH(Math.max(3,Math.min(30,Math.round((h+dir*0.5)*2)/2))); }
 function fillPage(noSnap,target){
   if(!PV||!PV.frame) return; var d=PV.frame.contentDocument; if(!noSnap) snap();
-  var sheets=sheetPages(d).length, n0=target||sheets||d.querySelectorAll('.nbpv-page').length;
+  var cntPages=function(){ return sheetPages(d).length||examPages(d).length; };
+  var sheets=cntPages(), n0=target||sheets||d.querySelectorAll('.nbpv-page').length;
   var lo=3, hi=30;
-  for(var i=0;i<9;i++){ var mid=(lo+hi)/2; setRowHQuiet(mid); var bad=sheets?sheetPages(d).length>n0:pagesOverflow(d); if(bad) hi=mid; else lo=mid; }
+  for(var i=0;i<9;i++){ var mid=(lo+hi)/2; setRowHQuiet(mid); var bad=sheets?cntPages()>n0:pagesOverflow(d); if(bad) hi=mid; else lo=mid; }
   PV._filling=true; try{ setRowH(Math.floor(lo*2)/2); } finally { PV._filling=false; } PV.filled=true; PV.fillPages=n0; toast('ملء الورقة: '+PV.rowH+' ملم');
 }
 function setRowHQuiet(h){ var d=PV.frame.contentDocument, ts=mainTables(d); ts.forEach(function(t){ t.classList.add('nb-rowh'); }); var st=d.getElementById('nbpvRows'); if(!st){ st=d.createElement('style'); st.id='nbpvRows'; d.head.appendChild(st); } st.textContent='table.nb-rowh>tbody>tr>td{height:'+h+'mm!important;padding-top:.15mm!important;padding-bottom:.15mm!important;line-height:1.12!important}'; repaginate(); }
@@ -27625,7 +27718,7 @@ function analyze(rows){
   }
   return {rows:data,map:map,headers:headers,how:how,width:width};
 }
-var FIELD_LABEL={name:'اسم الطالب',grade:'الصف / المرحلة',section:'الشعبة',gradesec:'الصف والشعبة',seq:'التسلسل',title:'اللقب',motherName:'اسم الأم',birthDate:'تاريخ الميلاد',guardianPhone:'هاتف ولي الأمر',nationalId:'البطاقة الوطنية',birthPlace:'محل الولادة',status:'الحالة',careCoverage:'الرعاية',age:'العمر'};
+var FIELD_LABEL={registrationNo:'رقم القيد',name:'اسم الطالب',grade:'الصف / المرحلة',section:'الشعبة',gradesec:'الصف والشعبة',seq:'التسلسل',title:'اللقب',motherName:'اسم الأم',birthDate:'تاريخ الميلاد',guardianPhone:'هاتف ولي الأمر',nationalId:'البطاقة الوطنية',birthPlace:'محل الولادة',status:'الحالة',careCoverage:'الرعاية',age:'العمر'};
 /* ---------- خطة التوزيع ---------- */
 function newPlan(){ return {groups:{},order:[],skipGrade:{},dup:0,noName:0,cols:[],sheets:[],total:0}; }
 function key(g,s){ return g+'||'+s; }
@@ -41126,7 +41219,7 @@ var DCSS='.dashboard-top .nbq{display:flex;gap:12px;align-items:center;flex-wrap
  'box-shadow:0 10px 24px rgba(0,0,0,.22),inset 0 1px 0 rgba(255,255,255,.25);transition:transform .15s ease,box-shadow .15s ease}'+
  '.nbq-btn:hover{transform:translateY(-2px);box-shadow:0 14px 30px rgba(0,0,0,.28),inset 0 1px 0 rgba(255,255,255,.25)}.nbq-btn:active{transform:translateY(0) scale(.98)}'+
  '.nbq-btn:after{content:"";position:absolute;inset:-40% -20% auto auto;width:120px;height:120px;border-radius:50%;background:rgba(255,255,255,.14)}'+
- '.nbq-btn.ex{background:linear-gradient(135deg,#0b3d91 0%,#1565c0 55%,#29b6f6 130%)}.nbq-btn.gb{background:linear-gradient(135deg,#6d1028 0%,#9c1f45 55%,#c9a227 140%)}'+
+ '.nbq-btn.dv{background:linear-gradient(135deg,#004d40 0%,#00897b 55%,#4dd0e1 140%)}.nbq-btn.ex{background:linear-gradient(135deg,#0b3d91 0%,#1565c0 55%,#29b6f6 130%)}.nbq-btn.gb{background:linear-gradient(135deg,#6d1028 0%,#9c1f45 55%,#c9a227 140%)}'+
  '.nbq-ic{width:38px;height:38px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:24px;background:rgba(255,255,255,.18);box-shadow:inset 0 0 0 1px rgba(255,255,255,.25);flex:0 0 auto}'+
  '.nbq-t b{display:block;font-size:16px;font-weight:900;line-height:1.3}.nbq-t small{display:block;font-size:11px;opacity:.9;font-weight:700;margin-top:2px}'+
  '.nbq-go{margin-inline-start:auto;font-size:18px;opacity:.85}'+
@@ -41139,8 +41232,16 @@ var DCSS='.dashboard-top .nbq{display:flex;gap:12px;align-items:center;flex-wrap
  '.dashboard-top .dashboard-date.nbhasclock.nbclk-inline{display:flex;align-items:center;gap:10px}'+
  '.nbclk-inline .nbclock{position:static!important;flex:0 0 auto;padding:6px 10px!important;order:-1}.nbclk-inline .nbclock .t{font-size:22px}.nbclk-inline .nbclock .s{font-size:12px}'+
  '.dashboard-top .nbq.m-stack{flex-direction:column;flex-wrap:nowrap;gap:5px;max-height:none;align-items:stretch}.nbq.m-stack .nbq-btn{height:42px;min-width:236px;padding:3px 12px;border-radius:14px}.nbq.m-stack .nbq-ic{width:32px;height:32px;font-size:18px;border-radius:10px}.nbq.m-stack .nbq-t b{font-size:14.5px;line-height:1.2}.nbq.m-stack .nbq-t small{font-size:10px;white-space:nowrap}'+
+ '.dashboard-top .nbq.m-stack3{display:grid;grid-template-columns:auto auto;grid-template-rows:auto auto;gap:5px 8px;max-height:none;align-items:stretch}'+
+ '.nbq.m-stack3 .nbq-btn.ex{grid-column:2;grid-row:1}.nbq.m-stack3 .nbq-btn.gb{grid-column:2;grid-row:2}'+
+ '.nbq.m-stack3 .nbq-btn.ex,.nbq.m-stack3 .nbq-btn.gb{height:42px;min-width:236px;padding:3px 12px;border-radius:14px}'+
+ '.nbq.m-stack3 .nbq-btn.ex .nbq-ic,.nbq.m-stack3 .nbq-btn.gb .nbq-ic{width:32px;height:32px;font-size:18px;border-radius:10px}.nbq.m-stack3 .nbq-t b{font-size:14.5px;line-height:1.2}.nbq.m-stack3 .nbq-t small{font-size:10px;white-space:nowrap}'+
+ '.nbq.m-stack3 .nbq-btn.dv{grid-column:1;grid-row:1 / span 2;height:auto;min-width:118px;width:118px;flex-direction:column;justify-content:center;text-align:center;gap:5px;padding:6px 8px;border-radius:16px}'+
+ '.dashboard-top .nbq.m-grid4{display:grid;grid-template-columns:1fr 1fr;gap:5px 8px;max-height:none;align-items:stretch}.nbq.m-grid4 .nbq-btn{height:42px;min-width:0;padding:3px 12px;border-radius:14px}.nbq.m-grid4 .nbq-ic{width:32px;height:32px;font-size:18px;border-radius:10px}.nbq.m-grid4 .nbq-t b{font-size:14.5px;line-height:1.2;white-space:nowrap}.nbq.m-grid4 .nbq-t small{font-size:10px;white-space:nowrap}'+'.nbq.m-grid4.m-s .nbq-btn{padding:3px 9px;gap:7px}.nbq.m-grid4.m-s .nbq-go{display:none}.nbq.m-grid4.m-s .nbq-t b{font-size:13.5px}.nbq.m-grid4.m-s .nbq-t small:not(.nbq-s){display:none}.nbq.m-grid4.m-s .nbq-t small.nbq-s{display:block;font-size:9.5px}'+'.nbq-btn.rs{background:linear-gradient(135deg,#311b92 0%,#5e35b1 55%,#b388ff 140%)}.nbq-ic .nbbc{width:22px;height:22px}.dashboard-top.nbq-nop>div:first-child>p{display:none!important}'+'.nbq.m-stack3.m-s{gap:5px 6px}.nbq.m-stack3.m-s .nbq-btn.ex,.nbq.m-stack3.m-s .nbq-btn.gb{min-width:0;padding:3px 10px;gap:8px}.nbq.m-stack3.m-s .nbq-go{display:none}.nbq.m-stack3.m-s .nbq-t b{font-size:13.5px}.nbq.m-stack3.m-s .nbq-t small{font-size:9px}.nbq.m-stack3.m-s .nbq-btn.dv{width:100px;min-width:100px;padding:6px 6px}.nbq.m-stack3.m-s .nbq-btn.dv .nbq-t b{font-size:12.5px}'+'.nbq.m-stack3 .nbq-btn.dv .nbq-t{text-align:center}.nbq.m-stack3 .nbq-btn.dv .nbq-t b{font-size:13.5px;white-space:nowrap}.nbq.m-stack3 .nbq-btn.dv .nbq-t small{white-space:normal;font-size:9.5px;line-height:1.3}.nbq.m-stack3 .nbq-btn.dv .nbq-go{display:none}'+
  '.nbq.m-tight .nbq-btn{min-width:0;padding:5px 10px;gap:8px}.nbq.m-tight .nbq-go{display:none}.nbq.m-tight .nbq-t{max-width:132px}.nbq.m-tight .nbq-t b{font-size:14.5px;white-space:nowrap}.nbq.m-tight .nbq-t small{font-size:10px;line-height:1.35;white-space:normal}'+
  '.nbq.m-tight2 .nbq-btn{min-width:0;padding:5px 9px;gap:7px}.nbq.m-tight2 .nbq-go{display:none}.nbq.m-tight2 .nbq-ic{width:34px;height:34px;font-size:19px}.nbq.m-tight2 .nbq-t{max-width:112px}.nbq.m-tight2 .nbq-t b{font-size:14px;white-space:nowrap}.nbq.m-tight2 .nbq-t small{font-size:9.5px;line-height:1.3;white-space:normal}'+
+'.nbq-t small.nbq-s{display:none}.nbq.n3.m-tight .nbq-t small:not(.nbq-s),.nbq.n4.m-tight .nbq-t small:not(.nbq-s),.nbq.n3.m-tight2 .nbq-t small:not(.nbq-s),.nbq.n4.m-tight2 .nbq-t small:not(.nbq-s),.nbq.n3.m-row3 .nbq-t small:not(.nbq-s),.nbq.n4.m-row3 .nbq-t small:not(.nbq-s){display:none}.nbq.n3.m-tight .nbq-t small.nbq-s,.nbq.n4.m-tight .nbq-t small.nbq-s,.nbq.n3.m-tight2 .nbq-t small.nbq-s,.nbq.n4.m-tight2 .nbq-t small.nbq-s,.nbq.n3.m-row3 .nbq-t small.nbq-s,.nbq.n4.m-row3 .nbq-t small.nbq-s{display:block;white-space:nowrap}.nbq.n3.m-tight .nbq-t,.nbq.n4.m-tight .nbq-t,.nbq.n3.m-tight2 .nbq-t,.nbq.n4.m-tight2 .nbq-t,.nbq.n3.m-row3 .nbq-t,.nbq.n4.m-row3 .nbq-t{max-width:none}'+
+ '.nbq.m-row3.m-noic .nbq-ic{display:none}.nbq.m-row3.m-noic .nbq-btn{padding:4px 10px;justify-content:center;text-align:center}.nbq.m-row3.m-noic .nbq-t{text-align:center;max-width:104px}.nbq.m-row3.m-noic .nbq-t b{font-size:13.5px}'+'.nbq.m-row3{gap:7px}.nbq.m-row3 .nbq-btn{min-width:0;padding:4px 8px;gap:6px;border-radius:15px}.nbq.m-row3 .nbq-go{display:none}.nbq.m-row3 .nbq-ic{width:28px;height:28px;font-size:16px;border-radius:9px}.nbq.m-row3 .nbq-t{max-width:96px}.nbq.m-row3 .nbq-t b{font-size:13px;white-space:nowrap;line-height:1.25}.nbq.m-row3 .nbq-t small{font-size:8.8px;line-height:1.25;white-space:normal;margin-top:1px}'+
  '.nbq.m-compact .nbq-btn{min-width:0;padding:6px 10px;gap:8px}.nbq.m-compact .nbq-t small,.nbq.m-compact .nbq-go{display:none}.nbq.m-compact .nbq-t b{font-size:15px;white-space:nowrap}'+
  '.nbq.m-icon .nbq-t{display:none}.nbq.m-icon .nbq-go{display:none}.nbq.m-icon .nbq-btn{min-width:0;height:46px;padding:4px}'+
  '@media(max-width:1200px){.nbclk-inline .nbclock .s,.nbclk-inline .nbclock .ap{display:none}}'+
@@ -41173,10 +41274,13 @@ function decorateDash(){
   ensureDcss();
   var date=top.querySelector('.dashboard-date');
   var q=document.createElement('div'); q.className='nbq';
-  var ex=navHas('openExamsModule'), gb=navHas('openRecordsHub')||navHas('openGradebook');
-  q.innerHTML=(ex?'<button type="button" class="nbq-btn ex" title="الامتحانات" onclick="openExamsModule()"><span class="nbq-ic">📝</span><span class="nbq-t"><b>الامتحانات</b><small>القوائم · الجلوس · البطاقات · الأسئلة</small></span><span class="nbq-go">‹</span></button>':'')+
-    (gb?'<button type="button" class="nbq-btn gb" title="سجلات الدرجات" onclick="'+(typeof window.openRecordsHub==='function'?'openRecordsHub()':'openGradebook()')+'"><span class="nbq-ic">📒</span><span class="nbq-t"><b>سجلات الدرجات</b><small>المعلم · الوسطي · الفصلي · الكنترول · النسب</small></span><span class="nbq-go">‹</span></button>':'');
-  var h0=top.getBoundingClientRect().height;
+  var ex=navHas('openExamsModule'), gb=navHas('openRecordsHub')||navHas('openGradebook'), dv=navHas('openDevicesModule')&&typeof window.openDevicesModule==='function';
+  var rs=navHas('openBarcodeModule')&&typeof window.openBarcodeResultsScan==='function';
+  q.innerHTML=(rs?'<button type="button" class="nbq-btn rs" title="كشف النتائج بالباركود" onclick="openBarcodeResultsScan()"><span class="nbq-ic"><svg class="nbbc" viewBox="0 0 24 24" width="1em" height="1em" aria-hidden="true"><path fill="currentColor" d="M2 4h2v16H2zM5 4h1v16H5zM7 4h3v16H7zM11 4h1v16h-1zM13 4h2v16h-2zM16 4h1v16h-1zM18 4h1v16h-1zM20 4h2v16h-2z"/></svg></span><span class="nbq-t"><b>كشف النتائج</b><small>مسح باركود بطاقة النتيجة</small><small class="nbq-s">مسح باركود النتيجة</small></span><span class="nbq-go">‹</span></button>':'')+(ex?'<button type="button" class="nbq-btn ex" title="الامتحانات" onclick="openExamsModule()"><span class="nbq-ic">📝</span><span class="nbq-t"><b>الامتحانات</b><small>القوائم · الجلوس · البطاقات · الأسئلة</small><small class="nbq-s">القوائم · البطاقات · الأسئلة</small></span><span class="nbq-go">‹</span></button>':'')+
+    (gb?'<button type="button" class="nbq-btn gb" title="سجلات الدرجات" onclick="'+(typeof window.openRecordsHub==='function'?'openRecordsHub()':'openGradebook()')+'"><span class="nbq-ic">📒</span><span class="nbq-t"><b>سجلات الدرجات</b><small>المعلم · الوسطي · الفصلي · الكنترول · النسب</small><small class="nbq-s">المعلم · الكنترول · النسب</small></span><span class="nbq-go">‹</span></button>':'')+
+    (dv?'<button type="button" class="nbq-btn dv" title="الأجهزة الملحقة" onclick="openDevicesModule()"><span class="nbq-ic">🔗</span><span class="nbq-t"><b>الجهاز الملحق</b><small>ربط الأجهزة بلا إنترنت</small><small class="nbq-s">ربط بلا إنترنت</small></span><span class="nbq-go">‹</span></button>':'');
+  var cnt=q.querySelectorAll('.nbq-btn').length; q.classList.toggle('n3',cnt===3&&!!(ex&&gb&&dv)); q.classList.toggle('n4',cnt===4);
+  var h0=baseH(top);
   if(date&&!date.querySelector('.nbclock')){
     date.classList.add('nbhasclock');
     var clk=document.createElement('div'); clk.className='nbclock dashboard-date';
@@ -41193,18 +41297,20 @@ function fitQuick(){
     var top=document.querySelector('#view-dashboard .dashboard-top'), q=top&&top.querySelector('.nbq'); if(!q) return;
     if(!top.getClientRects().length||getComputedStyle(q).display==='none') return;
     var h0=top.__nbqH0||0, title=top.firstElementChild, date=top.querySelector('.dashboard-date');
-    var modes=['m-full','m-stack','m-tight','m-tight2','m-compact','m-icon'];
+    var modes=q.classList.contains('n4')?['m-full','m-grid4','m-grid4 m-s','m-tight','m-tight2','m-row3','m-row3 m-noic','m-compact','m-icon']:q.classList.contains('n3')?['m-full','m-stack3','m-stack3 m-s','m-tight','m-tight2','m-row3','m-row3 m-noic','m-compact','m-icon']:['m-full','m-stack','m-tight','m-tight2','m-compact','m-icon'];
     for(var i=0;i<modes.length;i++){
-      modes.forEach(function(m){ q.classList.remove(m); }); q.classList.add(modes[i]);
+      modes.forEach(function(m){ m.split(' ').forEach(function(c){ q.classList.remove(c); }); }); modes[i].split(' ').forEach(function(c){ q.classList.add(c); });
       var hr=top.getBoundingClientRect(), qr=q.getBoundingClientRect(), ok=hr.height<=h0+1&&top.scrollWidth<=top.clientWidth+1;
       if(ok&&title&&title!==q){ var tr=title.getBoundingClientRect(); if(qr.right>tr.left+2&&qr.left<tr.right) ok=false; }
       if(ok&&date){ var dr=date.getBoundingClientRect(); if(qr.left<dr.right-2&&qr.right>dr.left) ok=false; }
-      if(ok&&[].some.call(q.querySelectorAll('.nbq-t b'),function(b){ return b.scrollWidth>b.clientWidth+1; })) ok=false;
+      if(ok&&[].some.call(q.querySelectorAll('.nbq-t b,.nbq-t small'),function(b){ return b.offsetParent&&getComputedStyle(b).whiteSpace==='nowrap'&&b.scrollWidth>b.clientWidth+1; })) ok=false;
       if(ok) return;
     }
   }catch(e){}
 }
-function refitQuick(){ var top=document.querySelector('#view-dashboard .dashboard-top'), q=top&&top.querySelector('.nbq'); if(!q||!top.getClientRects().length) return; q.remove(); top.__nbqH0=top.getBoundingClientRect().height; top.insertBefore(q,top.querySelector('.dashboard-date')); fitQuick(); top.__nbqW=Math.round(top.getBoundingClientRect().width); }
+/* حذف عبارة الوصف تحت «الموجز العام» مع إبقاء ارتفاع الترويسة كما كان تماماً */
+function baseH(top){ top.classList.remove('nbq-nop'); top.style.minHeight=''; var h=top.getBoundingClientRect().height; top.classList.add('nbq-nop'); if(h) top.style.minHeight=h+'px'; return h; }
+function refitQuick(){ var top=document.querySelector('#view-dashboard .dashboard-top'), q=top&&top.querySelector('.nbq'); if(!q||!top.getClientRects().length) return; q.remove(); top.__nbqH0=baseH(top); top.insertBefore(q,top.querySelector('.dashboard-date')); fitQuick(); top.__nbqW=Math.round(top.getBoundingClientRect().width); }
 window.addEventListener('resize',function(){ setTimeout(refitQuick,150); });
 /* عند ظهور الموجز بعد أن كان مخفياً، أو تغيّر عرضه */
 setInterval(function(){ try{ var top=document.querySelector('#view-dashboard .dashboard-top'); if(!top||!top.querySelector('.nbq')) return; var w=Math.round(top.getBoundingClientRect().width); if(w&&w!==top.__nbqW) refitQuick(); }catch(e){} },1200);
@@ -41216,5 +41322,286 @@ setTimeout(function(){ try{ decorateDash(); }catch(e){} },300);
 })();
 </script>
 
+<script>
+/* ===== nb-v1.46: قسم التلاميذ/الطلاب — أدوات إكسل لكل المدرسة =====
+   ثلاثة أزرار صغيرة بجانب «الصفوف والشعب المحددة»:
+   📄 تنزيل قالب إكسل (نفس أعمدة الاستيراد) · 📥 استيراد كل المدرسة (نفس دالة البرنامج) · 📤 تصدير كل المدرسة (ملف واحد بنفس أعمدة القالب).
+   الاستيراد يستعمل نافذة المطابقة والمعاينة الموجودة نفسها، فلا يتغير شكل البيانات. */
+(function(){
+'use strict';
+function esc(v){ return typeof escapeHtml==='function'?escapeHtml(String(v==null?'':v)):String(v==null?'':v); }
+var HEAD=['ت','الصف','الشعبة','اسم الطالب','رقم القيد','اللقب','اسم الأم','تاريخ الميلاد','هاتف ولي الأمر','محل الولادة','رقم البطاقة الوطنية','الحالة','الرعاية'];
+var COLW=[5,16,8,30,11,14,24,13,16,14,20,10,12];
+function who(){ try{ return studentsSectionTitle(); }catch(e){ return 'الطلاب'; } }
+function schoolName(){ try{ return String(APP.school.name||'').trim(); }catch(e){ return ''; } }
+function stamp(){ var d=new Date(); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
+function safe(n){ return String(n).replace(/[\\\/:*?"<>|]+/g,'-'); }
+function sheet(aoa){
+  var ws=XLSX.utils.aoa_to_sheet(aoa);
+  ws['!cols']=COLW.map(function(w){ return {wch:w}; });
+  try{ ws['!views']=[{RTL:true}]; }catch(e){}
+  return ws;
+}
+function write(wb,name){
+  try{ wb.Workbook=wb.Workbook||{}; wb.Workbook.Views=[{RTL:true}]; }catch(e){}
+  if(typeof xlsxWriteStyled==='function') xlsxWriteStyled(wb,name); else XLSX.writeFile(wb,name);
+}
+function gradeList(){ var out=[]; try{ gradebookGradeLabels().forEach(function(g){ out.push({g:g,secs:gbSectionsForGrade(g)}); }); }catch(e){} return out; }
+function dispName(g){ try{ return typeof window.nbGradeName==='function'?window.nbGradeName(g):g; }catch(e){ return g; } }
+
+/* 📄 قالب إكسل */
+window.nbStudentsTemplate=function(){
+  if(typeof XLSX==='undefined'){ alert('مكتبة الإكسل غير متاحة.'); return; }
+  var G=gradeList();
+  var wb=XLSX.utils.book_new();
+  var aoa=[HEAD];
+  /* صف لكل شعبة جاهز بالصف والشعبة — تكتب الأسماء تحتها وتكرر الصف والشعبة */
+  var k=1; G.forEach(function(x){ (x.secs.length?x.secs:[{label:'أ'}]).forEach(function(s){ aoa.push([k++,x.g,s.label,'','','','','','','','','مستمر','غير مشمول']); }); });
+  XLSX.utils.book_append_sheet(wb,sheet(aoa),'كل المدرسة');
+  var info=[['تعليمات تعبئة قالب '+who()+(schoolName()?' — '+schoolName():'')],[''],
+    ['١. اكتب كل '+(who()==='التلاميذ'?'تلميذ':'طالب')+' في صف مستقل، واكتب صفه وشعبته في العمودين «الصف» و«الشعبة».'],
+    ['٢. اكتب الصف كما في العمود الأول أدناه (الاسم الأصلي في البرنامج).'],
+    ['٣. الشعبة حرف واحد مثل: أ، ب، ج. الشعبة غير الموجودة تُنشأ عند الاستيراد بعد موافقتك.'],
+    ['٤. عمود «اسم الطالب» هو الوحيد الإلزامي، وباقي الأعمدة اختيارية. «رقم القيد» يظهر في الكنترول والسجلات ويُضاف لقسم القيود.'],
+    ['٥. تاريخ الميلاد بصيغة 2015-03-21. الحالة: مستمر / منقول / مؤجل / تارك / متخرج. الرعاية: مشمول / غير مشمول.'],
+    ['٦. احذف الصفوف الفارغة غير المستعملة أو اتركها؛ الصف بلا اسم لا يُستورد.'],
+    ['٧. بعد التعبئة: قسم '+who()+' ← «استيراد كل المدرسة» ← اختر الملف، وستظهر لك معاينة قبل الحفظ.'],
+    [''],['الصف (اكتبه هكذا)','الاسم الظاهر في البرنامج','الشعب الحالية']];
+  G.forEach(function(x){ info.push([x.g,dispName(x.g),x.secs.map(function(s){ return s.label; }).join('، ')||'—']); });
+  var wsI=XLSX.utils.aoa_to_sheet(info); wsI['!cols']=[{wch:26},{wch:26},{wch:22}]; try{ wsI['!views']=[{RTL:true}]; }catch(e){}
+  XLSX.utils.book_append_sheet(wb,wsI,'تعليمات');
+  write(wb,safe('قالب-'+who()+'-كل-المدرسة.xlsx'));
+  try{ if(typeof toast==='function') toast('📄 جُهّز قالب الإكسل'); }catch(e){}
+};
+/* 📤 تصدير كل المدرسة: ملف واحد بنفس أعمدة القالب (يصلح للاستيراد مرة أخرى) */
+window.nbStudentsExportAll=function(){
+  if(typeof XLSX==='undefined'){ alert('مكتبة الإكسل غير متاحة.'); return; }
+  var aoa=[HEAD], n=0;
+  gradeList().forEach(function(x){ x.secs.forEach(function(s){ (s.students||[]).forEach(function(st){
+    if(!String(st.name||'').trim()) return; n++;
+    aoa.push([n,x.g,s.label,st.name||'',st.registrationNo||'',st.title||'',st.motherName||'',st.birthDate||'',st.guardianPhone||'',st.birthPlace||'',st.nationalId||'',st.status||'مستمر',st.careCoverage||'غير مشمول']);
+  }); }); });
+  if(!n){ alert('لا يوجد '+who()+' لتصديرهم.'); return; }
+  var wb=XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb,sheet(aoa),'كل المدرسة');
+  write(wb,safe(who()+'-كل-المدرسة-'+(schoolName()?schoolName()+'-':'')+stamp()+'.xlsx'));
+  try{ if(typeof toast==='function') toast('📤 صُدّر '+n+' '+(who()==='التلاميذ'?'تلميذاً':'طالباً')); }catch(e){}
+};
+/* 📥 استيراد كل المدرسة: نفس دالة البرنامج */
+window.nbStudentsImportAll=function(){
+  var inp=document.getElementById('nbXlAllInput');
+  if(!inp){ inp=document.createElement('input'); inp.type='file'; inp.id='nbXlAllInput'; inp.accept='.xlsx,.xls,.csv'; inp.style.display='none';
+    inp.onchange=function(e){ try{ handleExcelFileAll(e); }catch(err){ alert('تعذّرت قراءة الملف.'); } }; document.body.appendChild(inp); }
+  inp.value=''; inp.click();
+};
+
+var CSS='#view-grades .managed-sections-head.nbxl-on{display:grid;grid-template-columns:1fr auto;column-gap:14px;align-items:center}'+
+ '#view-grades .managed-sections-head.nbxl-on>h3{grid-column:1;grid-row:1}#view-grades .managed-sections-head.nbxl-on>p{grid-column:1;grid-row:2}'+
+ '#view-grades .nbxl{grid-column:2;grid-row:1 / span 2;display:flex;gap:8px;flex-wrap:nowrap;align-items:center;justify-content:flex-end}'+
+ '.nbxl-btn{display:inline-flex;align-items:center;gap:7px;height:36px;padding:0 13px 0 11px;border-radius:11px;border:1px solid rgba(255,255,255,.18);cursor:pointer;color:#fff;font:800 12.5px inherit;font-family:inherit;white-space:nowrap;'+
+ 'box-shadow:0 4px 12px rgba(0,0,0,.16),inset 0 1px 0 rgba(255,255,255,.22);transition:transform .12s ease,box-shadow .12s ease}'+
+ '.nbxl-btn:hover{transform:translateY(-1px);box-shadow:0 7px 16px rgba(0,0,0,.22),inset 0 1px 0 rgba(255,255,255,.22)}.nbxl-btn:active{transform:none}'+
+ '.nbxl-btn i{font-style:normal;font-size:15px;width:22px;height:22px;border-radius:7px;display:inline-flex;align-items:center;justify-content:center;background:rgba(255,255,255,.18)}'+
+ '.nbxl-btn.t{background:linear-gradient(135deg,#37474f,#607d8b)}.nbxl-btn.i{background:linear-gradient(135deg,#1b5e20,#43a047)}.nbxl-btn.e{background:linear-gradient(135deg,#0d47a1,#1e88e5)}'+
+ '.nbxl.sm{gap:6px}.nbxl.sm .nbxl-btn{height:32px;padding:0 9px 0 8px;gap:5px;font-size:11.5px;border-radius:10px}.nbxl.sm .nbxl-btn i{width:20px;height:20px;font-size:13px}'+
+ '.nbxl.ic{gap:6px}.nbxl.ic .nbxl-btn{height:34px;width:38px;padding:0;justify-content:center}.nbxl.ic .nbxl-btn span{display:none}.nbxl.ic .nbxl-btn i{background:none;font-size:17px}'+
+ '#view-grades .nbxl-top>p{grid-column:1 / span 2!important}#view-grades .nbxl-top .nbxl{grid-row:1!important;margin-block:-3px}#view-grades .nbxl-top .nbxl.ic .nbxl-btn{height:28px;width:34px;border-radius:9px}#view-grades .nbxl-top .nbxl.ic .nbxl-btn i{font-size:15px}'+
+ '#view-grades .managed-sections-head.nbxl-on.nbxl-below{grid-template-columns:1fr}#view-grades .nbxl-below .nbxl{grid-column:1;grid-row:3;justify-content:flex-start;margin-top:8px}';
+function ensureCss(){ if(document.getElementById('nbXlCss')) return; var s=document.createElement('style'); s.id='nbXlCss'; s.textContent=CSS; document.head.appendChild(s); }
+function addTools(){
+  var v=document.getElementById('view-grades'); if(!v) return;
+  var head=v.querySelector('.managed-sections-head'); if(!head||head.querySelector('.nbxl')) return;
+  if(v.querySelector('#gradesConfigPanel[data-onboarding]')) return; /* شاشة الإعداد الأولى تبقى كما هي */
+  ensureCss();
+  var t=document.createElement('div'); t.className='nbxl';
+  t.innerHTML='<button type="button" class="nbxl-btn t" title="تنزيل قالب إكسل فارغ بأعمدة الاستيراد" onclick="nbStudentsTemplate()"><i>📄</i><span>قالب إكسل</span></button>'+
+    '<button type="button" class="nbxl-btn i" title="استيراد '+esc(who())+' كل المدرسة من ملف إكسل" onclick="nbStudentsImportAll()"><i>📥</i><span>استيراد كل المدرسة</span></button>'+
+    '<button type="button" class="nbxl-btn e" title="تصدير '+esc(who())+' كل المدرسة إلى ملف إكسل" onclick="nbStudentsExportAll()"><i>📤</i><span>تصدير كل المدرسة</span></button>';
+  head.classList.add('nbxl-on'); head.appendChild(t);
+  head.__nbxlW=0; fitTools();
+}
+/* أكبر شكل للأزرار لا يزيد ارتفاع العنوان — وإن ضاقت الشاشة جداً تنزل تحت العنوان */
+function fitTools(){
+  try{
+    var head=document.querySelector('#view-grades .managed-sections-head.nbxl-on'), t=head&&head.querySelector('.nbxl'); if(!t||!head.getClientRects().length) return;
+    var w=Math.round(head.getBoundingClientRect().width); if(!w) return;
+    t.style.display='none'; head.classList.remove('nbxl-on','nbxl-below','nbxl-top');
+    var h0=head.getBoundingClientRect().height;
+    head.classList.add('nbxl-on'); t.style.display='';
+    var modes=['','sm','ic'];
+    for(var i=0;i<modes.length;i++){
+      t.className='nbxl'+(modes[i]?' '+modes[i]:'');
+      if(head.getBoundingClientRect().height<=h0+1&&head.scrollWidth<=head.clientWidth+1){ head.__nbxlW=w; return; }
+    }
+    t.className='nbxl ic'; head.classList.add('nbxl-top'); if(head.getBoundingClientRect().height<=h0+1&&head.scrollWidth<=head.clientWidth+1){ head.__nbxlW=w; return; }
+    head.classList.remove('nbxl-top');
+    t.className='nbxl sm'; head.classList.add('nbxl-below'); head.__nbxlW=w;
+  }catch(e){}
+}
+window.nbStudentsToolsFit=fitTools;
+window.addEventListener('resize',function(){ setTimeout(fitTools,120); });
+setInterval(function(){ try{ var head=document.querySelector('#view-grades .managed-sections-head.nbxl-on'); if(!head||!head.getClientRects().length) return; var w=Math.round(head.getBoundingClientRect().width); if(w&&w!==head.__nbxlW) fitTools(); }catch(e){} },900);
+['renderGradesView'].forEach(function(k){
+  if(typeof window[k]!=='function') return;
+  window[k]=(function(orig){ return function(){ var r=orig.apply(this,arguments); try{ addTools(); }catch(e){} return r; }; })(window[k]);
+});
+})();
+</script>
+<script>
+/* ===== nb-v1.47: قسم «الحساب» في القائمة الجانبية (بدل «تسجيل خروج») =====
+   يعرض: المدرسة، البريد، اسم المدير، الهاتف، نوع التفعيل والأيام المتبقية، كلمة السر (إظهار/تغيير)، طلب التفعيل، تسجيل الخروج.
+   الجهاز الملحق: يبقى الزر «تسجيل خروج» بنفس عمله السابق ولا تظهر بيانات الحساب. لا يغيّر شيئاً في بيانات الاشتراك. */
+(function(){
+'use strict';
+function esc(v){ return String(v==null?'':v).replace(/[&<>"']/g,function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); }
+function ar(n){ return typeof toArabicDigits==='function'?toArabicDigits(String(n)):String(n); }
+function isGuest(){ try{ return !!(window.__DLS&&window.__DLS.G&&window.__DLS.G.isGuest()); }catch(e){ return false; } }
+function fmtDate(t){ if(!t) return '—'; try{ var d=new Date(t); return ar(d.getFullYear()+'/'+String(d.getMonth()+1).padStart(2,'0')+'/'+String(d.getDate()).padStart(2,'0')); }catch(e){ return '—'; } }
+function schoolPrincipal(){ try{ return String((APP.school&&APP.school.principal)||'').trim(); }catch(e){ return ''; } }
+function schoolNameApp(){ try{ return String((APP.school&&APP.school.name)||'').trim(); }catch(e){ return ''; } }
+
+/* زر القائمة: «الحساب» للجهاز الرئيسي، و«تسجيل خروج» للجهاز الملحق */
+function labelNav(){
+  var g=isGuest();
+  [].forEach.call(document.querySelectorAll('.nbacc-nav'),function(b){
+    var want=g?'تسجيل خروج':'الحساب', ic=g?'🚪':'👤';
+    if(b.getAttribute('data-lbl')===want) return;
+    var sp=b.querySelector('span'); b.textContent=''; if(sp){ sp.textContent=ic; b.appendChild(sp); } b.appendChild(document.createTextNode(want)); b.setAttribute('data-lbl',want);
+  });
+}
+setInterval(function(){ try{ labelNav(); }catch(e){} },1500); setTimeout(labelNav,300);
+
+var CSS=
+'#nbAcc{position:fixed;inset:0;z-index:100000;display:flex;align-items:center;justify-content:center;padding:16px;background:rgba(10,8,30,.55);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);animation:nbAccF .18s ease}'+
+'@keyframes nbAccF{from{opacity:0}to{opacity:1}}@keyframes nbAccU{from{transform:translateY(14px) scale(.98);opacity:0}to{transform:none;opacity:1}}'+
+'#nbAcc .acc{--bg:#fff;--fg:#1c2340;--mut:#6b7392;--line:#e8eaf3;--soft:#f5f6fb;width:min(540px,100%);max-height:calc(100vh - 32px);overflow:auto;background:var(--bg);color:var(--fg);border-radius:26px;box-shadow:0 30px 80px rgba(0,0,0,.4);animation:nbAccU .22s ease;direction:rtl;font-family:inherit}'+
+'body.theme-dark #nbAcc .acc,html[data-ui-skin^="night"] #nbAcc .acc{--bg:#1b1b2e;--fg:#eef0ff;--mut:#a6abc9;--line:#2f3150;--soft:#24243b}'+
+'#nbAcc .hd{position:relative;padding:22px 22px 54px;color:#fff;background:linear-gradient(135deg,#1a237e 0%,#4527a0 50%,#7b1fa2 100%);border-radius:26px 26px 0 0;overflow:hidden}'+
+'#nbAcc .hd:before{content:"";position:absolute;width:260px;height:260px;border-radius:50%;background:rgba(255,255,255,.08);top:-120px;left:-70px}#nbAcc .hd:after{content:"";position:absolute;width:160px;height:160px;border-radius:50%;background:rgba(255,255,255,.07);bottom:-90px;right:40px}'+
+'#nbAcc .x{position:absolute;top:14px;left:14px;width:34px;height:34px;border-radius:12px;border:0;background:rgba(255,255,255,.16);color:#fff;font-size:18px;cursor:pointer;z-index:2}'+
+'#nbAcc .who{position:relative;z-index:1;display:flex;align-items:center;gap:14px}#nbAcc .av{width:62px;height:62px;border-radius:20px;background:linear-gradient(135deg,#ffd54f,#ff8f00);display:flex;align-items:center;justify-content:center;font-size:28px;font-weight:900;color:#3e2723;box-shadow:0 8px 20px rgba(0,0,0,.25);flex:0 0 auto}'+
+'#nbAcc .who h2{margin:0;font-size:20px;font-weight:900;line-height:1.35}#nbAcc .who p{margin:3px 0 0;font-size:12.5px;opacity:.85;direction:ltr;text-align:right}'+
+'#nbAcc .chip{display:inline-flex;align-items:center;gap:6px;margin-top:8px;padding:4px 11px;border-radius:20px;font-size:12px;font-weight:900;background:rgba(255,255,255,.18)}#nbAcc .chip i{width:8px;height:8px;border-radius:50%;background:#69f0ae;box-shadow:0 0 0 3px rgba(105,240,174,.25)}'+
+'#nbAcc .chip.tr i{background:#ffd54f;box-shadow:0 0 0 3px rgba(255,213,79,.25)}#nbAcc .chip.bad i{background:#ff5252;box-shadow:0 0 0 3px rgba(255,82,82,.25)}'+
+'#nbAcc .bd{padding:0 18px 18px;margin-top:-38px;position:relative;z-index:2}'+
+'#nbAcc .plan{background:var(--bg);border-radius:20px;box-shadow:0 10px 30px rgba(30,20,90,.16);padding:16px 18px;border:1px solid var(--line)}'+
+'#nbAcc .plan .row{display:flex;align-items:center;justify-content:space-between;gap:10px}#nbAcc .plan .k{font-size:12px;color:var(--mut);font-weight:800}#nbAcc .plan .v{font-size:19px;font-weight:900}'+
+'#nbAcc .days{text-align:center;min-width:92px;padding:8px 10px;border-radius:16px;background:var(--soft)}#nbAcc .days b{display:block;font-size:26px;line-height:1;font-weight:900;color:#5e35b1}#nbAcc .days small{font-size:11px;color:var(--mut);font-weight:800}'+
+'body.theme-dark #nbAcc .days b,html[data-ui-skin^="night"] #nbAcc .days b{color:#b39ddb}'+
+'#nbAcc .bar{height:8px;border-radius:8px;background:var(--soft);overflow:hidden;margin-top:12px}#nbAcc .bar i{display:block;height:100%;border-radius:8px;background:linear-gradient(90deg,#7c4dff,#00bfa5)}'+
+'#nbAcc .dates{display:flex;justify-content:space-between;margin-top:7px;font-size:11.5px;color:var(--mut);font-weight:700}'+
+'#nbAcc .sec{margin-top:14px;border:1px solid var(--line);border-radius:18px;overflow:hidden}#nbAcc .sec h4{margin:0;padding:10px 14px;font-size:13px;font-weight:900;background:var(--soft);display:flex;align-items:center;gap:7px}'+
+'#nbAcc .kv{display:flex;align-items:center;gap:12px;padding:11px 14px;border-top:1px solid var(--line)}#nbAcc .kv:first-of-type{border-top:0}#nbAcc .kv .ic{width:34px;height:34px;border-radius:11px;display:flex;align-items:center;justify-content:center;font-size:17px;background:var(--soft);flex:0 0 auto}'+
+'#nbAcc .kv .t{flex:1;min-width:0}#nbAcc .kv .t small{display:block;font-size:11px;color:var(--mut);font-weight:800}#nbAcc .kv .t b{display:block;font-size:14.5px;font-weight:900;overflow-wrap:anywhere}#nbAcc .ltr{direction:ltr;unicode-bidi:plaintext;text-align:right}'+
+'#nbAcc .mini{border:0;border-radius:10px;padding:7px 11px;font:800 12px inherit;font-family:inherit;cursor:pointer;background:var(--soft);color:var(--fg);white-space:nowrap}#nbAcc .mini:hover{filter:brightness(.95)}'+
+'#nbAcc .pw{letter-spacing:2px}#nbAcc .pwf{display:none;padding:12px 14px;border-top:1px solid var(--line);gap:8px;flex-direction:column}#nbAcc .pwf.on{display:flex}'+
+'#nbAcc .pwf input{width:100%;box-sizing:border-box;border:1px solid var(--line);background:var(--bg);color:var(--fg);border-radius:12px;padding:10px 12px;font:700 14px inherit;font-family:inherit}'+
+'#nbAcc .msg{font-size:12.5px;font-weight:800;min-height:16px}#nbAcc .msg.ok{color:#2e7d32}#nbAcc .msg.err{color:#c62828}'+
+'#nbAcc .acts{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:16px}#nbAcc .btn{border:0;border-radius:15px;padding:13px 10px;font:900 14px inherit;font-family:inherit;cursor:pointer;color:#fff;display:flex;align-items:center;justify-content:center;gap:8px;box-shadow:0 8px 18px rgba(0,0,0,.14)}'+
+'#nbAcc .btn.act{background:linear-gradient(135deg,#00a152,#00c853)}#nbAcc .btn.out{background:linear-gradient(135deg,#b71c1c,#e53935)}#nbAcc .btn.sup{background:linear-gradient(135deg,#1565c0,#1e88e5)}#nbAcc .btn.save{background:linear-gradient(135deg,#4527a0,#7b1fa2)}#nbAcc .acts .full{grid-column:1 / -1}'+
+'#nbAcc .note{margin:12px 2px 0;font-size:11.5px;color:var(--mut);text-align:center;line-height:1.6}'+
+'@media(max-width:420px){#nbAcc{padding:10px}#nbAcc .who h2{font-size:17px}#nbAcc .days b{font-size:22px}#nbAcc .acts{grid-template-columns:1fr}}';
+function ensureCss(){ if(document.getElementById('nbAccCss')) return; var s=document.createElement('style'); s.id='nbAccCss'; s.textContent=CSS; document.head.appendChild(s); }
+
+function close(){ var o=document.getElementById('nbAcc'); if(o) o.remove(); document.removeEventListener('keydown',onKey); }
+function onKey(e){ if(e.key==='Escape') close(); }
+
+function planInfo(a){
+  var DAY=86400000, now=Date.now();
+  if(a.status==='approved'){
+    if(a.plan==='permanent') return {name:'تفعيل دائم',state:'مفعّل',cls:'',days:null,pct:100,from:a.activatedAt||a.registeredAt,to:0};
+    var left=Math.max(0,Math.ceil((a.expiresAt-now)/DAY)), total=a.expiresAt&&a.activatedAt?Math.max(1,Math.round((a.expiresAt-a.activatedAt)/DAY)):({weekly:7,monthly:30,yearly:365}[a.plan]||365);
+    return {name:'تفعيل '+(a.planLabel||'')+'',state:left>0?'مفعّل':'منتهي',cls:left>0?'':'bad',days:left,pct:Math.max(3,Math.min(100,Math.round(left/total*100))),from:a.activatedAt,to:a.expiresAt};
+  }
+  if(a.trial||a.status==='trial'||!a.status){
+    var end=(a.registeredAt||now)+a.trialDays*DAY, l=Math.max(0,Math.ceil((end-now)/DAY));
+    return {name:'نسخة تجريبية',state:l>0?'تجريبي':'انتهت التجربة',cls:l>0?'tr':'bad',days:l,pct:Math.max(3,Math.round(l/a.trialDays*100)),from:a.registeredAt,to:end};
+  }
+  if(a.status==='pending') return {name:'بانتظار التفعيل',state:'بانتظار موافقة الإدارة',cls:'tr',days:null,pct:0,from:a.registeredAt,to:0};
+  return {name:'غير مفعّل',state:'غير مفعّل',cls:'bad',days:null,pct:0,from:a.registeredAt,to:0};
+}
+
+window.nbAccountOpen=function(){
+  if(isGuest()||typeof window.__actAccount!=='function'){ if(typeof window.authLogout==='function') window.authLogout(); return; }
+  var a=window.__actAccount();
+  if(!a){ if(typeof window.authLogout==='function') window.authLogout(); return; }
+  ensureCss(); close();
+  var P=planInfo(a), school=a.schoolName||schoolNameApp()||'—', boss=a.name||a.principalName||schoolPrincipal()||'—';
+  var approved=a.status==='approved'&&P.state==='مفعّل';
+  var o=document.createElement('div'); o.id='nbAcc';
+  o.innerHTML='<div class="acc" role="dialog" aria-label="الحساب">'+
+   '<div class="hd"><button class="x" data-x title="إغلاق">✕</button><div class="who"><div class="av">'+esc((school.trim()[0]||'م'))+'</div><div><h2 data-f="school">'+esc(school)+'</h2><p>'+esc(a.email)+'</p>'+
+   '<span class="chip '+P.cls+'"><i></i>'+esc(P.state)+'</span></div></div></div>'+
+   '<div class="bd">'+
+    '<div class="plan"><div class="row"><div><div class="k">نوع التفعيل</div><div class="v">'+esc(P.name)+'</div></div>'+
+     (P.days!=null?'<div class="days"><b>'+ar(P.days)+'</b><small>يوماً متبقياً</small></div>':(a.status==='approved'&&a.plan==='permanent'?'<div class="days"><b>∞</b><small>لا ينتهي</small></div>':''))+'</div>'+
+     (P.pct?'<div class="bar"><i style="width:'+P.pct+'%"></i></div>':'')+
+     '<div class="dates"><span>البداية: '+fmtDate(P.from)+'</span><span>'+(P.to?'الانتهاء: '+fmtDate(P.to):(a.plan==='permanent'&&a.status==='approved'?'بلا تاريخ انتهاء':''))+'</span></div></div>'+
+    '<div class="sec"><h4>🪪 بيانات الحساب</h4>'+
+     '<div class="kv"><span class="ic">🏫</span><div class="t"><small>اسم المدرسة</small><b data-f="school2">'+esc(school)+'</b></div></div>'+
+     '<div class="kv"><span class="ic">📧</span><div class="t"><small>البريد الإلكتروني (Gmail)</small><b class="ltr">'+esc(a.email)+'</b></div></div>'+
+     '<div class="kv"><span class="ic">👤</span><div class="t"><small>اسم المدير (منشئ الحساب)</small><b data-f="boss">'+esc(boss)+'</b></div></div>'+
+     '<div class="kv"><span class="ic">📱</span><div class="t"><small>رقم الموبايل</small><b class="ltr" data-f="phone">'+esc(a.phone?ar(a.phone):'—')+'</b></div></div>'+
+     '<div class="kv"><span class="ic">💻</span><div class="t"><small>الجهاز الحالي</small><b>'+esc(a.deviceType||'—')+'</b></div></div>'+
+    '</div>'+
+    '<div class="sec"><h4>🔐 كلمة السر</h4>'+
+     '<div class="kv"><span class="ic">🔑</span><div class="t"><small>'+(a.google&&!a.password?'تسجيل الدخول بحساب Google':'كلمة السر المسجّلة')+'</small><b class="pw ltr" data-pw>'+(a.google&&!a.password?'—':'••••••••')+'</b></div>'+
+      (a.google&&!a.password?'':'<button class="mini" data-show>👁 إظهار</button>')+'<button class="mini" data-chg>✏️ تغيير</button></div>'+
+     '<div class="pwf" data-form>'+(a.google&&!a.password?'':'<input type="password" data-old placeholder="كلمة السر الحالية" autocomplete="current-password">')+
+      '<input type="password" data-n1 placeholder="كلمة السر الجديدة (4 أحرف على الأقل)" autocomplete="new-password"><input type="password" data-n2 placeholder="تأكيد كلمة السر الجديدة" autocomplete="new-password">'+
+      '<div class="msg" data-msg></div><button class="btn save" data-save>💾 حفظ كلمة السر الجديدة</button></div>'+
+    '</div>'+
+    '<div class="acts">'+(approved?'':'<button class="btn act" data-act>🔑 طلب التفعيل</button>')+
+     '<button class="btn sup'+(approved?'':'')+'" data-sup>💬 الدعم الفني</button>'+
+     '<button class="btn out'+(approved?'':' full')+'" data-out>🚪 تسجيل الخروج</button></div>'+
+    '<p class="note">بيانات المدرسة تبقى محفوظة على هذا الجهاز بعد تسجيل الخروج، ويمكنك الدخول بحسابك من أي جهاز آخر.</p>'+
+   '</div></div>';
+  document.body.appendChild(o);
+  document.addEventListener('keydown',onKey);
+  var pwShown=false, curPw=a.password||'';
+  function q(sel){ return o.querySelector(sel); }
+  function msg(t,c){ var m=q('[data-msg]'); if(m){ m.textContent=t||''; m.className='msg'+(c?' '+c:''); } }
+  o.addEventListener('click',function(e){
+    var t=e.target;
+    if(t===o||t.closest('[data-x]')){ close(); return; }
+    if(t.closest('[data-show]')){
+      var b=t.closest('[data-show]'), el=q('[data-pw]');
+      if(!pwShown&&!curPw){ el.textContent='…'; window.__actCloudPeek&&window.__actCloudPeek(function(v){ curPw=(v&&v.password)||''; el.textContent=curPw||'غير محفوظة على هذا الجهاز'; pwShown=!!curPw; b.textContent=pwShown?'🙈 إخفاء':'👁 إظهار'; if(!curPw) el.classList.remove('pw'); }); return; }
+      pwShown=!pwShown; el.textContent=pwShown?curPw:'••••••••'; b.textContent=pwShown?'🙈 إخفاء':'👁 إظهار'; return;
+    }
+    if(t.closest('[data-chg]')){ var f=q('[data-form]'); f.classList.toggle('on'); if(f.classList.contains('on')){ var i=f.querySelector('input'); if(i) i.focus(); } return; }
+    if(t.closest('[data-save]')){
+      var old=(q('[data-old]')||{}).value||'', n1=q('[data-n1]').value, n2=q('[data-n2]').value;
+      if(n1.length<4){ msg('كلمة السر الجديدة يجب أن تكون 4 أحرف على الأقل','err'); return; }
+      if(n1!==n2){ msg('كلمتا السر الجديدتان غير متطابقتين','err'); return; }
+      var sb=t.closest('[data-save]'); sb.disabled=true; msg('جاري الحفظ…','');
+      window.__actChangePassword(old,n1,function(err){
+        sb.disabled=false;
+        if(err){ msg(err,'err'); return; }
+        curPw=n1; pwShown=false; var el=q('[data-pw]'); el.textContent='••••••••'; el.classList.add('pw');
+        msg('✅ تم تغيير كلمة السر — استخدمها عند الدخول من أي جهاز','ok');
+        [].forEach.call(o.querySelectorAll('[data-form] input'),function(i){ i.value=''; });
+        setTimeout(function(){ var f=q('[data-form]'); if(f) f.classList.remove('on'); },2200);
+      });
+      return;
+    }
+    if(t.closest('[data-act]')){ close(); if(typeof window.__actOpen==='function') window.__actOpen(); return; }
+    if(t.closest('[data-sup]')){ var txt='السلام عليكم، أحتاج مساعدة في تطبيق إدارة المدرسة والامتحانات.\nالحساب: '+a.email+'\nالمدرسة: '+school; try{ window.open('https://wa.me/9647801381381?text='+encodeURIComponent(txt),'_blank'); }catch(e){} return; }
+    if(t.closest('[data-out]')){ close(); if(typeof window.authLogout==='function') window.authLogout(); return; }
+  });
+  o.addEventListener('keydown',function(e){ if(e.key==='Enter'&&e.target.matches('[data-form] input')){ var s=q('[data-save]'); if(s) s.click(); } });
+  /* إكمال البيانات الناقصة من السحابة (قراءة فقط) */
+  if((!a.name&&!a.principalName&&!schoolPrincipal())||!a.phone||!a.schoolName){
+    window.__actCloudPeek&&window.__actCloudPeek(function(v){
+      if(!v||!document.body.contains(o)) return;
+      if(boss==='—'&&(v.name||v.principalName)){ var e1=q('[data-f="boss"]'); if(e1) e1.textContent=v.name||v.principalName; }
+      if(!a.phone&&v.phone){ var e2=q('[data-f="phone"]'); if(e2) e2.textContent=ar(v.phone); }
+      if(school==='—'&&v.schoolName){ [].forEach.call(o.querySelectorAll('[data-f^="school"]'),function(x){ x.textContent=v.schoolName; }); }
+      if(v.password&&!curPw) curPw=v.password;
+    });
+  }
+};
+})();
+</script>
 </body>
 </html>
