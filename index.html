@@ -18742,7 +18742,7 @@ if(document.readyState==='loading'){
 <!-- ===== AUTO UPDATE NOTIFICATION (small icon in topbar) ===== -->
 <script>
 (function(){
-  const APP_VERSION = "1.48.2";
+  const APP_VERSION = "1.48.3";
   const CHECK_EVERY_MINUTES = 30;
   const LS_ACCEPTED = "daragat_accepted_version";
   const LS_SNOOZE   = "daragat_update_snooze";
@@ -42161,6 +42161,74 @@ window.nbStudentsTemplate=function(){
   write(r.wb,safe('قالب-'+who()+'-كل-المدرسة-حسب-الشعب.xlsx'));
   toastMsg('📄 جُهّز قالب الإكسل ('+r.sheets+' شعبة)');
 };
+})();
+</script>
+<script>
+/* ===== nb-v1.48.3: «انضم لكروب الإدارة على الواتساب» =====
+   أول عنصر في القائمة الجانبية + بطاقة احترافية أسفل واجهة الامتحانات وواجهة التلاميذ/الطلاب (لا تغيّر ترتيب أي شيء). */
+(function(){
+'use strict';
+var URL='https://chat.whatsapp.com/GzMeU6FVK9bFLVDdKuSuex?s=sh&p=a&iam=2';
+var WA='<svg viewBox="0 0 32 32" width="1em" height="1em" aria-hidden="true"><path fill="currentColor" d="M16.04 3C8.86 3 3.03 8.82 3.03 16c0 2.3.6 4.53 1.74 6.5L3 29l6.68-1.75A12.95 12.95 0 0 0 16.04 29C23.2 29 29 23.18 29 16S23.2 3 16.04 3Zm0 23.62c-2.02 0-4-.54-5.72-1.57l-.41-.24-3.96 1.04 1.06-3.86-.27-.4A10.6 10.6 0 0 1 5.4 16c0-5.86 4.77-10.62 10.64-10.62 5.86 0 10.6 4.76 10.6 10.62 0 5.86-4.74 10.62-10.6 10.62Zm5.83-7.95c-.32-.16-1.89-.93-2.18-1.04-.3-.1-.5-.16-.72.16-.21.32-.82 1.04-1 1.25-.19.21-.37.24-.69.08-.32-.16-1.35-.5-2.57-1.59-.95-.85-1.59-1.9-1.78-2.22-.18-.32-.02-.49.14-.65.15-.14.32-.37.48-.56.16-.19.21-.32.32-.53.1-.21.05-.4-.03-.56-.08-.16-.72-1.73-.98-2.37-.26-.62-.52-.54-.72-.55h-.61c-.21 0-.56.08-.85.4-.29.32-1.12 1.09-1.12 2.66s1.15 3.09 1.31 3.3c.16.21 2.26 3.45 5.47 4.84.76.33 1.36.53 1.83.68.77.24 1.47.21 2.02.13.62-.09 1.89-.77 2.16-1.52.27-.75.27-1.39.19-1.52-.08-.13-.29-.21-.61-.37Z"/></svg>';
+window.nbJoinAdminGroup=function(ev){
+  try{ if(ev){ ev.preventDefault(); ev.stopPropagation(); } }catch(e){}
+  try{ if(typeof window.__dgOpenExternal==='function'){ window.__dgOpenExternal(URL); return false; } }catch(e){}
+  try{ var w=window.open(URL,'_blank'); if(w) return false; }catch(e){}
+  try{ var a=document.createElement('a'); a.href=URL; a.target='_blank'; a.rel='noopener'; document.body.appendChild(a); a.click(); setTimeout(function(){ a.remove(); },0); }catch(e){ location.href=URL; }
+  return false;
+};
+var CSS=
+/* زر القائمة الجانبية */
+'button.nbwa-nav.nbwa-nav{position:relative;display:flex!important;align-items:center;gap:10px!important;width:100%;margin:0 0 10px!important;padding:9px 10px!important;border:0!important;border-radius:16px!important;cursor:pointer;text-align:right;font-family:inherit;color:#fff!important;overflow:hidden;'+
+ 'background:linear-gradient(135deg,#075e54 0%,#128c7e 52%,#25d366 120%)!important;box-shadow:0 8px 20px rgba(7,94,84,.35),inset 0 1px 0 rgba(255,255,255,.25)!important;transition:transform .18s,box-shadow .18s!important}'+
+'button.nbwa-nav.nbwa-nav:before{content:"";position:absolute;width:90px;height:90px;border-radius:50%;background:rgba(255,255,255,.10);left:-28px;top:-38px;pointer-events:none}'+
+'button.nbwa-nav.nbwa-nav:hover{transform:translateY(-2px)!important;box-shadow:0 12px 26px rgba(7,94,84,.45),inset 0 1px 0 rgba(255,255,255,.25)!important}'+
+'button.nbwa-nav.nbwa-nav .ic{position:relative;width:38px;height:38px;border-radius:12px;background:#fff;color:#25d366;display:flex;align-items:center;justify-content:center;font-size:25px;flex:0 0 auto;box-shadow:0 4px 10px rgba(0,0,0,.18)}'+
+'button.nbwa-nav.nbwa-nav .ic:after{content:"";position:absolute;top:-3px;left:-3px;width:10px;height:10px;border-radius:50%;background:#ffeb3b;box-shadow:0 0 0 2px #128c7e;animation:nbwaP 1.8s ease-in-out infinite}@keyframes nbwaP{50%{transform:scale(1.35);opacity:.6}}'+
+'button.nbwa-nav.nbwa-nav .tx{position:relative;min-width:0;line-height:1.25}.nbwa-nav .tx b{display:block;font-size:14px;font-weight:900;color:#fff!important;white-space:nowrap}.nbwa-nav .tx small{display:flex;align-items:center;gap:4px;font-size:11.5px;font-weight:800;color:#dcf8c6!important;margin-top:2px}'+
+'button.nbwa-nav.nbwa-nav .tx small svg{font-size:13px}'+
+'.gnd-links button.nbwa-nav.nbwa-nav{margin-bottom:8px!important}'+
+/* بطاقة الأقسام */
+'.nbwa-card{position:relative;display:flex;align-items:center;gap:16px;margin:18px 0 6px;padding:16px 18px;border-radius:22px;color:#fff;overflow:hidden;cursor:pointer;text-decoration:none;'+
+ 'background:radial-gradient(420px 160px at 0% 0%,rgba(255,255,255,.16),transparent 60%),linear-gradient(120deg,#054d44 0%,#0b7a6c 45%,#16a34a 100%);box-shadow:0 14px 30px rgba(5,77,68,.28);border:1px solid rgba(255,255,255,.12)}'+
+'.nbwa-card:after{content:"";position:absolute;left:-40px;bottom:-60px;width:220px;height:220px;border-radius:50%;border:26px solid rgba(255,255,255,.06);pointer-events:none}'+
+'.nbwa-card .big{position:relative;width:62px;height:62px;border-radius:20px;background:#fff;color:#25d366;display:flex;align-items:center;justify-content:center;font-size:40px;flex:0 0 auto;box-shadow:0 10px 22px rgba(0,0,0,.22)}'+
+'.nbwa-card .t{position:relative;flex:1;min-width:0}.nbwa-card .t b{display:block;font-size:18px;font-weight:900;color:#fff!important;line-height:1.35}'+
+'.nbwa-card .t small{display:flex;align-items:center;gap:6px;font-size:13px;font-weight:800;color:#dcf8c6!important;margin-top:3px}.nbwa-card .t p{margin:6px 0 0;font-size:12px;color:rgba(255,255,255,.82)!important;font-weight:700}'+
+'.nbwa-card .go{position:relative;display:inline-flex;align-items:center;gap:7px;padding:11px 16px;border-radius:14px;background:#fff;color:#075e54!important;font-weight:900;font-size:13.5px;white-space:nowrap;box-shadow:0 6px 14px rgba(0,0,0,.18);transition:transform .15s}'+
+'.nbwa-card .go svg{font-size:18px;color:#25d366}.nbwa-card:hover .go{transform:translateX(-3px)}'+
+'@media(max-width:560px){.nbwa-card{padding:13px;gap:11px;border-radius:18px}.nbwa-card .big{width:48px;height:48px;font-size:30px;border-radius:15px}.nbwa-card .t b{font-size:15px}.nbwa-card .t p{display:none}.nbwa-card .go{padding:9px 11px;font-size:12px}.nbwa-card .go span{display:none}}'+
+/* ثيم أموليد: ذهبي/برونزي فقط */
+'html[data-ui-skin="night-amoled"] #dashboardSidebar .ds-nav .nbwa-nav,html[data-ui-skin="night-amoled"] .global-nav-drawer .gnd-links button.nbwa-nav.nbwa-nav{background:linear-gradient(135deg,#e8a465 0%,#ffd873 60%,#fff0c2 100%)!important;box-shadow:none!important;border:0!important}'+
+'html[data-ui-skin="night-amoled"] .nbwa-nav .tx b,html[data-ui-skin="night-amoled"] .nbwa-nav .tx small{color:#17140c!important}html[data-ui-skin="night-amoled"] .nbwa-nav .ic{background:#17140c;color:#ffd873}html[data-ui-skin="night-amoled"] .nbwa-nav .ic:after{background:#fff0c2;box-shadow:0 0 0 2px #e8a465}'+
+'html[data-ui-skin="night-amoled"] .view .nbwa-card.nbwa-card{background-color:#1b1c21!important;border:1px solid rgba(255,216,115,.35)!important}html[data-ui-skin="night-amoled"] .view .nbwa-card .big,html[data-ui-skin="night-amoled"] .view .nbwa-card .go{background-color:#ffd873!important;color:#17140c!important}'+
+'html[data-ui-skin="night-amoled"] .view .nbwa-card .t b{color:#ffd873!important}html[data-ui-skin="night-amoled"] .view .nbwa-card .t small,html[data-ui-skin="night-amoled"] .view .nbwa-card .t p{color:#f2b880!important}';
+function css(){ if(document.getElementById('nbWaCss')) return; var s=document.createElement('style'); s.id='nbWaCss'; s.textContent=CSS; document.head.appendChild(s); }
+function navBtn(cls,onclick){ return '<button type="button" class="nbwa-nav '+cls+'" title="انضم لكروب الإدارة على الواتساب" onclick="'+onclick+'"><span class="ic">'+WA+'</span><span class="tx"><b>انضم لكروب الإدارة</b><small>على الواتساب '+WA+'</small></span></button>'; }
+function addNav(){
+  css();
+  var sb=document.querySelector('#dashboardSidebar .ds-nav');
+  if(sb&&!sb.querySelector('.nbwa-nav')){ sb.insertAdjacentHTML('afterbegin',navBtn('','closeDashboardSidebar&&closeDashboardSidebar();return nbJoinAdminGroup(event)')); }
+  var gn=document.querySelector('.global-nav-drawer .gnd-links');
+  if(gn&&!gn.querySelector('.nbwa-nav')){ gn.insertAdjacentHTML('afterbegin',navBtn('','try{closeGlobalNav()}catch(e){};return nbJoinAdminGroup(event)')); }
+}
+function card(){ return '<div class="nbwa-card" role="link" tabindex="0" onclick="return nbJoinAdminGroup(event)" onkeydown="if(event.key===\'Enter\')nbJoinAdminGroup(event)"><span class="big">'+WA+'</span><span class="t"><b>انضم لكروب الإدارة</b><small>على الواتساب '+WA+'</small><p>تحديثات البرنامج والشروحات والدعم الفني أولاً بأول</p></span><span class="go">'+WA+'<span>انضم الآن</span></span></div>'; }
+function addCard(viewId){
+  css();
+  var v=document.getElementById(viewId); if(!v||v.querySelector('.nbwa-card')) return;
+  var shell=v.querySelector('.module-shell')||v; shell.insertAdjacentHTML('beforeend',card());
+}
+['renderDashboard','renderDashboardLauncher'].forEach(function(k){
+  if(typeof window[k]!=='function') return;
+  window[k]=(function(o){ return function(){ var r=o.apply(this,arguments); try{ addNav(); }catch(e){} return r; }; })(window[k]);
+});
+if(typeof window.renderExamsHome==='function'){
+  window.renderExamsHome=(function(o){ return function(){ var r=o.apply(this,arguments); try{ addCard('view-exams'); }catch(e){} return r; }; })(window.renderExamsHome);
+}
+if(typeof window.renderGradesView==='function'){
+  window.renderGradesView=(function(o){ return function(isOnb){ var r=o.apply(this,arguments); try{ if(!document.querySelector('#view-grades #gradesConfigPanel[data-onboarding]')) addCard('view-grades'); }catch(e){} return r; }; })(window.renderGradesView);
+}
+setTimeout(addNav,400); setTimeout(addNav,2500);
 })();
 </script>
 </body>
