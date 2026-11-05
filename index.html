@@ -18742,7 +18742,7 @@ if(document.readyState==='loading'){
 <!-- ===== AUTO UPDATE NOTIFICATION (small icon in topbar) ===== -->
 <script>
 (function(){
-  const APP_VERSION = "1.48.3";
+  const APP_VERSION = "1.49.0";
   const CHECK_EVERY_MINUTES = 30;
   const LS_ACCEPTED = "daragat_accepted_version";
   const LS_SNOOZE   = "daragat_update_snooze";
@@ -21435,6 +21435,7 @@ var H = (function(){
     clearTimeout(peer.helloT);
     var was = peer.ready;
     delete peers[peer.pid]; delete pending[peer.pid]; peer.ready = false;
+    if(peer.state === 'teacher' && peer.teacherId){ try{ if(window.__nbChatH) window.__nbChatH.onDisconnect(peer.teacherId, peer.pid); }catch(e){} }
     idleRole(); emit();
     if(was && why !== 'kicked' && why !== 'bye') toast('انقطع الجهاز الملحق «' + peer.name + '»', true);
   }
@@ -21607,18 +21608,21 @@ var H = (function(){
   /* nb-v1.32.4: عرض اتصال وصل عبر تطبيق الأندرويد داخل الشبكة المحلية (بلا إنترنت). الثقة تُفحص كالعادة في رسالة hello */
   /* nb-v1.35: تطبيق الأستاذ — اتصال معلم: يستلم مهامه فقط (أسماء شعبه وسجلاته) ويرسل درجاته، دون أي بيانات أخرى */
   function onTeacherHello(peer, m, id, name){
-    var U = window.__UST, tr = cfg.trusted[id], tid = null;
+    var isChat = !!m.chat && /#chat$/.test(id), baseId = isChat ? id.replace(/#chat$/, '') : id;   /* nb-v1.49: رابط المراسلة الدائم من تطبيق الأستاذ */
+    var U = window.__UST, tr = cfg.trusted[baseId], tid = null;
     if(peer.preTeacher) tid = peer.preTeacher;
     else if(tr && tr.role === 'teacher' && m.token && tr.token === m.token) tid = tr.teacherId;
     var t = (U && tid) ? U.get(tid) : null;
     if(!t){ peer.link.send({t: 'deny', r: tid ? 'teacher-removed' : 'unknown'}); setTimeout(function(){ peer.link.close('kicked'); }, 400); return; }
+    if(isChat && !(tr && tr.role === 'teacher' && tr.teacherId === tid)){ peer.link.send({t: 'deny', r: 'unknown'}); setTimeout(function(){ peer.link.close('kicked'); }, 400); return; }
     var keep = tr && tr.role === 'teacher' && tr.teacherId === tid && tr.token;
-    cfg.trusted[id] = {name: name, token: keep || rid(24), perm: 'rw', role: 'teacher', teacherId: tid, added: (tr && tr.added) || now(), last: now(), via: 'lan'};
-    save();
-    peer.state = 'teacher'; peer.teacherId = tid; peer.perm = 'rw';
+    if(!isChat){ cfg.trusted[id] = {name: name, token: keep || rid(24), perm: 'rw', role: 'teacher', teacherId: tid, added: (tr && tr.added) || now(), last: now(), via: 'lan'}; save(); }
+    peer.state = 'teacher'; peer.teacherId = tid; peer.perm = 'rw'; peer.chatLive = isChat;
     try{ U.touch(tid, name); }catch(e){}
     dlog('host: teacher ' + t.name + ' connected (' + name + ')');
-    peer.link.send({t: 'twelcome', token: cfg.trusted[id].token, hostId: cfg.id, fileKey: t.fileKey, teacher: {id: t.id, name: t.name}});
+    peer.link.send({t: 'twelcome', token: cfg.trusted[baseId].token, hostId: cfg.id, fileKey: t.fileKey, teacher: {id: t.id, name: t.name}, chatLive: isChat});
+    try{ if(window.__nbChatH) window.__nbChatH.onConnect(tid, peer.pid, function(x){ try{ peer.link.send(x); }catch(e){} }, isChat); }catch(e){}
+    if(isChat){ emit(); return; }
     peer.link.send({t: 'tpkg', pkg: U.buildPackage(tid)});
     try{
       var nat = window.DaragatNative;
@@ -21630,6 +21634,7 @@ var H = (function(){
     emit();
   }
   function onTeacherMsg(peer, m){
+    if(m && typeof m.t === 'string' && /^(chat|call):/.test(m.t)){ try{ if(window.__nbChatH) window.__nbChatH.onMsg(peer.teacherId, m, function(x){ try{ peer.link.send(x); }catch(e){} }, peer.pid); }catch(e){} return; }
     var U = window.__UST; if(!U) return;
     if(m.t === 'tpush'){
       var res = U.applyPush(peer.teacherId, Array.isArray(m.items) ? m.items : []);
@@ -21677,7 +21682,11 @@ var H = (function(){
       blocked: Object.keys(cfg.blocked).map(function(id){ return {devId: id, name: cfg.blocked[id]}; })
     };
   }
-  return {enable: enable, disable: disable, renewCode: renewCode, approve: approve, reject: reject, kick: kick, kickAll: kickAll, block: block, unblock: unblock, forget: forget, forgetAll: forgetAll, setPerm: setPerm, manualOffer: manualOffer, lanAnswer: lanAnswer, passCheck: passCheck, setLan: setLan, setLanPass: setLanPass, setLanName: setLanName, lanName: lanName, view: view, onLocalRemove: onLocalRemove, cfg: cfg, isOn: function(){ return !!cfg.on; }, peers: function(){ return peers; }};
+  /* nb-v1.49: إرسال للمعلم عبر رابط المراسلة الحي (أو أي رابط مفتوح له) */
+  function teacherPeers(tid){ return list(function(p){ return p.state === 'teacher' && p.teacherId === tid && p.link; }).sort(function(a, b){ return (b.chatLive ? 1 : 0) - (a.chatLive ? 1 : 0); }); }
+  function teacherSend(tid, msg){ var ps = teacherPeers(tid); if(!ps.length) return false; try{ ps[0].link.send(msg); return true; }catch(e){ return false; } }
+  function teacherOnline(tid){ return teacherPeers(tid).some(function(p){ return p.chatLive; }); }
+  return {teacherSend: teacherSend, teacherOnline: teacherOnline, enable: enable, disable: disable, renewCode: renewCode, approve: approve, reject: reject, kick: kick, kickAll: kickAll, block: block, unblock: unblock, forget: forget, forgetAll: forgetAll, setPerm: setPerm, manualOffer: manualOffer, lanAnswer: lanAnswer, passCheck: passCheck, setLan: setLan, setLanPass: setLanPass, setLanName: setLanName, lanName: lanName, view: view, onLocalRemove: onLocalRemove, cfg: cfg, isOn: function(){ return !!cfg.on; }, peers: function(){ return peers; }};
 })();
 
 /* ================================================================= GUEST (الجهاز الملحق) */
@@ -21965,6 +21974,7 @@ var T = (function(){
           if(m.t === 'deny') return fin(terr(REASONS[m.r] || 'رفض جهاز المدرسة الاتصال.'));
           if(m.t === 'twelcome'){ out.welcome = m; if(o.onWelcome) try{ o.onWelcome(m); }catch(e){} return; }
           if(m.t === 'lan'){ out.lan = m; return; }
+          if(typeof m.t === 'string' && /^(chat|call):/.test(m.t)){ try{ if(window.__nbChatT) window.__nbChatT.onMsg(o.hostId, m, function(x){ try{ link.send(x); }catch(e){} }); }catch(e){} return; }
           if(m.t === 'tack'){ out.ack = m; return; }
           if(m.t === 'tpkg'){
             out.pkg = m.pkg;
@@ -21981,7 +21991,27 @@ var T = (function(){
       });
     } finally { busy = false; }
   }
-  return {session: session, busy: function(){ return busy; }};
+  /* nb-v1.49: رابط مراسلة دائم مع جهاز المدرسة (رسائل لحظية واتصالات) — مستقل عن المزامنة */
+  async function live(o){
+    var n = window.DaragatNative;
+    if(!n || typeof n.dlsSignal !== 'function') throw terr('no-native');
+    var pc = newPC(), dc = pc.createDataChannel('dls');
+    await pc.setLocalDescription(await pc.createOffer()); await waitIce(pc, 2500);
+    var r = null;
+    try{ r = await n.dlsSignal(o.hostId, packText('o', pc.localDescription), 30000, o.hint || '', ''); }catch(e){ r = null; }
+    if(typeof r !== 'string' || r.indexOf('DLS1.') < 0){ try{ pc.close(); }catch(e){} throw terr(String(r || 'no-answer')); }
+    await pc.setRemoteDescription(unpackText(r, 'a'));
+    try{ await waitOpen(dc, 20000); }catch(e){ try{ pc.close(); }catch(x){} throw terr('no-open'); }
+    var link = null, closed = false;
+    link = new Link(pc, dc, function(m){
+      if(m.t === 'deny'){ try{ o.onDeny && o.onDeny(m.r); }catch(e){} try{ link.close('deny'); }catch(e){} return; }
+      if(m.t === 'twelcome'){ try{ o.onWelcome && o.onWelcome(m); }catch(e){} return; }
+      try{ o.onMsg && o.onMsg(m, function(x){ try{ link.send(x); }catch(e){} }); }catch(e){}
+    }, function(why){ if(closed) return; closed = true; try{ o.onClose && o.onClose(why); }catch(e){} }, {});
+    link.send({t: 'hello', v: 1, role: 'teacher', chat: true, id: deviceId() + '#chat', name: o.name || 'تطبيق الأستاذ', token: o.token || null});
+    return {send: function(x){ if(!closed) link.send(x); }, close: function(){ if(closed) return; try{ link.send({t: 'bye'}); }catch(e){} setTimeout(function(){ try{ link.close('bye'); }catch(e){} }, 300); }, pc: pc, alive: function(){ return !closed; }};
+  }
+  return {session: session, live: live, busy: function(){ return busy; }};
 })();
 
 /* ================================================================= UI */
@@ -29952,6 +29982,7 @@ window.renderHomeView=function(){
     if(V.page === 'fpEdit' && FE && !FE.mounted && rs){ FE.mounted = true; hookEditor(); fpMount(rs); }
     render._last = V.page + V.tab + JSON.stringify(V.asg);
     var m2 = root.querySelector('.u-main'); if(m2 && samePage) m2.scrollTop = y;
+    try{ if(window.__nbChatT) window.__nbChatT.afterRender(root, V.page, rs, D); }catch(e){}
     if(focusS && samePage){ var el = root.querySelector('.u-sin[data-s="' + focusS + '"]'); if(el) el.focus(); }
   }
 
@@ -42229,6 +42260,612 @@ if(typeof window.renderGradesView==='function'){
   window.renderGradesView=(function(o){ return function(isOnb){ var r=o.apply(this,arguments); try{ if(!document.querySelector('#view-grades #gradesConfigPanel[data-onboarding]')) addCard('view-grades'); }catch(e){} return r; }; })(window.renderGradesView);
 }
 setTimeout(addNav,400); setTimeout(addNav,2500);
+})();
+</script>
+<script>
+/* ===== nb-v1.49: مراسلة المعلمين/المدرسين — محادثة خاصة لكل معلم بين الإدارة وتطبيق الأستاذ =====
+   رسائل نصية · صور · بصمات صوتية · ملفات (PDF / وورد / أي ملف) · مكالمات صوتية مباشرة عبر الواي فاي (بلا إنترنت).
+   - الإدارة: قسم «مراسلة المعلمين» (أو المدرسين حسب المرحلة). يظهر فيه فقط المعلم المسموح له بالمراسلة.
+   - المعلم: أيقونة «مراسلة الإدارة» في تطبيق الأستاذ.
+   - الرسائل تُحفظ على كل جهاز (النص في التخزين المحلي والمرفقات في IndexedDB)، وتُسلَّم فور اتصال الطرف الآخر.
+   - لا يمس أي بيانات أو وظيفة موجودة. */
+(function(){
+'use strict';
+var HKEY='daragat_tchat_host_v1', TKEY='daragat_tchat_t_v1', MAXM=1500, MAXF=15*1024*1024;
+function now(){ return Date.now(); }
+function rid(n){ var a='abcdefghijkmnpqrstuvwxyz23456789',s=''; for(var i=0;i<(n||12);i++) s+=a[Math.floor(Math.random()*a.length)]; return s; }
+function esc(v){ return String(v==null?'':v).replace(/[&<>"']/g,function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); }
+function ar(n){ try{ return typeof toArabicDigits==='function'?toArabicDigits(String(n)):String(n); }catch(e){ return String(n); } }
+function lsGet(k,d){ try{ var v=JSON.parse(localStorage.getItem(k)||'null'); return v&&typeof v==='object'?v:d; }catch(e){ return d; } }
+function lsSet(k,v){ try{ localStorage.setItem(k,JSON.stringify(v)); return true; }catch(e){ return false; } }
+function hostEl(){ return document.getElementById('ustApp')||document.body; }
+function isTeacherApp(){ return !!document.getElementById('ustApp')||/[?&]app=teacher/.test(location.search); }
+function stageWord(pl){ var el=false; try{ el=currentStage()==='elementary'; }catch(e){} return pl?(el?'المعلمين':'المدرسين'):(el?'المعلم':'المدرس'); }
+function toastM(m,bad){ if(!isTeacherApp()){ try{ if(typeof showToast==='function'){ showToast(m); return; } }catch(e){} }
+  var t=document.createElement('div'); t.textContent=m; t.style.cssText='position:fixed;left:50%;bottom:24px;transform:translateX(-50%);z-index:2147483600;background:'+(bad?'#c62828':'#263238')+';color:#fff;padding:11px 18px;border-radius:14px;font:800 13.5px inherit;font-family:inherit;box-shadow:0 10px 30px rgba(0,0,0,.3);max-width:90vw;text-align:center'; hostEl().appendChild(t); setTimeout(function(){ t.remove(); },3200); }
+function fmtSize(b){ b=+b||0; if(b<1024) return ar(b)+' بايت'; if(b<1048576) return ar((b/1024).toFixed(0))+' ك.ب'; return ar((b/1048576).toFixed(1))+' م.ب'; }
+function fmtDur(s){ s=Math.max(0,Math.round(+s||0)); return ar(Math.floor(s/60)+':'+String(s%60).padStart(2,'0')); }
+function hm(t){ var d=new Date(t), h=d.getHours(), m=d.getMinutes(); return ar((h%12||12)+':'+String(m).padStart(2,'0'))+' '+(h<12?'ص':'م'); }
+function dayLabel(t){ var d=new Date(t), n=new Date(); var a=new Date(d.getFullYear(),d.getMonth(),d.getDate()).getTime(), b=new Date(n.getFullYear(),n.getMonth(),n.getDate()).getTime(); var diff=Math.round((b-a)/86400000);
+  if(diff===0) return 'اليوم'; if(diff===1) return 'أمس'; try{ return d.toLocaleDateString('ar-IQ',{weekday:'long',day:'numeric',month:'long',year:'numeric'}); }catch(e){ return ar(d.getFullYear()+'/'+(d.getMonth()+1)+'/'+d.getDate()); } }
+function initials(n){ n=String(n||'').replace(/^(الأستاذ[ة]?|الست|المعلم[ة]?|المدرس[ة]?)\s+/,'').trim(); var p=n.split(/\s+/); return (p[0]||'?').charAt(0)+((p[1]||'').charAt(0)||''); }
+var AV=['#00897b','#5e35b1','#1e88e5','#d81b60','#f4511e','#43a047','#8e24aa','#3949ab','#6d4c41','#00acc1'];
+function avColor(k){ var h=0; k=String(k||''); for(var i=0;i<k.length;i++) h=(h*31+k.charCodeAt(i))>>>0; return AV[h%AV.length]; }
+
+/* ---------- المرفقات في IndexedDB ---------- */
+var dbP=null;
+function db(){ if(dbP) return dbP; dbP=new Promise(function(res,rej){ try{ var r=indexedDB.open('daragat_tchat_files',1); r.onupgradeneeded=function(){ r.result.createObjectStore('f'); }; r.onsuccess=function(){ res(r.result); }; r.onerror=function(){ rej(r.error); }; }catch(e){ rej(e); } }); return dbP; }
+function fPut(id,data){ return db().then(function(d){ return new Promise(function(res){ try{ var tx=d.transaction('f','readwrite'); tx.objectStore('f').put(data,id); tx.oncomplete=function(){ res(true); }; tx.onerror=function(){ res(false); }; }catch(e){ res(false); } }); },function(){ return false; }); }
+function fGet(id){ return db().then(function(d){ return new Promise(function(res){ try{ var r=d.transaction('f').objectStore('f').get(id); r.onsuccess=function(){ res(r.result||null); }; r.onerror=function(){ res(null); }; }catch(e){ res(null); } }); },function(){ return null; }); }
+function fDel(id){ return db().then(function(d){ try{ d.transaction('f','readwrite').objectStore('f').delete(id); }catch(e){} }); }
+function blobToDataUrl(b){ return new Promise(function(res,rej){ var r=new FileReader(); r.onload=function(){ res(r.result); }; r.onerror=rej; r.readAsDataURL(b); }); }
+function dataUrlToBlob(u){ var m=/^data:([^;,]*)(;base64)?,(.*)$/.exec(u||''); if(!m) return null; var bin=m[2]?atob(m[3]):decodeURIComponent(m[3]); var a=new Uint8Array(bin.length); for(var i=0;i<bin.length;i++) a[i]=bin.charCodeAt(i); return new Blob([a],{type:m[1]||'application/octet-stream'}); }
+function compressImage(file){ return new Promise(function(res){ if(!/^image\/(jpeg|png|webp|bmp)/.test(file.type)||file.size<350000){ blobToDataUrl(file).then(res,function(){ res(null); }); return; }
+  var u=URL.createObjectURL(file), im=new Image(); im.onload=function(){ var M=1600, w=im.naturalWidth, h=im.naturalHeight, k=Math.min(1,M/Math.max(w,h)); var c=document.createElement('canvas'); c.width=Math.round(w*k); c.height=Math.round(h*k); var x=c.getContext('2d'); x.fillStyle='#fff'; x.fillRect(0,0,c.width,c.height); x.drawImage(im,0,0,c.width,c.height); URL.revokeObjectURL(u); res(c.toDataURL('image/jpeg',.84)); };
+  im.onerror=function(){ URL.revokeObjectURL(u); blobToDataUrl(file).then(res,function(){ res(null); }); }; im.src=u; }); }
+function saveOrOpen(dataUrl,name){
+  var n=window.DaragatNative;
+  if(n&&typeof n.saveFile==='function'){ try{ var b64=String(dataUrl).split(',')[1]||''; Promise.resolve(n.saveFile(b64,name)).then(function(){ toastM('✅ حُفظ الملف «'+name+'»'); },function(){ toastM('تعذر حفظ الملف',true); }); return; }catch(e){} }
+  var b=dataUrlToBlob(dataUrl); if(!b) return; var a=document.createElement('a'); a.href=URL.createObjectURL(b); a.download=name||'ملف'; document.body.appendChild(a); a.click(); setTimeout(function(){ URL.revokeObjectURL(a.href); a.remove(); },4000);
+}
+
+/* ---------- نغمات ---------- */
+var AC=null, toneT=null;
+function ac(){ try{ AC=AC||new (window.AudioContext||window.webkitAudioContext)(); if(AC.state==='suspended') AC.resume(); }catch(e){} return AC; }
+function beep(f,d,v,at){ var c=ac(); if(!c) return; var o=c.createOscillator(), g=c.createGain(); o.type='sine'; o.frequency.value=f; g.gain.value=0; o.connect(g); g.connect(c.destination); var t=c.currentTime+(at||0); g.gain.setValueAtTime(0,t); g.gain.linearRampToValueAtTime(v||.12,t+.02); g.gain.linearRampToValueAtTime(0,t+d); o.start(t); o.stop(t+d+.05); }
+function msgSound(){ beep(880,.12,.09); beep(1320,.16,.08,.13); }
+function stopTone(){ clearInterval(toneT); toneT=null; try{ navigator.vibrate&&navigator.vibrate(0); }catch(e){} }
+function ringBack(){ stopTone(); var f=function(){ beep(425,1,.08); }; f(); toneT=setInterval(f,4000); }
+function ringIn(){ stopTone(); var f=function(){ beep(988,.18,.14); beep(784,.18,.14,.22); beep(988,.18,.14,.6); beep(784,.18,.14,.82); try{ navigator.vibrate&&navigator.vibrate([400,200,400]); }catch(e){} }; f(); toneT=setInterval(f,2600); }
+
+/* =========================================================================
+   واجهة المحادثة (مشتركة بين الإدارة والمعلم)
+   ========================================================================= */
+var CSS=
+'.tc{--tc-bg:#efeae2;--tc-pat:rgba(0,0,0,.035);--tc-in:#fff;--tc-out:#d9fdd3;--tc-ink:#111b21;--tc-mut:#667781;--tc-hd:#008069;--tc-bar:#f0f2f5;--tc-line:#e9edef;--tc-acc:#00a884;--tc-tick:#53bdeb;font-family:inherit;color:var(--tc-ink);direction:rtl}'+
+'body.theme-dark .tc,.tc.dark{--tc-bg:#0b141a;--tc-pat:rgba(255,255,255,.025);--tc-in:#202c33;--tc-out:#005c4b;--tc-ink:#e9edef;--tc-mut:#8696a0;--tc-hd:#202c33;--tc-bar:#202c33;--tc-line:#2a3942}'+
+'.tc-shell{display:grid;grid-template-columns:340px minmax(0,1fr);height:calc(100vh - 130px);min-height:480px;border-radius:20px;overflow:hidden;box-shadow:0 14px 40px rgba(0,0,0,.18);border:1px solid var(--tc-line);background:var(--tc-bar)}'+
+'.tc-side{display:flex;flex-direction:column;min-width:0;background:var(--tc-in);border-left:1px solid var(--tc-line)}'+
+'.tc-shd{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:14px 14px;background:var(--tc-hd);color:#fff}.tc-shd b{font-size:16.5px;font-weight:900}.tc-shd small{display:block;font-size:11.5px;opacity:.85;font-weight:700}'+
+'.tc-ib{width:38px;height:38px;border-radius:50%;border:0;background:rgba(255,255,255,.14);color:#fff;font-size:18px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;flex:0 0 auto}.tc-ib:hover{background:rgba(255,255,255,.24)}'+
+'.tc-search{padding:8px 10px;background:var(--tc-in);border-bottom:1px solid var(--tc-line)}.tc-search input{width:100%;box-sizing:border-box;height:38px;border-radius:12px;border:0;background:var(--tc-bar);color:var(--tc-ink);padding:0 14px;font:700 13.5px inherit;font-family:inherit}'+
+'.tc-list{flex:1;overflow:auto}.tc-item{display:flex;align-items:center;gap:12px;padding:11px 14px;cursor:pointer;border-bottom:1px solid var(--tc-line);transition:background .12s}.tc-item:hover{background:var(--tc-bar)}.tc-item.on{background:var(--tc-bar)}'+
+'.tc-av{position:relative;width:48px;height:48px;border-radius:50%;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:17px;flex:0 0 auto;box-shadow:inset 0 -3px 0 rgba(0,0,0,.12)}'+
+'.tc-av i{position:absolute;bottom:1px;left:1px;width:12px;height:12px;border-radius:50%;background:#bdbdbd;border:2px solid var(--tc-in)}.tc-av i.on{background:#25d366}'+
+'.tc-it{flex:1;min-width:0}.tc-it .r1{display:flex;justify-content:space-between;gap:6px;align-items:baseline}.tc-it b{font-size:15px;font-weight:900;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.tc-it time{font-size:11px;color:var(--tc-mut);font-weight:700;flex:0 0 auto}'+
+'.tc-it .r2{display:flex;justify-content:space-between;gap:6px;align-items:center;margin-top:3px}.tc-it .pv{font-size:13px;color:var(--tc-mut);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-weight:600}'+
+'.tc-badge{min-width:20px;height:20px;padding:0 6px;border-radius:12px;background:var(--tc-acc);color:#fff;font-size:11.5px;font-weight:900;display:inline-flex;align-items:center;justify-content:center;flex:0 0 auto}'+
+'.tc-empty{padding:30px 18px;text-align:center;color:var(--tc-mut);font-weight:700;line-height:1.9}.tc-empty .big{font-size:46px;display:block;margin-bottom:6px}'+
+'.tc-main{display:flex;flex-direction:column;min-width:0;min-height:0;background:var(--tc-bg);background-image:radial-gradient(var(--tc-pat) 1.2px,transparent 1.4px),radial-gradient(var(--tc-pat) 1.2px,transparent 1.4px);background-size:26px 26px;background-position:0 0,13px 13px}'+
+'.tc-chd{display:flex;align-items:center;gap:11px;padding:10px 14px;background:var(--tc-hd);color:#fff;min-height:44px}.tc-chd .who{flex:1;min-width:0}.tc-chd b{display:block;font-size:15.5px;font-weight:900;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.tc-chd small{display:block;font-size:11.5px;opacity:.85;font-weight:700}'+
+'.tc-chd .tc-av{width:42px;height:42px;font-size:15px}.tc-chd .tc-av i{border-color:var(--tc-hd)}.tc-back{display:none}'+
+'.tc-msgs{flex:1;overflow:auto;padding:14px 5% 10px;display:flex;flex-direction:column;gap:3px}'+
+'.tc-day{align-self:center;margin:10px 0 6px;padding:5px 12px;border-radius:10px;background:var(--tc-in);color:var(--tc-mut);font-size:11.5px;font-weight:800;box-shadow:0 1px 1px rgba(0,0,0,.08)}'+
+'.tc-note{align-self:center;margin:8px 0;padding:7px 14px;border-radius:10px;background:#fff5c4;color:#54656f;font-size:12px;font-weight:700;text-align:center;max-width:85%;line-height:1.7}body.theme-dark .tc-note,.tc.dark .tc-note{background:#182229;color:#ffd279}'+
+'.tc-m{max-width:min(78%,520px);padding:6px 9px 5px;border-radius:12px;box-shadow:0 1px 1px rgba(0,0,0,.12);position:relative;word-wrap:break-word;overflow-wrap:anywhere;margin-top:2px}'+
+'.tc-m.in{align-self:flex-start;background:var(--tc-in);border-top-right-radius:4px}.tc-m.out{align-self:flex-end;background:var(--tc-out);border-top-left-radius:4px}'+
+'.tc-m .tx{font-size:14.5px;line-height:1.65;white-space:pre-wrap;font-weight:600}.tc-m .tx a{color:#027eb5;text-decoration:underline}'+
+'.tc-m .meta{display:flex;justify-content:flex-end;align-items:center;gap:4px;font-size:10.5px;color:var(--tc-mut);margin-top:2px;direction:ltr;font-weight:700}.tc-m .tk{font-size:12.5px;letter-spacing:-3px}.tc-m .tk.r{color:var(--tc-tick)}'+
+'.tc-m .img{display:block;max-width:100%;width:300px;max-height:340px;object-fit:cover;border-radius:9px;cursor:zoom-in;background:rgba(0,0,0,.06);min-height:80px}'+
+'.tc-file{display:flex;align-items:center;gap:10px;padding:8px 6px;border-radius:10px;background:rgba(0,0,0,.05);cursor:pointer;min-width:220px}.tc-file .fi{width:40px;height:46px;border-radius:7px;display:flex;align-items:center;justify-content:center;color:#fff;font:900 11px inherit;font-family:inherit;flex:0 0 auto}'+
+'.tc-file .fi.pdf{background:#e53935}.tc-file .fi.doc{background:#1e66d0}.tc-file .fi.xls{background:#1d7a3e}.tc-file .fi.oth{background:#607d8b}.tc-file .fn{flex:1;min-width:0}.tc-file .fn b{display:block;font-size:13.5px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.tc-file .fn small{color:var(--tc-mut);font-size:11.5px;font-weight:700}.tc-file .dl{font-size:20px;color:var(--tc-mut)}'+
+'.tc-voice{display:flex;align-items:center;gap:9px;min-width:230px;padding:2px 0}.tc-voice .pl{width:38px;height:38px;border-radius:50%;border:0;background:var(--tc-acc);color:#fff;font-size:15px;cursor:pointer;flex:0 0 auto}.tc-voice .bar{flex:1;height:5px;border-radius:5px;background:rgba(0,0,0,.14);position:relative;cursor:pointer}'+
+'.tc-voice .bar i{position:absolute;inset:0 auto 0 0;width:0;border-radius:5px;background:var(--tc-acc)}.tc-voice .mic{font-size:20px;flex:0 0 auto}.tc-voice .du{font-size:11px;color:var(--tc-mut);font-weight:800;min-width:34px;text-align:center}'+
+'.tc-call{display:flex;align-items:center;gap:10px;padding:4px 2px;font-weight:800;font-size:13.5px}.tc-call .ci{width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.06);font-size:17px}.tc-call.miss .ci{color:#e53935}'+
+'.tc-comp{display:flex;align-items:flex-end;gap:8px;padding:8px 10px;background:var(--tc-bar);border-top:1px solid var(--tc-line);position:relative}'+
+'.tc-comp textarea{flex:1;min-height:44px;max-height:140px;resize:none;border:0;border-radius:22px;background:var(--tc-in);color:var(--tc-ink);padding:11px 16px;font:600 14.5px inherit;font-family:inherit;line-height:1.5;outline:none;box-sizing:border-box}'+
+'.tc-cb{width:44px;height:44px;border-radius:50%;border:0;cursor:pointer;font-size:20px;display:flex;align-items:center;justify-content:center;flex:0 0 auto;background:transparent;color:var(--tc-mut)}.tc-cb:hover{background:rgba(0,0,0,.06)}'+
+'.tc-cb.send{background:var(--tc-acc);color:#fff;box-shadow:0 4px 12px rgba(0,168,132,.35)}'+
+'.tc-att{position:absolute;bottom:62px;right:10px;background:var(--tc-in);border-radius:18px;box-shadow:0 12px 34px rgba(0,0,0,.25);padding:10px;display:grid;grid-template-columns:repeat(4,72px);gap:8px;z-index:5}'+
+'.tc-att button{border:0;background:transparent;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:6px;color:var(--tc-ink);font:800 11.5px inherit;font-family:inherit;padding:6px 2px;border-radius:12px}.tc-att button:hover{background:var(--tc-bar)}'+
+'.tc-att span{width:50px;height:50px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:22px;color:#fff}'+
+'.tc-rec{flex:1;display:flex;align-items:center;gap:10px;height:44px;padding:0 14px;border-radius:22px;background:var(--tc-in);font-weight:900;color:#e53935}.tc-rec i{width:11px;height:11px;border-radius:50%;background:#e53935;animation:tcBl 1s infinite}@keyframes tcBl{50%{opacity:.25}}.tc-rec small{color:var(--tc-mut);font-weight:700;flex:1}'+
+'.tc-up{align-self:flex-end;font-size:11.5px;color:var(--tc-mut);font-weight:800;padding:2px 6px}'+
+'.tc-welcome{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;text-align:center;color:var(--tc-mut);padding:30px}.tc-welcome .big{width:110px;height:110px;border-radius:50%;background:var(--tc-in);display:flex;align-items:center;justify-content:center;font-size:52px;box-shadow:0 10px 30px rgba(0,0,0,.08)}'+
+'.tc-welcome h3{margin:6px 0 0;color:var(--tc-ink);font-size:20px;font-weight:900}.tc-welcome p{margin:0;max-width:430px;line-height:1.9;font-weight:700;font-size:13px}'+
+'.tc-perm{padding:6px 14px 14px}.tc-perm label{display:flex;align-items:center;gap:12px;padding:10px 4px;border-bottom:1px solid var(--tc-line);cursor:pointer}.tc-perm input{position:absolute;opacity:0;pointer-events:none}'+
+'.tc-perm .sw{width:46px;height:26px;border-radius:20px;background:#c5cae9;position:relative;flex:0 0 auto;transition:background .2s}.tc-perm .sw:after{content:"";position:absolute;top:3px;right:3px;width:20px;height:20px;border-radius:50%;background:#fff;box-shadow:0 2px 5px rgba(0,0,0,.25);transition:right .2s}'+
+'.tc-perm input:checked+.sw{background:var(--tc-acc)}.tc-perm input:checked+.sw:after{right:23px}.tc-perm .nm{flex:1;min-width:0}.tc-perm .nm b{display:block;font-weight:900;font-size:14.5px}.tc-perm .nm small{color:var(--tc-mut);font-weight:700;font-size:11.5px}'+
+'.tc-viewer{position:fixed;inset:0;z-index:2147483300;background:rgba(0,0,0,.92);display:flex;flex-direction:column}.tc-viewer .vb{display:flex;justify-content:space-between;padding:12px;gap:8px}.tc-viewer img{flex:1;min-height:0;object-fit:contain;max-width:100%;margin:auto}'+
+'@media(max-width:860px){.tc-shell{grid-template-columns:1fr;height:calc(100vh - 110px);border-radius:16px}.tc-shell .tc-main{display:none}.tc-shell.open .tc-side{display:none}.tc-shell.open .tc-main{display:flex}.tc-back{display:inline-flex}.tc-msgs{padding:12px 10px}.tc-m{max-width:86%}}'+
+/* المكالمات */
+'.tcc{position:fixed;inset:0;z-index:2147483400;display:flex;flex-direction:column;align-items:center;justify-content:space-between;padding:60px 20px 50px;color:#fff;direction:rtl;font-family:inherit;text-align:center;background:radial-gradient(700px 500px at 50% 0%,rgba(37,211,102,.25),transparent 60%),linear-gradient(170deg,#06281f 0%,#0b3d33 45%,#071a16 100%)}'+
+'.tcc .av{width:130px;height:130px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:46px;font-weight:900;margin:0 auto 18px;box-shadow:0 0 0 12px rgba(255,255,255,.06),0 0 0 26px rgba(255,255,255,.035)}'+
+'.tcc.ring .av{animation:tcPulse 1.6s infinite}@keyframes tcPulse{0%{box-shadow:0 0 0 0 rgba(37,211,102,.55),0 0 0 0 rgba(37,211,102,.3)}100%{box-shadow:0 0 0 22px rgba(37,211,102,0),0 0 0 44px rgba(37,211,102,0)}}'+
+'.tcc h2{margin:0;font-size:26px;font-weight:900}.tcc .st{margin-top:8px;font-size:15px;opacity:.85;font-weight:700}.tcc .tm{margin-top:6px;font-size:20px;font-weight:900;direction:ltr;font-variant-numeric:tabular-nums}'+
+'.tcc .btns{display:flex;gap:34px;justify-content:center;align-items:center}.tcc .cb{width:70px;height:70px;border-radius:50%;border:0;font-size:28px;cursor:pointer;color:#fff;display:flex;align-items:center;justify-content:center;box-shadow:0 10px 26px rgba(0,0,0,.35)}'+
+'.tcc .cb.end{background:#e53935}.tcc .cb.ok{background:#25d366;animation:tcBob 1s infinite alternate}@keyframes tcBob{to{transform:translateY(-6px)}}.tcc .cb.mu{background:rgba(255,255,255,.16);width:58px;height:58px;font-size:22px}.tcc .cb.mu.on{background:#fff;color:#0b3d33}'+
+'.tcc .lb{display:block;font-size:12px;font-weight:800;margin-top:8px;opacity:.85}.tcc .sec{font-size:12px;opacity:.7;font-weight:700}';
+CSS+='html[data-ui-skin="night-amoled"] #view-tchat#view-tchat#view-tchat .tc.tc{--tc-bg:#141518;--tc-in:#202127;--tc-out:#2e2614;--tc-ink:#ffe9b8;--tc-mut:#f2b880;--tc-hd:#1b1c21;--tc-bar:#1b1c21;--tc-line:#3a3a40;--tc-acc:#ffd873;--tc-tick:#ffd873}html[data-ui-skin="night-amoled"] #view-tchat#view-tchat#view-tchat .tc-shell.tc-shell{background-color:#1b1c21!important;border:1px solid #3a3a40!important}html[data-ui-skin="night-amoled"] #view-tchat#view-tchat#view-tchat .tc-side.tc-side,html[data-ui-skin="night-amoled"] #view-tchat#view-tchat#view-tchat .tc-m.in{background-color:#202127!important}html[data-ui-skin="night-amoled"] #view-tchat#view-tchat#view-tchat .tc-main.tc-main{background-color:#141518!important}html[data-ui-skin="night-amoled"] #view-tchat#view-tchat#view-tchat .tc-m.out{background-color:#2e2614!important;border:1px solid rgba(255,216,115,.25)!important}html[data-ui-skin="night-amoled"] #view-tchat#view-tchat#view-tchat :is(.tc-shd,.tc-chd,.tc-comp,.tc-search,.tc-day){background-color:#1b1c21!important}html[data-ui-skin="night-amoled"] #view-tchat#view-tchat#view-tchat :is(.tc-comp textarea,.tc-search input,.tc-file){background-color:#141518!important}html[data-ui-skin="night-amoled"] #view-tchat#view-tchat#view-tchat :is(.tc-cb.send,.tc-badge,.tc-voice .pl,.tc-av){background-color:#ffd873!important;color:#17140c!important}html[data-ui-skin="night-amoled"] #view-tchat#view-tchat#view-tchat .tc-voice .bar i{background-color:#ffd873!important}html[data-ui-skin="night-amoled"] #view-tchat#view-tchat#view-tchat .tc-m .tx,html[data-ui-skin="night-amoled"] #view-tchat#view-tchat#view-tchat .tc-it b,html[data-ui-skin="night-amoled"] #view-tchat#view-tchat#view-tchat .tc-chd b,html[data-ui-skin="night-amoled"] #view-tchat#view-tchat#view-tchat .tc-shd b{color:#ffe9b8!important}html[data-ui-skin="night-amoled"] #view-tchat#view-tchat#view-tchat .tk.r{color:#ffd873!important}html[data-ui-skin="night-amoled"] #view-tchat#view-tchat#view-tchat .tc-item.on{background-color:#2a2b32!important}';
+function css(){ if(document.getElementById('tcCss')) return; var s=document.createElement('style'); s.id='tcCss'; s.textContent=CSS; document.head.appendChild(s); }
+
+function linkify(t){ return esc(t).replace(/(https?:\/\/[^\s<]+)/g,'<a href="$1" target="_blank" rel="noopener">$1</a>'); }
+function ftype(m){ var n=(m.nm||'').toLowerCase(), t=m.mt||''; if(/pdf/.test(t)||/\.pdf$/.test(n)) return ['pdf','PDF']; if(/word|msword|officedocument\.wordprocessing/.test(t)||/\.docx?$/.test(n)) return ['doc','DOC']; if(/sheet|excel/.test(t)||/\.xlsx?$/.test(n)) return ['xls','XLS']; return ['oth',(n.split('.').pop()||'FILE').slice(0,4).toUpperCase()]; }
+function tick(st){ return st==='r'?'<span class="tk r">✓✓</span>':st==='d'?'<span class="tk">✓✓</span>':st==='s'?'<span class="tk">✓</span>':'<span class="tk" title="بانتظار اتصال الطرف الآخر">🕓</span>'; }
+function preview(m){ if(!m) return ''; var p=m.me?(m.st==='r'?'✓✓ ':'✓ '):''; if(m.k==='img') return p+'📷 صورة'; if(m.k==='voice') return p+'🎤 بصمة صوتية '+fmtDur(m.du); if(m.k==='file') return p+'📄 '+(m.nm||'ملف'); if(m.k==='call') return (m.miss?'📵 مكالمة فائتة':'📞 مكالمة صوتية'); return p+String(m.tx||'').slice(0,60); }
+function msgHtml(m){
+  if(m.k==='call') return '<div class="tc-m '+(m.me?'out':'in')+'"><div class="tc-call'+(m.miss?' miss':'')+'"><span class="ci">'+(m.miss?'📵':(m.me?'↗️':'↙️'))+'</span><span>'+(m.miss?(m.me?'لم يُرَد على المكالمة':'مكالمة فائتة'):('مكالمة صوتية'+(m.du?' · '+fmtDur(m.du):'')))+'</span></div><div class="meta">'+hm(m.at)+'</div></div>';
+  var body='';
+  if(m.k==='text') body='<div class="tx">'+linkify(m.tx)+'</div>';
+  else if(m.k==='img') body='<img class="img" data-img="'+esc(m.id)+'" alt="صورة">'+(m.tx?'<div class="tx">'+linkify(m.tx)+'</div>':'');
+  else if(m.k==='voice') body='<div class="tc-voice" data-voice="'+esc(m.id)+'"><button type="button" class="pl" data-play="'+esc(m.id)+'">▶</button><div class="bar" data-seek="'+esc(m.id)+'"><i></i></div><span class="du">'+fmtDur(m.du)+'</span><span class="mic">🎤</span></div>';
+  else if(m.k==='file'){ var ft=ftype(m); body='<div class="tc-file" data-file="'+esc(m.id)+'"><span class="fi '+ft[0]+'">'+esc(ft[1])+'</span><span class="fn"><b>'+esc(m.nm||'ملف')+'</b><small>'+fmtSize(m.sz)+' · اضغط للحفظ أو الفتح</small></span><span class="dl">⬇</span></div>'+(m.tx?'<div class="tx">'+linkify(m.tx)+'</div>':''); }
+  return '<div class="tc-m '+(m.me?'out':'in')+'" data-mid="'+esc(m.id)+'">'+body+'<div class="meta">'+hm(m.at)+(m.me?' '+tick(m.st):'')+'</div></div>';
+}
+function threadHtml(msgs){
+  var out='', lastDay='';
+  msgs.forEach(function(m){ var d=dayLabel(m.at); if(d!==lastDay){ out+='<div class="tc-day">'+esc(d)+'</div>'; lastDay=d; } out+=msgHtml(m); });
+  return out;
+}
+/* تحميل المرفقات بعد الرسم */
+function hydrate(box){
+  [].forEach.call(box.querySelectorAll('img[data-img]:not([src])'),function(img){ fGet(img.getAttribute('data-img')).then(function(u){ if(u) img.src=u; else img.alt='الصورة غير متاحة على هذا الجهاز'; }); });
+}
+var player=null, playerId='';
+function playVoice(box,id){
+  var btn=box.querySelector('[data-play="'+id+'"]'), bar=box.querySelector('[data-seek="'+id+'"] i');
+  if(player&&playerId===id){ if(player.paused){ player.play(); btn.textContent='❚❚'; } else { player.pause(); btn.textContent='▶'; } return; }
+  if(player){ try{ player.pause(); }catch(e){} var ob=box.querySelector('[data-play="'+playerId+'"]'); if(ob) ob.textContent='▶'; }
+  fGet(id).then(function(u){ if(!u){ toastM('البصمة غير متاحة على هذا الجهاز',true); return; }
+    player=new Audio(u); playerId=id; btn.textContent='❚❚';
+    player.ontimeupdate=function(){ if(bar&&player.duration&&isFinite(player.duration)) bar.style.width=(player.currentTime/player.duration*100)+'%'; };
+    player.onended=function(){ btn.textContent='▶'; if(bar) bar.style.width='0'; player=null; playerId=''; };
+    player.play().catch(function(){ toastM('تعذر تشغيل البصمة',true); }); });
+}
+function openViewer(id,name){
+  fGet(id).then(function(u){ if(!u) return; var v=document.createElement('div'); v.className='tc-viewer';
+    v.innerHTML='<div class="vb"><button type="button" class="tc-ib" data-x>✕</button><button type="button" class="tc-ib" data-s title="حفظ">⬇</button></div><img src="'+u+'">';
+    v.onclick=function(e){ if(e.target.closest('[data-x]')||e.target===v) v.remove(); else if(e.target.closest('[data-s]')) saveOrOpen(u,name||('صورة-'+id+'.jpg')); };
+    hostEl().appendChild(v); });
+}
+
+/* الإرسال المشترك: يبني الرسالة ويحفظ المرفق ثم يسلّمها للطرف الآخر */
+function buildFromFile(file,kind){
+  if(file.size>MAXF){ toastM('حجم الملف أكبر من ١٥ م.ب — اختر ملفاً أصغر.',true); return Promise.resolve(null); }
+  var k=kind||(/^image\//.test(file.type)?'img':'file');
+  var p=k==='img'?compressImage(file):blobToDataUrl(file);
+  return p.then(function(u){ if(!u) return null; var m={id:'m'+rid(14),me:true,k:k,nm:file.name||'',mt:file.type||'',sz:file.size,at:now(),st:'p'}; return fPut(m.id,u).then(function(){ return m; }); });
+}
+
+/* تسجيل البصمة الصوتية */
+function Recorder(){
+  var rec=null, chunks=[], stream=null, t0=0, mime='';
+  return {
+    start:function(){
+      if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia||!window.MediaRecorder) return Promise.reject(new Error('nomedia'));
+      return navigator.mediaDevices.getUserMedia({audio:{echoCancellation:true,noiseSuppression:true}}).then(function(s){
+        stream=s; chunks=[]; mime=['audio/webm;codecs=opus','audio/webm','audio/ogg;codecs=opus','audio/mp4'].filter(function(x){ try{ return MediaRecorder.isTypeSupported(x); }catch(e){ return false; } })[0]||'';
+        rec=mime?new MediaRecorder(s,{mimeType:mime}):new MediaRecorder(s); rec.ondataavailable=function(e){ if(e.data&&e.data.size) chunks.push(e.data); }; rec.start(250); t0=now(); });
+    },
+    secs:function(){ return t0?(now()-t0)/1000:0; },
+    stop:function(keep){ return new Promise(function(res){ if(!rec){ res(null); return; } var du=(now()-t0)/1000;
+      rec.onstop=function(){ try{ stream.getTracks().forEach(function(t){ t.stop(); }); }catch(e){} if(!keep||du<0.7){ res(null); return; } var b=new Blob(chunks,{type:(rec.mimeType||mime||'audio/webm')}); res({blob:b,du:du}); };
+      try{ rec.stop(); }catch(e){ res(null); } }); }
+  };
+}
+
+/* ---------- مكوّن المحادثة ---------- */
+/* api: {title, sub(), online(), avatarKey, list(), send(m,data), markRead(), canCall(), call(), onBack} */
+function mountChat(main, api){
+  css();
+  var rec=null, recT=null;
+  main.innerHTML='<div class="tc-chd"><button type="button" class="tc-ib tc-back" data-a="back" title="رجوع">→</button><div class="tc-av" style="background:'+avColor(api.avatarKey)+'">'+esc(api.avatarText||initials(api.title))+'<i'+(api.online()?' class="on"':'')+'></i></div><div class="who"><b>'+esc(api.title)+'</b><small data-sub>'+esc(api.sub())+'</small></div>'+
+    '<button type="button" class="tc-ib" data-a="call" title="اتصال صوتي">📞</button></div>'+
+    '<div class="tc-msgs" data-msgs></div>'+
+    '<div class="tc-comp" data-comp><button type="button" class="tc-cb" data-a="att" title="إرفاق">📎</button><textarea rows="1" data-in placeholder="اكتب رسالة"></textarea><button type="button" class="tc-cb send" data-a="mic" title="بصمة صوتية">🎤</button></div>'+
+    '<input type="file" data-f="img" accept="image/*" hidden><input type="file" data-f="pdf" accept="application/pdf,.pdf" hidden><input type="file" data-f="doc" accept=".doc,.docx,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document" hidden><input type="file" data-f="any" hidden>';
+  var box=main.querySelector('[data-msgs]'), inp=main.querySelector('[data-in]'), comp=main.querySelector('[data-comp]');
+  function paint(stick){
+    var atBottom=box.scrollHeight-box.scrollTop-box.clientHeight<80;
+    var msgs=api.list();
+    box.innerHTML=(api.note?'<div class="tc-note">'+api.note()+'</div>':'')+(msgs.length?threadHtml(msgs):'<div class="tc-note">🔒 المحادثة خاصة بين الإدارة و'+esc(api.peerWord||'المعلم')+' فقط. ابدأ بكتابة رسالة أو أرسل صورة أو ملفاً أو بصمة صوتية.</div>');
+    hydrate(box);
+    if(stick!==false||atBottom) box.scrollTop=box.scrollHeight;
+    var sub=main.querySelector('[data-sub]'); if(sub) sub.textContent=api.sub();
+    var dot=main.querySelector('.tc-chd .tc-av i'); if(dot) dot.className=api.online()?'on':'';
+    api.markRead();
+  }
+  function micBtn(){ var b=main.querySelector('[data-a="mic"],[data-a="send"]'); if(!b) return; var has=!!inp.value.trim(); b.setAttribute('data-a',has?'send':'mic'); b.textContent=has?'➤':'🎤'; b.title=has?'إرسال':'بصمة صوتية'; }
+  function sendText(){ var t=inp.value.trim(); if(!t) return; inp.value=''; inp.style.height=''; micBtn(); api.send({id:'m'+rid(14),me:true,k:'text',tx:t.slice(0,4000),at:now(),st:'p'}); }
+  function closeAtt(){ var a=main.querySelector('.tc-att'); if(a) a.remove(); }
+  function startRec(){
+    rec=Recorder(); rec.start().then(function(){
+      comp.innerHTML='<button type="button" class="tc-cb" data-a="rec-cancel" title="إلغاء">🗑️</button><div class="tc-rec"><i></i><b data-rt>'+fmtDur(0)+'</b><small>جارٍ التسجيل…</small></div><button type="button" class="tc-cb send" data-a="rec-send" title="إرسال">➤</button>';
+      recT=setInterval(function(){ var e=comp.querySelector('[data-rt]'); if(e) e.textContent=fmtDur(rec.secs()); if(rec.secs()>300) finishRec(true); },300);
+    },function(){ rec=null; toastM('الميكروفون غير متاح. اسمح للتطبيق باستخدام الميكروفون (يحتاج تحديث تطبيق الأندرويد إن لم يظهر طلب الإذن).',true); });
+  }
+  function restoreComp(){ comp.innerHTML='<button type="button" class="tc-cb" data-a="att" title="إرفاق">📎</button><textarea rows="1" data-in placeholder="اكتب رسالة"></textarea><button type="button" class="tc-cb send" data-a="mic" title="بصمة صوتية">🎤</button>'; inp=comp.querySelector('[data-in]'); bindInp(); }
+  function finishRec(keep){ clearInterval(recT); var r=rec; rec=null; restoreComp(); if(!r) return; r.stop(keep).then(function(o){ if(!o) return; blobToDataUrl(o.blob).then(function(u){ var m={id:'m'+rid(14),me:true,k:'voice',mt:o.blob.type,sz:o.blob.size,du:Math.round(o.du),at:now(),st:'p'}; fPut(m.id,u).then(function(){ api.send(m); }); }); }); }
+  function bindInp(){
+    inp.addEventListener('input',function(){ inp.style.height='auto'; inp.style.height=Math.min(140,inp.scrollHeight)+'px'; micBtn(); });
+    inp.addEventListener('keydown',function(e){ if(e.key==='Enter'&&!e.shiftKey&&window.innerWidth>700){ e.preventDefault(); sendText(); } });
+  }
+  bindInp();
+  main.addEventListener('click',function(e){
+    var a=e.target.closest('[data-a]');
+    var img=e.target.closest('img[data-img]'); if(img){ openViewer(img.getAttribute('data-img')); return; }
+    var pl=e.target.closest('[data-play]'); if(pl){ playVoice(box,pl.getAttribute('data-play')); return; }
+    var fl=e.target.closest('[data-file]'); if(fl){ var id=fl.getAttribute('data-file'), m=api.list().filter(function(x){ return x.id===id; })[0]; fGet(id).then(function(u){ if(u) saveOrOpen(u,(m&&m.nm)||'ملف'); else toastM('الملف غير متاح على هذا الجهاز',true); }); return; }
+    if(!a){ if(!e.target.closest('.tc-att')) closeAtt(); return; }
+    var k=a.getAttribute('data-a');
+    if(k==='back'){ api.onBack&&api.onBack(); return; }
+    if(k==='call'){ api.call(); return; }
+    if(k==='send'){ sendText(); return; }
+    if(k==='mic'){ startRec(); return; }
+    if(k==='rec-cancel'){ finishRec(false); return; }
+    if(k==='rec-send'){ finishRec(true); return; }
+    if(k==='att'){ if(main.querySelector('.tc-att')){ closeAtt(); return; } var d=document.createElement('div'); d.className='tc-att';
+      d.innerHTML=[['img','🖼️','صورة','#bf59cf'],['pdf','📕','PDF','#e53935'],['doc','📘','وورد','#1e66d0'],['any','📁','ملف','#5157ae']].map(function(x){ return '<button type="button" data-pick="'+x[0]+'"><span style="background:'+x[3]+'">'+x[1]+'</span>'+x[2]+'</button>'; }).join('');
+      comp.appendChild(d); return; }
+  });
+  main.addEventListener('click',function(e){ var p=e.target.closest('[data-pick]'); if(!p) return; closeAtt(); var f=main.querySelector('input[data-f="'+p.getAttribute('data-pick')+'"]'); f.value=''; f.click(); });
+  [].forEach.call(main.querySelectorAll('input[data-f]'),function(f){ f.onchange=function(){ var fl=f.files&&f.files[0]; if(!fl) return; var kind=f.getAttribute('data-f')==='img'?'img':(/^image\//.test(fl.type)&&f.getAttribute('data-f')==='any'?'img':'file');
+    toastM('⏳ جارٍ تجهيز «'+(fl.name||'الملف')+'»…'); buildFromFile(fl,kind).then(function(m){ if(m) api.send(m); }); }; });
+  paint(true);
+  return {paint:paint, el:main};
+}
+
+/* =========================================================================
+   المكالمات الصوتية (WebRTC داخل الشبكة المحلية)
+   ========================================================================= */
+var CALL=null;
+function callUI(o){
+  css(); var old=document.getElementById('tcCall'); if(old) old.remove();
+  var w=document.createElement('div'); w.id='tcCall'; w.className='tcc'+(o.ring?' ring':'');
+  w.innerHTML='<div><div class="av" style="background:'+avColor(o.key)+'">'+esc(o.avText||initials(o.name))+'</div><h2>'+esc(o.name)+'</h2><div class="st" data-st>'+esc(o.status)+'</div><div class="tm" data-tm></div><div class="sec">🔒 مكالمة مباشرة عبر شبكة المدرسة</div></div>'+
+    '<div class="btns" data-btns></div>';
+  hostEl().appendChild(w); return w;
+}
+function callButtons(w,kind){
+  var b=w.querySelector('[data-btns]');
+  if(kind==='in') b.innerHTML='<div><button type="button" class="cb end" data-c="decline">✆</button><span class="lb">رفض</span></div><div><button type="button" class="cb ok" data-c="accept">📞</button><span class="lb">رد</span></div>';
+  else b.innerHTML='<div><button type="button" class="cb mu" data-c="mute">🎙️</button><span class="lb">كتم</span></div><div><button type="button" class="cb end" data-c="end">✆</button><span class="lb">إنهاء</span></div>';
+}
+function callStatus(t){ var w=document.getElementById('tcCall'); if(w){ var s=w.querySelector('[data-st]'); if(s) s.textContent=t; } }
+function getMic(){ if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia) return Promise.reject(new Error('nomic')); return navigator.mediaDevices.getUserMedia({audio:{echoCancellation:true,noiseSuppression:true,autoGainControl:true}}); }
+function gather(pc,ms){ return new Promise(function(res){ if(pc.iceGatheringState==='complete') return res(); var done=false; function f(){ if(!done){ done=true; res(); } } pc.addEventListener('icegatheringstatechange',function(){ if(pc.iceGatheringState==='complete') f(); }); setTimeout(f,ms||2500); }); }
+function newCallPc(){
+  var pc=new RTCPeerConnection({iceServers:[]});
+  pc.ontrack=function(e){ var a=document.getElementById('tcAudio'); if(!a){ a=document.createElement('audio'); a.id='tcAudio'; a.autoplay=true; a.playsInline=true; hostEl().appendChild(a); } a.srcObject=e.streams[0]; a.play&&a.play().catch(function(){}); };
+  pc.onconnectionstatechange=function(){ if(!CALL||CALL.pc!==pc) return; var s=pc.connectionState; if(s==='connected') callConnected(); if(s==='failed') endCall('failed',true); if(s==='disconnected'){ clearTimeout(CALL.dT); CALL.dT=setTimeout(function(){ if(CALL&&CALL.pc===pc&&pc.connectionState!=='connected') endCall('lost',true); },8000); } };
+  return pc;
+}
+function callConnected(){
+  if(!CALL||CALL.up) return; CALL.up=true; CALL.t0=now(); stopTone();
+  var w=document.getElementById('tcCall'); if(w){ w.classList.remove('ring'); callButtons(w,'live'); callStatus('متصل'); }
+  CALL.tmT=setInterval(function(){ var w2=document.getElementById('tcCall'), t=w2&&w2.querySelector('[data-tm]'); if(t) t.textContent=fmtDur((now()-CALL.t0)/1000); },500);
+}
+function endCall(reason,notify){
+  if(!CALL) return; var c=CALL; CALL=null; stopTone(); clearInterval(c.tmT); clearTimeout(c.noAns); clearTimeout(c.dT);
+  if(notify!==false) try{ c.send({t:'call:end',cid:c.cid,r:reason||'end'}); }catch(e){}
+  try{ c.stream&&c.stream.getTracks().forEach(function(t){ t.stop(); }); }catch(e){}
+  try{ c.pc&&c.pc.close(); }catch(e){}
+  var a=document.getElementById('tcAudio'); if(a){ a.srcObject=null; }
+  var w=document.getElementById('tcCall'); if(w){ callStatus(reason==='declined'?'رفض المكالمة':reason==='busy'?'مشغول في مكالمة أخرى':reason==='no-answer'?'لا يوجد رد':reason==='offline'?'غير متصل':'انتهت المكالمة'); var b=w.querySelector('[data-btns]'); if(b) b.innerHTML=''; setTimeout(function(){ w.remove(); },1400); }
+  var du=c.up?Math.round((now()-c.t0)/1000):0;
+  try{ c.log({id:'c'+c.cid,me:c.dir==='out',k:'call',du:du,miss:!c.up,at:c.at||now(),st:'r'}); }catch(e){}
+}
+/* بدء مكالمة صادرة: send(msg) يرسل للطرف الآخر، log(m) يسجّلها في المحادثة */
+function startCall(o){
+  if(CALL){ toastM('هناك مكالمة جارية.',true); return; }
+  var cid=rid(10);
+  CALL={cid:cid,dir:'out',send:o.send,log:o.log,key:o.key,name:o.name,at:now()};
+  var w=callUI({name:o.name,key:o.key,avText:o.avText,status:'جارٍ الاتصال…',ring:true}); callButtons(w,'live');
+  w.onclick=function(e){ var b=e.target.closest('[data-c]'); if(!b) return; var k=b.getAttribute('data-c'); if(k==='end') endCall(CALL&&CALL.up?'end':'cancel'); if(k==='mute') toggleMute(b); };
+  getMic().then(function(s){
+    if(!CALL||CALL.cid!==cid){ s.getTracks().forEach(function(t){ t.stop(); }); return; }
+    CALL.stream=s; var pc=newCallPc(); CALL.pc=pc; s.getTracks().forEach(function(t){ pc.addTrack(t,s); });
+    return pc.createOffer().then(function(of){ return pc.setLocalDescription(of); }).then(function(){ return gather(pc,2500); }).then(function(){
+      if(!CALL||CALL.cid!==cid) return;
+      if(!o.send({t:'call:offer',cid:cid,sdp:pc.localDescription.sdp,from:o.me||''})){ endCall('offline',false); return; }
+      callStatus('يرن…'); ringBack();
+      CALL.noAns=setTimeout(function(){ if(CALL&&CALL.cid===cid&&!CALL.up) endCall('no-answer'); },45000);
+    });
+  }).catch(function(){ endCall('nomic',false); toastM('الميكروفون غير متاح. اسمح للتطبيق باستخدام الميكروفون (قد يحتاج تحديث تطبيق الأندرويد).',true); });
+}
+function toggleMute(b){ if(!CALL||!CALL.stream) return; var on=!b.classList.contains('on'); CALL.stream.getAudioTracks().forEach(function(t){ t.enabled=!on; }); b.classList.toggle('on',on); }
+/* إشارات المكالمات الواردة */
+function onCallSignal(m,o){
+  if(m.t==='call:offer'){
+    if(CALL){ o.send({t:'call:end',cid:m.cid,r:'busy'}); try{ o.log({id:'c'+m.cid,me:false,k:'call',du:0,miss:true,at:now(),st:'r'}); }catch(e){} return; }
+    CALL={cid:m.cid,dir:'in',send:o.send,log:o.log,key:o.key,name:o.name,at:now(),offer:m.sdp};
+    var w=callUI({name:o.name,key:o.key,avText:o.avText,status:'مكالمة صوتية واردة…',ring:true}); callButtons(w,'in'); ringIn();
+    try{ if(document.hidden&&window.Notification&&Notification.permission==='granted') new Notification('📞 مكالمة من '+o.name); }catch(e){}
+    CALL.noAns=setTimeout(function(){ if(CALL&&CALL.cid===m.cid&&!CALL.up) endCall('no-answer'); },45000);
+    w.onclick=function(e){ var b=e.target.closest('[data-c]'); if(!b||!CALL) return; var k=b.getAttribute('data-c');
+      if(k==='decline'){ endCall('declined'); return; }
+      if(k==='end'){ endCall('end'); return; }
+      if(k==='mute'){ toggleMute(b); return; }
+      if(k==='accept'){ stopTone(); callButtons(w,'live'); callStatus('جارٍ الاتصال…'); var cid=CALL.cid;
+        getMic().then(function(s){ if(!CALL||CALL.cid!==cid){ s.getTracks().forEach(function(t){ t.stop(); }); return; }
+          CALL.stream=s; var pc=newCallPc(); CALL.pc=pc; s.getTracks().forEach(function(t){ pc.addTrack(t,s); });
+          return pc.setRemoteDescription({type:'offer',sdp:CALL.offer}).then(function(){ return pc.createAnswer(); }).then(function(an){ return pc.setLocalDescription(an); }).then(function(){ return gather(pc,2500); }).then(function(){ if(CALL&&CALL.cid===cid) o.send({t:'call:answer',cid:cid,sdp:pc.localDescription.sdp}); });
+        }).catch(function(){ endCall('nomic'); toastM('الميكروفون غير متاح. اسمح للتطبيق باستخدام الميكروفون (قد يحتاج تحديث تطبيق الأندرويد).',true); }); }
+    };
+    return;
+  }
+  if(!CALL||m.cid!==CALL.cid) return;
+  if(m.t==='call:answer'&&CALL.pc){ stopTone(); callStatus('جارٍ الاتصال…'); CALL.pc.setRemoteDescription({type:'answer',sdp:m.sdp}).catch(function(){ endCall('failed'); }); return; }
+  if(m.t==='call:end'){ endCall(m.r==='declined'?'declined':m.r==='busy'?'busy':'end',false); return; }
+}
+
+/* =========================================================================
+   جهة الإدارة (البرنامج الرئيسي)
+   ========================================================================= */
+var H=lsGet(HKEY,{allow:{},threads:{}}); if(!H.allow) H.allow={}; if(!H.threads) H.threads={};
+function hSave(){ if(!lsSet(HKEY,H)){ /* المساحة ممتلئة: نحذف أقدم الرسائل */ Object.keys(H.threads).forEach(function(k){ var t=H.threads[k]; t.msgs=t.msgs.slice(-400); }); lsSet(HKEY,H); } }
+function hThread(tid){ return H.threads[tid]||(H.threads[tid]={msgs:[],unread:0}); }
+function teachers(){ try{ return (window.__UST&&window.__UST.list())||[]; }catch(e){ return []; } }
+function tName(tid){ var t=teachers().filter(function(x){ return x.id===tid; })[0]; return t?t.name:'معلم'; }
+function hAllowed(tid){ return !!H.allow[tid]; }
+function hOnline(tid){ try{ return !!(window.__DLS&&window.__DLS.H&&window.__DLS.H.teacherOnline&&window.__DLS.H.teacherOnline(tid)); }catch(e){ return false; } }
+function hSendRaw(tid,msg){ try{ return !!(window.__DLS&&window.__DLS.H&&window.__DLS.H.teacherSend&&window.__DLS.H.teacherSend(tid,msg)); }catch(e){ return false; } }
+function wire(m){ var o={}; ['id','k','tx','nm','mt','sz','du','at'].forEach(function(k){ if(m[k]!=null) o[k]=m[k]; }); return o; }
+function deliver(send,m){ /* إرسال رسالة واحدة (مع المرفق) */
+  if(m.k==='img'||m.k==='voice'||m.k==='file') return fGet(m.id).then(function(d){ var ok=send({t:'chat:msg',m:wire(m),d:d||null}); return ok!==false; });
+  return Promise.resolve(send({t:'chat:msg',m:wire(m)})!==false);
+}
+function hFlush(tid,send){
+  var th=hThread(tid), pend=th.msgs.filter(function(m){ return m.me&&(m.st==='p'||m.st==='s'); });
+  var chain=Promise.resolve();
+  pend.forEach(function(m){ chain=chain.then(function(){ return deliver(send,m).then(function(ok){ if(ok&&m.st==='p'){ m.st='s'; } }); }); });
+  return chain.then(function(){ hSave(); refreshHost(tid); });
+}
+var conns={};   /* tid -> {pid: send} */
+window.__nbChatH={
+  onConnect:function(tid,pid,send,isLive){
+    (conns[tid]||(conns[tid]={}))[pid]=send;
+    send({t:'chat:perm',on:hAllowed(tid),name:(function(){ try{ return APP.school.name||''; }catch(e){ return ''; } })()});
+    if(hAllowed(tid)){ hFlush(tid,send); var th=hThread(tid), rp=th.msgs.filter(function(m){ return !m.me&&m._readPending; }).map(function(m){ return m.id; }); if(rp.length){ send({t:'chat:ack',ids:rp,st:'r'}); th.msgs.forEach(function(m){ delete m._readPending; }); hSave(); } }
+    refreshHost(tid);
+  },
+  onDisconnect:function(tid,pid){ if(conns[tid]) delete conns[tid][pid]; refreshHost(tid); },
+  onMsg:function(tid,m,send){
+    if(/^call:/.test(m.t)){ if(!hAllowed(tid)){ send({t:'call:end',cid:m.cid,r:'declined'}); return; } onCallSignal(m,{send:function(x){ return hSendRaw(tid,x)||(send(x),true); },log:function(cm){ hLog(tid,cm); },key:tid,name:tName(tid)}); return; }
+    if(!hAllowed(tid)){ send({t:'chat:perm',on:false}); return; }
+    var th=hThread(tid);
+    if(m.t==='chat:msg'&&m.m&&m.m.id){
+      var ex=th.msgs.some(function(x){ return x.id===m.m.id; });
+      send({t:'chat:ack',ids:[m.m.id],st:'d'});
+      if(ex) return;
+      var nm=Object.assign({},m.m,{me:false,st:'d'});
+      var save=function(){ th.msgs.push(nm); th.msgs.sort(function(a,b){ return a.at-b.at; }); if(th.msgs.length>MAXM){ th.msgs.splice(0,th.msgs.length-MAXM).forEach(function(x){ fDel(x.id); }); } hSave(); hIncoming(tid,nm); };
+      if(m.d) fPut(nm.id,m.d).then(save); else save();
+      return;
+    }
+    if(m.t==='chat:ack'&&Array.isArray(m.ids)){ var ch=false; th.msgs.forEach(function(x){ if(x.me&&m.ids.indexOf(x.id)>=0){ var r={p:0,s:1,d:2,r:3}; if((r[m.st]||0)>(r[x.st]||0)){ x.st=m.st; ch=true; } } }); if(ch){ hSave(); refreshHost(tid); } return; }
+  }
+};
+function hLog(tid,cm){ var th=hThread(tid); if(th.msgs.some(function(x){ return x.id===cm.id; })) return; th.msgs.push(cm); hSave(); refreshHost(tid); }
+function hSend(tid,m){
+  var th=hThread(tid); th.msgs.push(m); hSave(); refreshHost(tid);
+  if(hOnline(tid)||conns[tid]&&Object.keys(conns[tid]).length){ deliver(function(x){ return hSendRaw(tid,x); },m).then(function(ok){ if(ok&&m.st==='p'){ m.st='s'; hSave(); refreshHost(tid); } }); }
+}
+function hMarkRead(tid){
+  var th=hThread(tid), ids=[]; th.msgs.forEach(function(m){ if(!m.me&&m.st!=='r'){ m.st='r'; ids.push(m.id); } });
+  if(th.unread){ th.unread=0; }
+  if(ids.length){ hSave(); if(!hSendRaw(tid,{t:'chat:ack',ids:ids,st:'r'})) th.msgs.forEach(function(m){ if(ids.indexOf(m.id)>=0) m._readPending=1; }); updateBadges(); }
+}
+function hUnreadTotal(){ var n=0; Object.keys(H.threads).forEach(function(k){ if(hAllowed(k)) n+=H.threads[k].unread||0; }); return n; }
+var HV={open:null, chat:null, perm:false, q:''};
+function hIncoming(tid,m){
+  var vis=HV.open===tid&&document.getElementById('view-tchat')&&document.getElementById('view-tchat').style.display!=='none'&&!document.hidden;
+  if(!vis){ hThread(tid).unread=(hThread(tid).unread||0)+1; hSave(); msgSound(); toastM('💬 '+tName(tid)+': '+preview(m)); }
+  refreshHost(tid); updateBadges();
+}
+function refreshHost(tid){
+  var v=document.getElementById('view-tchat'); if(!v||v.style.display==='none') { updateBadges(); return; }
+  renderList();
+  if(HV.chat&&(!tid||HV.open===tid)) HV.chat.paint(false);
+  updateBadges();
+}
+function ensureHView(){
+  var el=document.getElementById('view-tchat'); if(el) return el;
+  var ref=document.getElementById('view-barcode')||document.getElementById('view-settings');
+  el=document.createElement('div'); el.className='view wide'; el.id='view-tchat';
+  if(ref&&ref.parentNode) ref.parentNode.insertBefore(el,ref.nextSibling); else document.body.appendChild(el);
+  return el;
+}
+function renderList(){
+  var list=document.querySelector('#view-tchat [data-list]'); if(!list) return;
+  var all=teachers().filter(function(t){ return hAllowed(t.id); });
+  var q=HV.q.trim();
+  var rows=all.filter(function(t){ return !q||t.name.indexOf(q)>=0; }).map(function(t){ var th=hThread(t.id), last=th.msgs[th.msgs.length-1]; return {t:t,last:last,at:last?last.at:0,un:th.unread||0}; }).sort(function(a,b){ return b.at-a.at||a.t.name.localeCompare(b.t.name,'ar'); });
+  if(!all.length){ list.innerHTML='<div class="tc-empty"><span class="big">👥</span>لا يوجد '+stageWord(true)+' مسموح لهم بالمراسلة بعد.<br>اضغط ⚙️ في الأعلى واختر من يُسمح له.</div>'; return; }
+  list.innerHTML=rows.map(function(r){ return '<div class="tc-item'+(HV.open===r.t.id?' on':'')+'" data-open="'+esc(r.t.id)+'"><div class="tc-av" style="background:'+avColor(r.t.id)+'">'+esc(initials(r.t.name))+'<i'+(hOnline(r.t.id)?' class="on"':'')+'></i></div><div class="tc-it"><div class="r1"><b>'+esc(r.t.name)+'</b><time>'+(r.last?esc(dayLabel(r.at)==='اليوم'?hm(r.at):dayLabel(r.at)):'')+'</time></div><div class="r2"><span class="pv">'+esc(r.last?preview(r.last):(hOnline(r.t.id)?'متصل الآن':'ابدأ المحادثة'))+'</span>'+(r.un?'<span class="tc-badge">'+ar(r.un)+'</span>':'')+'</div></div></div>'; }).join('')||'<div class="tc-empty">لا نتائج</div>';
+}
+function permHtml(){
+  var all=teachers();
+  return '<div class="tc-shd"><button type="button" class="tc-ib" data-h="perm-close" title="رجوع">→</button><div style="flex:1"><b>من يُسمح له بالمراسلة؟</b><small>المحادثة خاصة لكل '+stageWord(false)+'</small></div></div>'+
+   '<div class="tc-list"><div class="tc-perm">'+(all.length?all.map(function(t){ return '<label><input type="checkbox" data-allow="'+esc(t.id)+'"'+(hAllowed(t.id)?' checked':'')+'><span class="sw"></span><span class="tc-av" style="width:40px;height:40px;font-size:14px;background:'+avColor(t.id)+'">'+esc(initials(t.name))+'</span><span class="nm"><b>'+esc(t.name)+'</b><small>'+(hOnline(t.id)?'🟢 متصل الآن':(t.lastSeen?'آخر اتصال: '+esc(dayLabel(t.lastSeen))+' '+hm(t.lastSeen):'لم يرتبط بتطبيق الأستاذ بعد'))+'</small></span></label>'; }).join(''):
+     '<div class="tc-empty"><span class="big">📲</span>لم تُضف '+stageWord(true)+' إلى «تطبيق الأستاذ» بعد.<br>أضفهم من قسم «الأجهزة الملحقة» ← تطبيق الأستاذ، ثم فعّل المراسلة لهم هنا.<br><br><button type="button" class="material-btn" onclick="openDevicesModule()">فتح الأجهزة الملحقة</button></div>')+
+   '</div><p class="tc-empty" style="padding:12px 16px;font-size:12px">💡 يرى '+stageWord(false)+' أيقونة «مراسلة الإدارة» في تطبيق الأستاذ عندما تسمح له هنا، وتصله الرسائل والمكالمات حين يكون التطبيق مفتوحاً على نفس الواي فاي.</p></div>';
+}
+function renderHost(){
+  css(); var el=ensureHView(); var dark=false; try{ dark=currentUiTheme()==='dark'; }catch(e){}
+  var title='مراسلة '+stageWord(true);
+  el.innerHTML='<div class="module-shell"><div class="module-head"><div class="module-title"><span class="mi">💬</span><div><h2>'+title+'</h2><p>محادثة خاصة لكل '+stageWord(false)+' مع الإدارة: رسائل · صور · ملفات · بصمات صوتية · مكالمات</p></div></div><button class="material-btn secondary" onclick="appGoBack()">رجوع خطوة</button></div>'+
+    '<div class="tc'+(dark?' dark':'')+'"><div class="tc-shell'+(HV.open?' open':'')+'"><aside class="tc-side" data-side></aside><section class="tc-main" data-main></section></div></div></div>';
+  paintSide(); paintMain();
+}
+function paintSide(){
+  var side=document.querySelector('#view-tchat [data-side]'); if(!side) return;
+  if(HV.perm){ side.innerHTML=permHtml(); }
+  else side.innerHTML='<div class="tc-shd"><div><b>المحادثات</b><small>'+(function(){ var n=teachers().filter(function(t){ return hAllowed(t.id)&&hOnline(t.id); }).length; return n?ar(n)+' متصل الآن':'تُسلَّم الرسائل عند فتح تطبيق الأستاذ'; })()+'</small></div><button type="button" class="tc-ib" data-h="perm" title="من يُسمح له بالمراسلة">⚙️</button></div>'+
+    '<div class="tc-search"><input type="search" data-h="q" placeholder="🔍 بحث عن '+stageWord(false)+'" value="'+esc(HV.q)+'"></div><div class="tc-list" data-list></div>';
+  renderList();
+}
+function paintMain(){
+  var main=document.querySelector('#view-tchat [data-main]'); if(!main) return;
+  var tid=HV.open;
+  if(!tid||!hAllowed(tid)){ HV.chat=null; main.innerHTML='<div class="tc-welcome"><div class="big">💬</div><h3>مراسلة '+stageWord(true)+'</h3><p>اختر أحد '+stageWord(true)+' من القائمة لبدء محادثة خاصة. يمكنك إرسال رسائل وصور وملفات PDF ووورد وبصمات صوتية، والاتصال صوتياً عبر شبكة المدرسة دون إنترنت.</p><p style="font-size:12px">🔒 لا يرى أي '+stageWord(false)+' محادثات غيره.</p></div>'; return; }
+  HV.chat=mountChat(main,{
+    title:tName(tid), avatarKey:tid, peerWord:stageWord(false),
+    sub:function(){ return hOnline(tid)?'متصل الآن':'غير متصل — تصله الرسائل عند فتح تطبيق الأستاذ'; },
+    online:function(){ return hOnline(tid); },
+    list:function(){ return hThread(tid).msgs; },
+    send:function(m){ hSend(tid,m); },
+    markRead:function(){ var v=document.getElementById('view-tchat'); if(v&&v.style.display!=='none'&&!document.hidden) hMarkRead(tid); },
+    call:function(){ if(!hOnline(tid)){ toastM(tName(tid)+' غير متصل الآن — يجب أن يكون تطبيق الأستاذ مفتوحاً على نفس الواي فاي.',true); return; }
+      var me=''; try{ me='الإدارة — '+(APP.school.name||''); }catch(e){}
+      startCall({send:function(x){ return hSendRaw(tid,x); },log:function(cm){ hLog(tid,cm); },key:tid,name:tName(tid),me:me}); },
+    onBack:function(){ HV.open=null; var sh=document.querySelector('#view-tchat .tc-shell'); if(sh) sh.classList.remove('open'); paintSide(); paintMain(); }
+  });
+}
+document.addEventListener('click',function(e){
+  var v=document.getElementById('view-tchat'); if(!v||!v.contains(e.target)) return;
+  var o=e.target.closest('[data-open]'); if(o){ HV.open=o.getAttribute('data-open'); hThread(HV.open).unread=0; hSave(); var sh=v.querySelector('.tc-shell'); if(sh) sh.classList.add('open'); renderList(); paintMain(); updateBadges(); return; }
+  var h=e.target.closest('[data-h]'); if(!h) return; var k=h.getAttribute('data-h');
+  if(k==='perm'){ HV.perm=true; paintSide(); }
+  if(k==='perm-close'){ HV.perm=false; paintSide(); paintMain(); }
+});
+document.addEventListener('change',function(e){
+  var c=e.target.closest&&e.target.closest('#view-tchat [data-allow]'); if(!c) return;
+  var tid=c.getAttribute('data-allow'); if(c.checked) H.allow[tid]=1; else delete H.allow[tid]; hSave();
+  var send=conns[tid]&&Object.keys(conns[tid]).map(function(k){ return conns[tid][k]; })[0];
+  hSendRaw(tid,{t:'chat:perm',on:!!c.checked})||(send&&send({t:'chat:perm',on:!!c.checked}));
+  if(!c.checked&&HV.open===tid) HV.open=null;
+  toastM(c.checked?'✅ سُمح لـ«'+tName(tid)+'» بالمراسلة':'تم إيقاف المراسلة مع «'+tName(tid)+'»');
+});
+document.addEventListener('input',function(e){ if(e.target.closest&&e.target.closest('#view-tchat [data-h="q"]')){ HV.q=e.target.value; renderList(); } });
+window.openTeacherChat=function(tid){ if(isTeacherApp()) return; if(tid) HV.open=tid; renderHost(); if(typeof navigateTo==='function') navigateTo('view-tchat',{page:'tchat'}); setTimeout(function(){ if(HV.chat) HV.chat.paint(true); },50); };
+/* شارة الرسائل غير المقروءة + عنصر القائمة */
+function navLabel(){ return 'مراسلة '+stageWord(true); }
+function updateBadges(){
+  var n=hUnreadTotal();
+  [].forEach.call(document.querySelectorAll('.tc-nav'),function(b){ var bd=b.querySelector('.tc-nb'); if(n){ if(!bd){ bd=document.createElement('span'); bd.className='tc-nb'; b.appendChild(bd); } bd.textContent=ar(n); } else if(bd) bd.remove();
+    var tx=b.querySelector('.tc-nl'); if(tx&&tx.textContent!==navLabel()) tx.textContent=navLabel(); });
+}
+var NCSS='.tc-nav{position:relative}.tc-nb{margin-inline-start:auto;min-width:20px;height:20px;padding:0 6px;border-radius:12px;background:#25d366;color:#fff!important;font-size:11.5px;font-weight:900;display:inline-flex;align-items:center;justify-content:center;box-shadow:0 0 0 2px rgba(255,255,255,.2)}';
+function addNav(){
+  if(isTeacherApp()) return;
+  if(!document.getElementById('tcNavCss')){ var s=document.createElement('style'); s.id='tcNavCss'; s.textContent=NCSS; document.head.appendChild(s); }
+  var sb=document.querySelector('#dashboardSidebar .ds-nav');
+  if(sb&&!sb.querySelector('.tc-nav')){ var after=sb.querySelector('[onclick*="openStaffModule"]'); var b=document.createElement('button'); b.className='tc-nav'; b.setAttribute('onclick','closeDashboardSidebar();openTeacherChat()'); b.innerHTML='<span class="dni">💬</span><span class="tc-nl">'+navLabel()+'</span>'; if(after) after.insertAdjacentElement('afterend',b); else sb.appendChild(b); }
+  var gn=document.querySelector('.global-nav-drawer .gnd-links');
+  if(gn&&!gn.querySelector('.tc-nav')){ var a2=gn.querySelector('[data-nav="staff"]')||gn.querySelector('[onclick*="openStaffModule"]'); var b2=document.createElement('button'); b2.type='button'; b2.className='tc-nav'; b2.setAttribute('data-nav','tchat'); b2.setAttribute('onclick','closeGlobalNav();openTeacherChat()'); b2.innerHTML='<span>💬</span><span class="tc-nl">'+navLabel()+'</span>'; if(a2) a2.insertAdjacentElement('afterend',b2); else gn.appendChild(b2); }
+  updateBadges();
+}
+if(typeof window.dashMenuItems==='function'){
+  window.dashMenuItems=(function(o){ return function(){ var r=o.apply(this,arguments); try{ if(Array.isArray(r)&&!r.some(function(x){ return /openTeacherChat/.test(x[3]); })){ var i=r.findIndex(function(x){ return /openStaffModule/.test(x[3]); }); r.splice(i>=0?i+1:r.length,0,['💬',navLabel(),'محادثة خاصة لكل '+stageWord(false),'openTeacherChat()','linear-gradient(135deg,#075e54,#25d366)']); } }catch(e){} return r; }; })(window.dashMenuItems);
+}
+['renderDashboard','renderDashboardLauncher'].forEach(function(k){ if(typeof window[k]!=='function') return; window[k]=(function(o){ return function(){ var r=o.apply(this,arguments); try{ addNav(); }catch(e){} return r; }; })(window[k]); });
+setTimeout(addNav,600); setTimeout(addNav,3000);
+setInterval(function(){ var v=document.getElementById('view-tchat'); if(v&&v.style.display!=='none'){ var side=v.querySelector('[data-side]'); if(side&&!HV.perm){ var sm=side.querySelector('.tc-shd small'); if(sm){ var n=teachers().filter(function(t){ return hAllowed(t.id)&&hOnline(t.id); }).length; sm.textContent=n?ar(n)+' متصل الآن':'تُسلَّم الرسائل عند فتح تطبيق الأستاذ'; } renderList(); } if(HV.chat){ var sub=v.querySelector('[data-sub]'); if(sub&&HV.open) sub.textContent=hOnline(HV.open)?'متصل الآن':'غير متصل — تصله الرسائل عند فتح تطبيق الأستاذ'; var dot=v.querySelector('.tc-chd .tc-av i'); if(dot&&HV.open) dot.className=hOnline(HV.open)?'on':''; } } },3000);
+document.addEventListener('visibilitychange',function(){ if(!document.hidden&&HV.open&&HV.chat) HV.chat.paint(false); });
+
+/* =========================================================================
+   جهة المعلم (تطبيق الأستاذ)
+   ========================================================================= */
+var T=lsGet(TKEY,{threads:{}}); if(!T.threads) T.threads={};
+function tSave(){ if(!lsSet(TKEY,T)){ Object.keys(T.threads).forEach(function(k){ T.threads[k].msgs=T.threads[k].msgs.slice(-400); }); lsSet(TKEY,T); } }
+function tThread(h){ return T.threads[h]||(T.threads[h]={msgs:[],unread:0,allowed:false,name:''}); }
+var TL={}; /* hostId -> {link, state, retry, timer} */
+var TS={}; /* hostId -> school snapshot */
+var TV={open:null, chat:null};
+function tState(h){ var x=TL[h]; return x&&x.link&&x.link.alive()?'on':(x&&x.connecting?'connecting':'off'); }
+function tSendRaw(h,msg){ var x=TL[h]; if(x&&x.link&&x.link.alive()){ try{ x.link.send(msg); return true; }catch(e){} } return false; }
+function tFlush(h,send){
+  var th=tThread(h), chain=Promise.resolve();
+  th.msgs.filter(function(m){ return m.me&&(m.st==='p'||m.st==='s'); }).forEach(function(m){ chain=chain.then(function(){ return deliver(send,m).then(function(ok){ if(ok&&m.st==='p') m.st='s'; }); }); });
+  var rp=th.msgs.filter(function(m){ return !m.me&&m._readPending; }).map(function(m){ return m.id; }); if(rp.length){ send({t:'chat:ack',ids:rp,st:'r'}); th.msgs.forEach(function(m){ delete m._readPending; }); }
+  return chain.then(function(){ tSave(); tRefresh(h); });
+}
+window.__nbChatT={
+  onMsg:function(h,m,send){
+    var th=tThread(h);
+    if(/^call:/.test(m.t)){ onCallSignal(m,{send:function(x){ return tSendRaw(h,x)||(send(x),true); },log:function(cm){ tLog(h,cm); },key:h,avText:'🏫',name:'الإدارة — '+(th.name||(TS[h]&&TS[h].name)||'المدرسة')}); return; }
+    if(m.t==='chat:perm'){ var was=th.allowed; th.allowed=!!m.on; if(m.name) th.name=m.name; tSave(); if(th.allowed) tFlush(h,send); else if(TL[h]&&TL[h].link){ try{ TL[h].link.close(); }catch(e){} }
+      if(was!==th.allowed){ if(!th.allowed&&TV.open===h) closeTeacherSide(); if(th.allowed) tKick(); var r=document.getElementById('ustApp'); if(r&&!document.getElementById('tcTeacher')){ var t0=r.querySelector('.tc-tile[data-tc="'+h+'"]'); if(th.allowed&&!t0){ try{ window.__nbChatT.afterRender(r,'home',null,null); }catch(e){} } if(!th.allowed&&t0) t0.remove(); } if(!th.allowed&&TV.open===h) closeTeacherSide(); }
+      tRefresh(h); return; }
+    if(m.t==='chat:msg'&&m.m&&m.m.id){
+      send({t:'chat:ack',ids:[m.m.id],st:'d'});
+      if(th.msgs.some(function(x){ return x.id===m.m.id; })) return;
+      var nm=Object.assign({},m.m,{me:false,st:'d'});
+      var save=function(){ th.msgs.push(nm); th.msgs.sort(function(a,b){ return a.at-b.at; }); if(th.msgs.length>MAXM){ th.msgs.splice(0,th.msgs.length-MAXM).forEach(function(x){ fDel(x.id); }); } tSave(); tIncoming(h,nm); };
+      if(m.d) fPut(nm.id,m.d).then(save); else save(); return;
+    }
+    if(m.t==='chat:ack'&&Array.isArray(m.ids)){ var ch=false, r={p:0,s:1,d:2,r:3}; th.msgs.forEach(function(x){ if(x.me&&m.ids.indexOf(x.id)>=0&&(r[m.st]||0)>(r[x.st]||0)){ x.st=m.st; ch=true; } }); if(ch){ tSave(); tRefresh(h); } }
+  },
+  afterRender:function(root,page,rs,D){
+    try{ Object.keys((D&&D.schools)||{}).forEach(function(h){ var sc=D.schools[h]; TS[h]={hostId:h,name:sc.name||'',teacherName:sc.teacherName||(D.me&&D.me.name)||'',token:sc.token||null,hint:[sc.hint||''].concat(sc.hints||[]).filter(Boolean).join(','),me:(D.me&&D.me.name)||''}; var th=tThread(h); if(sc.name&&!th.name) th.name=sc.name; }); }catch(e){}
+    tKick();
+    if(page!=='home') return;
+    css(); var wrap=root.querySelector('.u-main .u-wrap')||root.querySelector('.u-main'); if(!wrap||wrap.querySelector('.tc-tile')) return;
+    var html=Object.keys(TS).filter(function(h){ return tThread(h).allowed; }).map(function(h){ var th=tThread(h), last=th.msgs[th.msgs.length-1], st=tState(h);
+      return '<button type="button" class="tc-tile" data-tc="'+esc(h)+'"><span class="ti">💬'+(th.unread?'<em>'+ar(th.unread)+'</em>':'')+'</span><span class="tt"><b>مراسلة الإدارة</b><small>'+esc(th.name||TS[h].name||'المدرسة')+' · '+(st==='on'?'🟢 متصل':'⚪ غير متصل')+'</small><small class="lp">'+esc(last?preview(last):'رسائل · صور · ملفات · بصمات · مكالمات')+'</small></span><span class="go">‹</span></button>'; }).join('');
+    if(!html) return;
+    if(!document.getElementById('tcTileCss')){ var s=document.createElement('style'); s.id='tcTileCss'; s.textContent=
+      '.tc-tile{position:relative;display:flex;align-items:center;gap:13px;width:100%;margin:0 0 12px;padding:14px;border:0;border-radius:18px;cursor:pointer;text-align:right;font-family:inherit;color:#fff;background:linear-gradient(135deg,#075e54 0%,#128c7e 55%,#25d366 130%);box-shadow:0 10px 24px rgba(7,94,84,.3);overflow:hidden}'+
+      '.tc-tile:after{content:"";position:absolute;left:-30px;top:-40px;width:120px;height:120px;border-radius:50%;background:rgba(255,255,255,.08)}.tc-tile .ti{position:relative;width:54px;height:54px;border-radius:16px;background:#fff;display:flex;align-items:center;justify-content:center;font-size:28px;flex:0 0 auto}'+
+      '.tc-tile .ti em{position:absolute;top:-6px;left:-6px;min-width:22px;height:22px;padding:0 5px;border-radius:12px;background:#e53935;color:#fff;font:900 12px inherit;font-family:inherit;font-style:normal;display:flex;align-items:center;justify-content:center;box-shadow:0 0 0 2px #fff}'+
+      '.tc-tile .tt{flex:1;min-width:0}.tc-tile b{display:block;font-size:16.5px;font-weight:900}.tc-tile small{display:block;font-size:12px;opacity:.92;font-weight:700;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.tc-tile .lp{opacity:.8}.tc-tile .go{font-size:24px;opacity:.85}';
+      document.head.appendChild(s); }
+    wrap.insertAdjacentHTML('afterbegin',html);
+  }
+};
+function tLog(h,cm){ var th=tThread(h); if(th.msgs.some(function(x){ return x.id===cm.id; })) return; th.msgs.push(cm); tSave(); tRefresh(h); }
+function tIncoming(h,m){
+  var vis=TV.open===h&&document.getElementById('tcTeacher')&&!document.hidden;
+  if(!vis){ tThread(h).unread=(tThread(h).unread||0)+1; tSave(); msgSound(); toastM('💬 الإدارة: '+preview(m)); try{ if(navigator.vibrate) navigator.vibrate(120); }catch(e){} }
+  tRefresh(h);
+}
+function tRefresh(h){
+  if(TV.chat&&TV.open===h) TV.chat.paint(false);
+  try{ var tile=document.querySelector('#ustApp .tc-tile[data-tc="'+h+'"]'); if(tile){ var th=tThread(h), ti=tile.querySelector('.ti'); ti.innerHTML='💬'+(th.unread?'<em>'+ar(th.unread)+'</em>':''); var sm=tile.querySelectorAll('small'); if(sm[0]) sm[0].textContent=(th.name||'المدرسة')+' · '+(tState(h)==='on'?'🟢 متصل':'⚪ غير متصل'); var last=th.msgs[th.msgs.length-1]; if(sm[1]&&last) sm[1].textContent=preview(last); } }catch(e){}
+}
+function tMarkRead(h){
+  var th=tThread(h), ids=[]; th.msgs.forEach(function(m){ if(!m.me&&m.st!=='r'){ m.st='r'; ids.push(m.id); } }); th.unread=0;
+  if(ids.length){ if(!tSendRaw(h,{t:'chat:ack',ids:ids,st:'r'})) th.msgs.forEach(function(m){ if(ids.indexOf(m.id)>=0) m._readPending=1; }); tSave(); }
+}
+function tSend(h,m){ var th=tThread(h); th.msgs.push(m); tSave(); tRefresh(h); if(tState(h)==='on') deliver(function(x){ return tSendRaw(h,x); },m).then(function(ok){ if(ok&&m.st==='p'){ m.st='s'; tSave(); tRefresh(h); } }); else tKick(true); }
+/* رابط المراسلة الدائم: يُفتح للمدرسة المسموح فيها بالمراسلة ما دام التطبيق مفتوحاً */
+function tConnect(h){
+  var sc=TS[h]; if(!sc||!sc.token) return;
+  var x=TL[h]||(TL[h]={retry:0});
+  if(x.connecting||(x.link&&x.link.alive())) return;
+  if(document.hidden&&!CALL) return;
+  var T2=window.__DLS&&window.__DLS.T; if(!T2||typeof T2.live!=='function'||!window.DaragatNative||typeof window.DaragatNative.dlsSignal!=='function') return;
+  x.connecting=true; tRefresh(h);
+  T2.live({hostId:h,hint:sc.hint,token:sc.token,name:sc.me||'تطبيق الأستاذ',
+    onWelcome:function(){ x.retry=0; },
+    onDeny:function(r){ x.denied=r; },
+    onMsg:function(m,send){ window.__nbChatT.onMsg(h,m,send); },
+    onClose:function(){ x.link=null; tRefresh(h); if(tThread(h).allowed) schedule(h); }
+  }).then(function(l){ x.connecting=false; x.link=l; tFlush(h,function(m){ return tSendRaw(h,m); }); tRefresh(h); },function(){ x.connecting=false; tRefresh(h); if(tThread(h).allowed) schedule(h); });
+}
+function schedule(h){ var x=TL[h]||(TL[h]={retry:0}); clearTimeout(x.timer); x.retry=Math.min(6,(x.retry||0)+1); var d=[3,6,12,20,30,45,60][x.retry]*1000; x.timer=setTimeout(function(){ tConnect(h); },d); }
+function tKick(now2){ if(!isTeacherApp()) return; Object.keys(TS).forEach(function(h){ var th=tThread(h), x=TL[h]||(TL[h]={retry:0});
+  if(th.allowed||now2){ tConnect(h); return; }
+  /* غير مسموح بعد: فحص خفيف كل دقيقتين لمعرفة إن سمح المدير بالمراسلة */
+  if(!x.link&&!x.connecting&&now()-(x.probe||0)>120000){ x.probe=now(); tConnect(h); } }); }
+document.addEventListener('visibilitychange',function(){ if(!document.hidden){ tKick(); if(TV.open&&TV.chat) TV.chat.paint(false); } });
+setInterval(function(){ if(isTeacherApp()&&!document.hidden) tKick(); },20000);
+function openTeacherSide(h){
+  css(); var root=document.getElementById('ustApp')||document.body; var old=document.getElementById('tcTeacher'); if(old) old.remove();
+  var dark=false; try{ dark=(root.getAttribute('data-theme')==='dark'); }catch(e){}
+  var w=document.createElement('div'); w.id='tcTeacher'; w.className='u-modal tc'+(dark?' dark':''); w.style.cssText='position:fixed;inset:0;z-index:2147483000;display:flex;flex-direction:column;background:var(--tc-bg);padding:0;align-items:stretch;justify-content:stretch';
+  w.innerHTML='<section class="tc-main" style="display:flex;flex:1;min-height:0" data-main></section>';
+  root.appendChild(w); TV.open=h;
+  var th=tThread(h);
+  TV.chat=mountChat(w.querySelector('[data-main]'),{
+    title:'الإدارة — '+(th.name||(TS[h]&&TS[h].name)||'المدرسة'), avatarKey:h, avatarText:'🏫', peerWord:'المعلم',
+    sub:function(){ var s=tState(h); return s==='on'?'متصل بجهاز المدرسة':s==='connecting'?'جارٍ الاتصال بجهاز المدرسة…':'غير متصل — تأكد أنك على واي فاي المدرسة'; },
+    online:function(){ return tState(h)==='on'; },
+    list:function(){ return th.msgs; },
+    send:function(m){ tSend(h,m); },
+    markRead:function(){ if(document.getElementById('tcTeacher')&&!document.hidden) tMarkRead(h); },
+    call:function(){ if(tState(h)!=='on'){ toastM('غير متصل بجهاز المدرسة الآن — تأكد أنك على واي فاي المدرسة.',true); tKick(true); return; } startCall({send:function(x){ return tSendRaw(h,x); },log:function(cm){ tLog(h,cm); },key:h,avText:'🏫',name:'الإدارة — '+(th.name||'المدرسة'),me:(TS[h]&&TS[h].me)||''}); },
+    onBack:function(){ closeTeacherSide(); }
+  });
+  var bk=w.querySelector('.tc-back'); if(bk) bk.style.display='inline-flex';
+  tKick(true);
+  var obs=new MutationObserver(function(){ if(!document.getElementById('tcTeacher')){ TV.open=null; TV.chat=null; obs.disconnect(); tRefresh(h); } });
+  obs.observe(root,{childList:true});
+}
+function closeTeacherSide(){ var w=document.getElementById('tcTeacher'); if(w) w.remove(); TV.open=null; TV.chat=null; }
+document.addEventListener('click',function(e){ var t=e.target.closest&&e.target.closest('#ustApp .tc-tile[data-tc]'); if(!t) return; e.preventDefault(); e.stopPropagation(); openTeacherSide(t.getAttribute('data-tc')); },true);
+window.__nbChatTeacherOpen=openTeacherSide;
 })();
 </script>
 </body>
