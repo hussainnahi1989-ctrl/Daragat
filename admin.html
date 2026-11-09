@@ -112,6 +112,13 @@ button{font-family:inherit}
 .btn.warn{background:linear-gradient(135deg,#f59e0b,#ea580c);color:#fff}
 .btn.violet{background:linear-gradient(135deg,#8b5cf6,#6d28d9);color:#fff}
 .btn.whatsapp{background:#25D366;color:#fff;padding:5px 10px;font-size:11.5px}
+.btn.whatsapp.wa-done{background:#5b6b8c;color:#fff}
+.wa-meta{display:flex;align-items:center;gap:6px;margin-top:4px;font-size:10.5px;color:var(--mut)}
+.wa-meta button{background:none;border:0;color:var(--mut);cursor:pointer;font-size:10.5px;text-decoration:underline;padding:0}
+.src-warn{display:inline-block;margin-top:4px;padding:2px 8px;border-radius:8px;font-size:10.5px;font-weight:800;background:var(--warnS,#fff3e0);color:var(--warn,#e65100);border:1px dashed currentColor}
+.ap-filter{display:flex;gap:6px;flex-wrap:wrap;margin:0 0 10px}
+.ap-filter button{border:1px solid var(--bd);background:var(--card);color:var(--tx2);border-radius:20px;padding:5px 12px;font-size:12px;font-weight:800;cursor:pointer}
+.ap-filter button.on{background:var(--priS);color:var(--pri);border-color:var(--pri)}
 .btn.danger{background:linear-gradient(135deg,#ef4444,#b91c1c);color:#fff}
 .btn.ghost{background:var(--card2);color:var(--tx2);border:1px solid var(--bd)}
 .btn.ghost:hover{background:var(--priS);color:var(--pri);filter:none}
@@ -420,6 +427,37 @@ function genderLabel(g){return {boys:"بنين",girls:"بنات",mixed:"مختل
 function esc(s){return String(s==null?"":s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));}
 /* نص يُمرَّر لدالة داخل onclick بأمان: لا يمكن لبيانات الزبون الخروج من النص وتنفيذ أوامر في لوحة الإدارة */
 function jsq(v){ return esc(JSON.stringify(String(v==null?"":v))); }
+/* nb-v1.58: وقت رقمي آمن (يقبل الأرقام والنصوص) لترتيب الأحدث أولاً */
+function toTs(v){ if(v==null||v==="") return 0; if(typeof v==="number") return v; const n=Number(v); if(isFinite(n)) return n; const d=Date.parse(v); return isFinite(d)?d:0; }
+function newestFirst(list,fn){ return list.slice().sort((a,b)=>(fn(b)-fn(a))||(toTs(b.registeredAt)-toTs(a.registeredAt))); }
+/* nb-v1.58: هل فُعِّل الحساب من هذه اللوحة؟ (زر «فعّل» يضع approvedAt، وتغيير المدة يضع planChangedAt) */
+function adminActivated(r){ return !!(r&&(r.approvedAt||r.planChangedAt)); }
+function wasEverActivated(r){ return !!(r&&(adminActivated(r)||r.activatedAt||normalizePlan(r.plan||r.planCode))); }
+function activationSource(r){
+  if(!r||r.status!=="approved"||adminActivated(r)) return "";
+  if(r.activatedAt) return "🔑 فُعِّل بمفتاح تفعيل (من دون زر «فعّل»)";
+  if(r.transferRequestedAt) return "🔄 صار مفعّلاً بعد قرار على «طلب نقل جهاز»";
+  return "⚠️ لا يوجد سجل تفعيل من اللوحة";
+}
+/* nb-v1.58: تمييز الزبائن الذين راسلتهم واتساب — يُحفظ في هذا المتصفح وفي السحابة (مسار خاص بالإدارة لا يمس حساب الزبون) */
+const WA_LS="adm_wa_contacted_v1"; let waMap={};
+try{ waMap=JSON.parse(localStorage.getItem(WA_LS)||"{}")||{}; }catch(e){ waMap={}; }
+function waSave(){ try{ localStorage.setItem(WA_LS,JSON.stringify(waMap)); }catch(e){} }
+function markWa(key,el){
+  waMap[key]=Date.now(); waSave();
+  try{ db&&db.ref("activation/adminMeta/waContacted/"+key).set(waMap[key]).catch(()=>{}); }catch(e){}
+  setTimeout(()=>{ try{ renderAll(); }catch(e){} },400);
+}
+function unmarkWa(key){
+  delete waMap[key]; waSave();
+  try{ db&&db.ref("activation/adminMeta/waContacted/"+key).remove().catch(()=>{}); }catch(e){}
+  renderAll();
+}
+function listenWaMeta(){
+  try{ db.ref("activation/adminMeta/waContacted").on("value",snap=>{ const v=snap.val()||{}; let ch=false; for(const k in v){ if(!waMap[k]||waMap[k]<v[k]){ waMap[k]=v[k]; ch=true; } } if(ch){ waSave(); renderAll(); } },()=>{}); }catch(e){}
+}
+let apFilter="all";
+function setApFilter(f){ apFilter=f; renderAll(); }
 function emailKey(email){return String(email||"").replace(/\./g,",");}
 function normIraqPhone(p){
   let digits=String(p||"").replace(/[^0-9]/g,"");
@@ -517,6 +555,7 @@ function listenAccounts(){
     allAccounts=snap.val()||{};
     renderAll();
   });
+  listenWaMeta();
 }
 
 function subscriptionExpiry(plan){
@@ -589,7 +628,10 @@ function setGoogleClientId(){
   }).catch(function(e){ alert("❌ تعذر الحفظ: "+e.message); });
 }
 function approveTransfer(email){
-  if(!confirm("✅ الموافقة على نقل الاشتراك للجهاز الجديد؟\nسيتم إيقاف الجهاز القديم."))return;
+  const cur=allAccounts[emailKey(email)]||{};
+  if(!wasEverActivated(cur)){
+    if(!confirm("⚠️ انتبه: هذا الحساب لم يُفعَّل من قبل (لا توجد له خطة ولا تاريخ تفعيل).\nالموافقة على النقل ستجعله مفعّلاً اشتراكاً شهرياً.\nهل تريد المتابعة؟"))return;
+  }else if(!confirm("✅ الموافقة على نقل الاشتراك للجهاز الجديد؟\nسيتم إيقاف الجهاز القديم."))return;
   const k=emailKey(email);
   db.ref("activation/accounts/"+k).once("value",snap=>{
     const v=snap.val()||{};
@@ -621,7 +663,11 @@ function resetPassword(email){
 }
 function rejectTransfer(email){
   if(!confirm("رفض طلب النقل؟"))return;
-  db.ref("activation/accounts/"+emailKey(email)).update({status:"approved",accountDisabled:false,disabledReason:null});
+  const cur=allAccounts[emailKey(email)]||{};
+  /* nb-v1.58: الرفض يعيد الحساب إلى حالته السابقة. كان يجعله «مفعّلاً» دائماً حتى لو لم يُفعَّل من قبل —
+     وهذا مصدر ظهور حسابات مفعّلة لم تفعّلها. الحساب المفعّل سابقاً يبقى مفعّلاً كما كان تماماً. */
+  const back=wasEverActivated(cur)?"approved":(cur.phone?"pending":"trial");
+  db.ref("activation/accounts/"+emailKey(email)).update({status:back,accountDisabled:false,disabledReason:null});
 }
 function reject(email){
   if(!confirm("تأكيد رفض هذا الطلب؟"))return;
@@ -772,8 +818,8 @@ function renderAll(){
     const tab=el.closest('[id^="tab-"]');keep[(tab?tab.id:"")+"|"+el.id]=el.value;
   });
   const recs=Object.entries(allAccounts).map(([k,v])=>({emailKey:k,email:(v.email||k.replace(/,/g,".")),...v}));
-  recs.sort((a,b)=>{const ta=a.registeredAt||0,tb=b.registeredAt||0;return tb-ta;});
-  const all=[],trial=[],pending=[],approved=[],transfers=[],resets=[];
+  recs.sort((a,b)=>toTs(b.registeredAt)-toTs(a.registeredAt));
+  let all=[],trial=[],pending=[],approved=[],transfers=[],resets=[];
   for(const r of recs){
     all.push(r);
     if(r.status==="approved") approved.push(r);
@@ -783,6 +829,15 @@ function renderAll(){
     else if(["suspended","disabled","deleted","cancelled"].includes(r.status)){}
     else trial.push(r);
   }
+  /* nb-v1.58: الأحدث أولاً في كل التبويبات */
+  all=newestFirst(all,r=>toTs(r.registeredAt));
+  trial=newestFirst(trial,r=>toTs(r.registeredAt));
+  pending=newestFirst(pending,r=>Math.max(toTs(r.requestedAt),toTs(r.registeredAt)));
+  approved=newestFirst(approved,r=>Math.max(toTs(r.approvedAt),toTs(r.planChangedAt),toTs(r.activatedAt),toTs(r.registeredAt)));
+  transfers=newestFirst(transfers,r=>Math.max(toTs(r.transferRequestedAt),toTs(r.registeredAt)));
+  resets=newestFirst(resets,r=>Math.max(toTs(r.passwordResetRequestedAt),toTs(r.registeredAt)));
+  const apMine=approved.filter(adminActivated), apOther=approved.filter(r=>!adminActivated(r));
+  const apList=apFilter==="mine"?apMine:apFilter==="other"?apOther:approved;
   $("bAll").textContent=all.length;
   $("bTrial").textContent=trial.length;
   $("bPen").textContent=pending.length;
@@ -793,7 +848,11 @@ function renderAll(){
   $("tab-all").innerHTML=renderTable(all,"كل الحسابات");
   $("tab-trial").innerHTML=renderTable(trial,"الفترة التجريبية");
   $("tab-pending").innerHTML=renderTable(pending,"طلبات التفعيل");
-  $("tab-approved").innerHTML=renderTable(approved,"الحسابات المُفعّلة");
+  $("tab-approved").innerHTML=`<div class="ap-filter">
+      <button class="${apFilter==="all"?"on":""}" onclick="setApFilter('all')">الكل (${approved.length})</button>
+      <button class="${apFilter==="mine"?"on":""}" onclick="setApFilter('mine')">✅ فعّلتُها من اللوحة (${apMine.length})</button>
+      <button class="${apFilter==="other"?"on":""}" onclick="setApFilter('other')" title="مفعّلة لكن بلا سجل ضغط «فعّل» — للمراجعة فقط، لم يتغيّر شيء فيها">⚠️ بلا سجل تفعيل من اللوحة (${apOther.length})</button>
+    </div>`+renderTable(apList,"الحسابات المُفعّلة");
   $("tab-transfers").innerHTML=renderTransfersTable(transfers,"طلبات نقل الأجهزة");
   $("tab-reset").innerHTML=renderTable(resets,"🔑 طلبات استعادة كلمة السر");
   if(adSearchQ) renderAdSearch();
@@ -814,7 +873,7 @@ function renderTransfersTable(list,title){
   const rows=list.map(r=>`
     <tr class="conflict">
       <td><span class="code">${esc(r.email)}</span></td>
-      <td>${esc(r.name||"-")}</td>
+      <td>${esc(r.name||"-")}${wasEverActivated(r)?"":'<div class="src-warn">⚠️ لم يُفعَّل من قبل</div>'}</td>
       <td>${deviceBadges(r)}</td>
       <td><span class="code" style="font-size:10px">${esc(lastDevId(r).slice(0,12))}…</span></td>
       <td>${fmtDate(r.transferRequestedAt)}</td>
@@ -885,7 +944,8 @@ function renderTable(list,title){
       ${schoolSub?`<div class="at-sub">${schoolSub}</div>`:""}
       <div class="at-sub"><span class="at-num">#${i+1}</span>
         <span class="badge-status s-${String(r.status||"trial").replace(/[^A-Za-z0-9_-]/g,"")}">${statusLabel(r.status)}</span>${isReset?' <span class="badge-status s-reset-pw">🔑 استعادة</span>':""}
-      </div>`;
+      </div>${activationSource(r)?`<div class="src-warn" title="لم يتغيّر شيء في هذا الحساب — هذه علامة للمراجعة فقط">${esc(activationSource(r))}</div>`:""}
+      <div class="at-sub">📅 التسجيل: ${esc(fmtDate(toTs(r.registeredAt)))}${isApproved&&r.approvedAt?" · التفعيل: "+esc(fmtDate(toTs(r.approvedAt))):""}</div>`;
 
     /* 2) المدير */
     const principalCell=`<div class="at-strong">${esc(r.principalName||r.name||"—")}</div>
@@ -901,7 +961,8 @@ function renderTable(list,title){
 
     /* 5) الموبايل */
     const phoneOk=/^07[0-9]{9}$/.test(phone);
-    const phoneCell=`${phoneOk?`<a href="${waLink(phone)}" target="_blank" class="btn whatsapp small">💬 ${esc(phone)}</a>`:'<div class="at-warn">⚠️ لم يُدخل الهاتف</div>'}
+    const waAt=waMap[r.emailKey];
+    const phoneCell=`${phoneOk?`<a href="${waLink(phone)}" target="_blank" rel="noopener" class="btn whatsapp small${waAt?" wa-done":""}" onclick="markWa(${jsKey},this)" title="${waAt?"راسلته في "+esc(fmtDate(waAt)):"لم تراسله بعد"}">${waAt?"✔ ":""}💬 ${esc(phone)}</a>${waAt?`<div class="wa-meta">✔ رُوسِل ${esc(fmtDate(waAt))} <button type="button" onclick="unmarkWa(${jsKey})">إلغاء</button></div>`:""}`:'<div class="at-warn">⚠️ لم يُدخل الهاتف</div>'}
       <input type="tel" data-phone-for="${email}" value="${phoneOk?esc(phone):esc(r.phone||"")}" placeholder="07xxxxxxxxx" class="inline at-ltr at-in" maxlength="11" />`;
 
     /* 6) مدة التفعيل */
