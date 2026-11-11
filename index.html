@@ -18789,7 +18789,7 @@ if(document.readyState==='loading'){
 <!-- ===== AUTO UPDATE NOTIFICATION (small icon in topbar) ===== -->
 <script>
 (function(){
-  const APP_VERSION = "1.62.0";
+  const APP_VERSION = "1.62.1";
   const CHECK_EVERY_MINUTES = 30;
   const LS_ACCEPTED = "daragat_accepted_version";
   const LS_SNOOZE   = "daragat_update_snooze";
@@ -43267,11 +43267,13 @@ function tMarkRead(h){
 }
 function tSend(h,m){ var th=tThread(h); th.msgs.push(m); tSave(); tRefresh(h); if(tState(h)==='on') deliver(function(x){ return tSendRaw(h,x); },m).then(function(ok){ if(ok&&m.st==='p'){ m.st='s'; tSave(); tRefresh(h); } }); else tKick(true); }
 /* رابط المراسلة الدائم: يُفتح للمدرسة المسموح فيها بالمراسلة ما دام التطبيق مفتوحاً */
+/* 1.62.1: وضع العمل في الخلفية (غلاف يدعم setBackgroundMode وغير مطفأ): يبقى الاتصال ويُعاد حتى والصفحة مخفية */
+function bgOn(){ try{ var n=window.DaragatNative; return !!(n&&typeof n.setBackgroundMode==='function')&&localStorage.getItem('nbBgMode_v1')!=='0'; }catch(e){ return false; } }
 function tConnect(h){
   var sc=TS[h]; if(!sc||!sc.token) return;
   var x=TL[h]||(TL[h]={retry:0});
   if(x.connecting||(x.link&&x.link.alive())) return;
-  if(document.hidden&&!CALL) return;
+  if(document.hidden&&!CALL&&!bgOn()) return;
   var T2=window.__DLS&&window.__DLS.T; if(!T2||typeof T2.live!=='function'||!window.DaragatNative||typeof window.DaragatNative.dlsSignal!=='function') return;
   x.connecting=true; tRefresh(h);
   T2.live({hostId:h,hint:sc.hint,token:sc.token,name:sc.me||'تطبيق الأستاذ',
@@ -43287,7 +43289,8 @@ function tKick(now2){ if(!isTeacherApp()) return; Object.keys(TS).forEach(functi
   /* غير مسموح بعد: فحص خفيف كل دقيقتين لمعرفة إن سمح المدير بالمراسلة */
   if(!x.link&&!x.connecting&&now()-(x.probe||0)>120000){ x.probe=now(); tConnect(h); } }); }
 document.addEventListener('visibilitychange',function(){ if(!document.hidden){ tKick(); if(TV.open&&TV.chat) TV.chat.paint(false); } });
-setInterval(function(){ if(isTeacherApp()&&!document.hidden) tKick(); },20000);
+setInterval(function(){ if(isTeacherApp()&&(!document.hidden||bgOn())) tKick(); },20000);
+window.addEventListener('online',function(){ try{ if(isTeacherApp()) tKick(); }catch(e){} });
 function openTeacherSide(h){
   css(); var root=document.getElementById('ustApp')||document.body; var old=document.getElementById('tcTeacher'); if(old) old.remove();
   var dark=false; try{ dark=(root.getAttribute('data-theme')==='dark'); }catch(e){}
