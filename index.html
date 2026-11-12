@@ -18793,7 +18793,8 @@ if(document.readyState==='loading'){
 <!-- ===== AUTO UPDATE NOTIFICATION (small icon in topbar) ===== -->
 <script>
 (function(){
-  const APP_VERSION = "1.67.0";
+  const APP_VERSION = "1.67.1";
+  try{ window.__nbAppVersion=APP_VERSION; }catch(e){}
   const CHECK_EVERY_MINUTES = 30;
   const LS_ACCEPTED = "daragat_accepted_version";
   const LS_SNOOZE   = "daragat_update_snooze";
@@ -46156,6 +46157,28 @@ function printDoc(doc){
 function patchWin(X){
   try{ if(!X||X.__nbJdP) return; X.__nbJdP=1; X.print=function(){ try{ printDoc(X.document); }catch(e){} }; }catch(e){}
 }
+function anchors(W){
+  /* التنزيلات: كل رابط تنزيل blob/data يُحفظ عبر تطبيق الإدارة */
+  function grab(a,e){
+    try{
+      if(!a||a.tagName!=='A') return false;
+      var href=a.getAttribute('href')||''; if(!/^(blob:|data:)/.test(href)) return false;
+      if(e){ if(e.__nbJd) return false; e.__nbJd=1; try{ e.preventDefault(); e.stopPropagation(); e.stopImmediatePropagation(); }catch(x){} }
+      var name=a.getAttribute('download')||'ملف';
+      try{ a.removeAttribute('download'); a.removeAttribute('href'); }catch(x){}
+      saveHref(W,href,name); return true;
+    }catch(x){ return false; }
+  }
+  try{
+    var AP=W.HTMLAnchorElement.prototype, oc=AP.click, od=AP.dispatchEvent;
+    AP.click=function(){ if(grab(this,null)) return; return oc.apply(this,arguments); };
+    AP.dispatchEvent=function(ev){ try{ if(ev&&ev.type==='click'&&grab(this,null)) return false; }catch(x){} return od.apply(this,arguments); };
+  }catch(e){}
+  try{ W.document.addEventListener('click',function(e){ var t=e.target, a=t&&t.closest?t.closest('a[href]'):null; if(!a) return;
+    if(grab(a,e)) return;
+    var h=a.getAttribute('href')||''; if(/^(https?:|mailto:|tel:|whatsapp:)/i.test(h)&&!/Algadwak/.test(h)){ e.preventDefault(); try{ window.open(h,'_blank'); }catch(x){} } },true); }catch(e){}
+  try{ if(W.navigator&&W.navigator.msSaveOrOpenBlob===undefined) W.navigator.msSaveOrOpenBlob=function(blob,name){ saveBlob(blob,name); return true; }; }catch(e){}
+}
 function adapt(W){
   try{ if(!W||!W.document||W.__nbJdA||/^about:/.test(String(W.location.href))) return; }catch(e){ return; }   /* موقع من أصل آخر: يبقى كما هو */
   W.__nbJdA=1; W.__nbInDaragat=true;
@@ -46180,26 +46203,18 @@ function adapt(W){
     if(/^https?:/i.test(s)&&s.indexOf(location.origin+'/Algadwak')!==0){ try{ return window.open(s,'_blank'); }catch(e){ return null; } }
     return oOpen.apply(W,arguments);
   };
-  /* التنزيلات: كل رابط تنزيل blob/data يُحفظ عبر تطبيق الإدارة */
-  function grab(a,e){
-    try{
-      if(!a||a.tagName!=='A') return false;
-      var href=a.getAttribute('href')||''; if(!/^(blob:|data:)/.test(href)) return false;
-      if(e){ if(e.__nbJd) return false; e.__nbJd=1; try{ e.preventDefault(); e.stopPropagation(); e.stopImmediatePropagation(); }catch(x){} }
-      var name=a.getAttribute('download')||'ملف';
-      try{ a.removeAttribute('download'); a.removeAttribute('href'); }catch(x){}
-      saveHref(W,href,name); return true;
-    }catch(x){ return false; }
+  anchors(W);
+  /* إطارات داخلية: معاينة الجدول تطبع بـ __nbpvRP (أمر الطباعة الأصلي للإطار) — يُستبدل بطباعة تطبيق الإدارة */
+  function nested(fr){
+    var hook=function(){ try{ var cw=fr.contentWindow; if(!cw||cw.__nbJdN) return; var href=''; try{ href=String(cw.location.href); }catch(x){}
+      cw.__nbJdN=1;
+      if('__nbpvRP' in cw) cw.__nbpvRP=function(){ printDoc(cw.document); };
+      else if(!/^about:blank$/.test(href)||cw.document.body&&cw.document.body.childNodes.length) patchWin(cw);
+      anchors(cw); }catch(x){} };
+    fr.addEventListener('load',function(){ hook(); setTimeout(hook,50); });
   }
-  try{
-    var AP=W.HTMLAnchorElement.prototype, oc=AP.click, od=AP.dispatchEvent;
-    AP.click=function(){ if(grab(this,null)) return; return oc.apply(this,arguments); };
-    AP.dispatchEvent=function(ev){ try{ if(ev&&ev.type==='click'&&grab(this,null)) return false; }catch(x){} return od.apply(this,arguments); };
-  }catch(e){}
-  try{ W.document.addEventListener('click',function(e){ var t=e.target, a=t&&t.closest?t.closest('a[href]'):null; if(!a) return;
-    if(grab(a,e)) return;
-    var h=a.getAttribute('href')||''; if(/^(https?:|mailto:|tel:|whatsapp:)/i.test(h)&&!/Algadwak/.test(h)){ e.preventDefault(); try{ window.open(h,'_blank'); }catch(x){} } },true); }catch(e){}
-  try{ if(W.navigator&&W.navigator.msSaveOrOpenBlob===undefined) W.navigator.msSaveOrOpenBlob=function(blob,name){ saveBlob(blob,name); return true; }; }catch(e){}
+  try{ [].forEach.call(W.document.querySelectorAll('iframe'),nested);
+    new W.MutationObserver(function(ms){ ms.forEach(function(m){ [].forEach.call(m.addedNodes,function(n){ if(n.tagName==='IFRAME') nested(n); else if(n.querySelectorAll) [].forEach.call(n.querySelectorAll('iframe'),nested); }); }); }).observe(W.document.documentElement,{childList:true,subtree:true}); }catch(e){}
 }
 
 /* ---------- النافذة ---------- */
@@ -46217,14 +46232,24 @@ function build(){
   f.addEventListener('load',function(){ ok=true; load.hidden=true; try{ adapt(f.contentWindow); }catch(e){} });
   function start(){
     ok=false; load.hidden=false; load.innerHTML='<div class="jd-spin"></div><div>جاري فتح جدول الدروس الذكي…</div>';
-    t0=Date.now(); f.src=jdUrl();
+    t0=Date.now(); f.src=jdUrl(); setTimeout(function(){ if(R&&R.watch) R.watch(); },0);
     setTimeout(function(){ if(!ok&&R&&!R.w.hidden){ load.innerHTML='<div>تعذر فتح جدول الدروس الذكي.<br><small style="font-weight:700;opacity:.75">أول فتح يحتاج اتصالاً بالإنترنت، وبعده يعمل بلا إنترنت.</small></div><button type="button" data-jd-retry>🔄 إعادة المحاولة</button>'; } },25000);
   }
   w.addEventListener('click',function(e){
     if(e.target.closest('[data-jd-back]')) return close();
-    if(e.target.closest('[data-jd-reload]')||e.target.closest('[data-jd-retry]')){ try{ if(ok&&f.contentWindow){ f.contentWindow.location.reload(); load.hidden=false; ok=false; return; } }catch(x){} start(); }
+    if(e.target.closest('[data-jd-reload]')||e.target.closest('[data-jd-retry]')){ try{ if(ok&&f.contentWindow){ f.contentWindow.location.reload(); load.hidden=false; ok=false; R.watch(); return; } }catch(x){} start(); }
   });
   R={w:w,f:f,start:start,started:false};
+  /* التجهيز مبكراً قبل أن تعمل سكربتات الجدول: تبقى معاينة الطباعة الخاصة بالجدول كما هي،
+     ويُستبدل فقط أمر الطباعة الأخير (الذي لا يعمل داخل تطبيقات الهاتف/الحاسوب) بطباعة تطبيق الإدارة */
+  var mc=new MessageChannel(), wt0=0;
+  mc.port1.onmessage=function(){
+    var done=false;
+    try{ var cw=f.contentWindow; if(cw&&/Algadwak|__jd/.test(String(cw.location.href))&&!cw.__nbJdA&&cw.document&&cw.document.documentElement){ adapt(cw); try{ cw.addEventListener('pagehide',function(){ setTimeout(watch,0); }); }catch(e){} done=true; } }catch(e){}
+    if(!done&&Date.now()-wt0<30000) mc.port2.postMessage(0);
+  };
+  function watch(){ wt0=Date.now(); mc.port2.postMessage(0); }
+  R.watch=watch;
   return R;
 }
 function close(){
@@ -46266,6 +46291,72 @@ if(typeof window.dashMenuItems==='function'){
   if(typeof window[n]==='function') window[n]=(function(o){ return function(){ var r=o.apply(this,arguments); try{ addNav(); setTimeout(addNav,80); }catch(e){} return r; }; })(window[n]);
 });
 addNav(); window.addEventListener('load',function(){ setTimeout(addNav,300); });
+})();
+
+/* =============== (3) تنبيه التحديث الفوري: «نسخة جديدة — تحديث الآن» في الأسفل =============== */
+(function(){
+  if(window.__nbJdUpd) return; window.__nbJdUpd=1;
+  if(document.getElementById('ustApp')||/[?&]app=teacher/.test(location.search)) return;
+  function cmp(a,b){ a=String(a||'').split('.').map(Number); b=String(b||'').split('.').map(Number); for(var i=0;i<Math.max(a.length,b.length);i++){ var x=a[i]||0,y=b[i]||0; if(x!==y) return x>y?1:-1; } return 0; }
+  function cur(){ return String(window.__nbAppVersion||''); }
+  var SN='nbUpdSnooze_v1', last=0, shown='';
+  function snoozed(v){ try{ var o=JSON.parse(localStorage.getItem(SN)||'{}'); return o.v===v&&Date.now()<o.until; }catch(e){ return false; } }
+  function bar(v,notes){
+    if(document.getElementById('nbUpdBar')&&shown===v) return; shown=v;
+    var old=document.getElementById('nbUpdBar'); if(old) old.remove();
+    var b=document.createElement('div'); b.id='nbUpdBar';
+    b.style.cssText='position:fixed;left:50%;bottom:18px;transform:translateX(-50%);z-index:2147482950;display:flex;gap:10px;align-items:center;flex-wrap:wrap;justify-content:center;max-width:calc(100vw - 24px);box-sizing:border-box;background:linear-gradient(135deg,#1b5e20,#2e7d32);color:#fff;padding:10px 14px;border-radius:24px;box-shadow:0 8px 22px rgba(0,0,0,.35);font:800 13.5px Tahoma,Arial,sans-serif;direction:rtl';
+    b.innerHTML='<span>✨ نسخة جديدة من البرنامج ('+String(v).replace(/[^\d.]/g,'')+') جاهزة</span><button type="button" data-u style="border:0;border-radius:16px;padding:7px 14px;background:#fff;color:#1b5e20;font:900 13px Tahoma,Arial,sans-serif;cursor:pointer">تحديث الآن</button><button type="button" data-l style="border:1px solid rgba(255,255,255,.5);border-radius:16px;padding:6px 10px;background:transparent;color:#fff;font:800 12px Tahoma,Arial,sans-serif;cursor:pointer">لاحقاً</button>';
+    if(notes&&notes.length) b.title=notes.slice(0,3).join('\n');
+    b.querySelector('[data-u]').onclick=function(){ update(v,this); };
+    b.querySelector('[data-l]').onclick=function(){ try{ localStorage.setItem(SN,JSON.stringify({v:v,until:Date.now()+2*3600000})); }catch(e){} b.remove(); };
+    document.body.appendChild(b);
+  }
+  window.nbShowUpdateBar=function(){ bar(shown||'',null); };
+  /* التحديث: تُجلب النسخة الجديدة مباشرة وتوضع مكان النسخة المحفوظة على الجهاز، ثم يُعاد الفتح */
+  function update(v,btn){
+    try{ if(typeof saveApp==='function') saveApp(); }catch(e){}
+    if(btn){ btn.disabled=true; btn.textContent='⏳ جاري التحديث…'; }
+    var done=function(){ var u=new URL(location.href); u.searchParams.set('v',String(Date.now())); location.replace(u.toString()); };
+    var fail=function(){ if(btn){ btn.disabled=false; btn.textContent='تحديث الآن'; } try{ (window.nbAppToast||alert)('النسخة الجديدة تصل للجهاز خلال دقائق — حاول بعد قليل'); }catch(x){} };
+    function cachedVer(){
+      if(!('caches' in window)) return Promise.resolve('');
+      return caches.keys().then(function(ks){ var k=ks.filter(function(x){ return /^daragat-v/.test(x); })[0]; if(!k) return '';
+        return caches.open(k).then(function(cc){ return cc.match('./index.html'); }).then(function(r){ return r?r.text():''; }).then(function(t){ var m=/const APP_VERSION = "([^"]+)"/.exec(t||''); return m?m[1]:''; }); });
+    }
+    var sw=navigator.serviceWorker&&navigator.serviceWorker.controller;
+    if(sw){
+      /* البرنامج يعمل من النسخة المحفوظة: يُطلب من خدمة التحديث تنزيل النسخة الجديدة الآن، ثم يُعاد الفتح عند وصولها */
+      var t0=Date.now(), asked=0;
+      (function poll(){
+        if(Date.now()-asked>6000){ asked=Date.now(); try{ sw.postMessage({type:'nb-check-update'}); }catch(e){} }
+        cachedVer().then(function(cv){
+          if(cv&&cmp(cv,v)>=0) return done();
+          if(Date.now()-t0>40000) return fail();
+          setTimeout(poll,800);
+        },function(){ if(Date.now()-t0>40000) return fail(); setTimeout(poll,800); });
+      })();
+      return;
+    }
+    fetch('index.html?u='+Date.now(),{cache:'no-store',credentials:'same-origin'}).then(function(r){ return r.ok?r.text():''; }).then(function(t){
+      var m=/const APP_VERSION = "([^"]+)"/.exec(t||''); if(m&&cmp(m[1],v)<0) return fail(); done();
+    },function(){ done(); });
+  }
+  function check(force){
+    var now=Date.now(); if(!force&&now-last<90000) return; last=now;
+    if(navigator.onLine===false) return;
+    fetch('version.json?nb='+now,{cache:'no-store',credentials:'omit'}).then(function(r){ return r.ok?r.json():null; }).then(function(j){
+      var v=j&&j.version?String(j.version):''; if(!v||!cur()) return;
+      if(cmp(v,cur())>0&&!snoozed(v)) bar(v,j.notes);
+      else { var b=document.getElementById('nbUpdBar'); if(b&&cmp(v,cur())<=0) b.remove(); }
+    }).catch(function(){});
+  }
+  setTimeout(function(){ check(true); },4000);
+  setInterval(function(){ if(document.visibilityState!=='hidden') check(true); },10*60000);
+  document.addEventListener('visibilitychange',function(){ if(document.visibilityState==='visible') check(false); });
+  window.addEventListener('focus',function(){ check(false); });
+  window.addEventListener('online',function(){ check(true); });
+  window.nbCheckUpdateNow=function(){ check(true); };
 })();
 </script>
 </body>
