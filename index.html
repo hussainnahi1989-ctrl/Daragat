@@ -18793,7 +18793,7 @@ if(document.readyState==='loading'){
 <!-- ===== AUTO UPDATE NOTIFICATION (small icon in topbar) ===== -->
 <script>
 (function(){
-  const APP_VERSION = "1.66.1";
+  const APP_VERSION = "1.67.0";
   const CHECK_EVERY_MINUTES = 30;
   const LS_ACCEPTED = "daragat_accepted_version";
   const LS_SNOOZE   = "daragat_update_snooze";
@@ -18913,7 +18913,7 @@ function backupSetStatus(msg,ok){
 function backupExportFile(){
   try{
     const data={__backup:'daragat',version:APP_VERSION||'',createdAt:new Date().toISOString(),school:JSON.parse(JSON.stringify(APP)),localStorage:{}};
-    for(let i=0;i<localStorage.length;i++){const k=localStorage.key(i);if(k){try{data.localStorage[k]=localStorage.getItem(k);}catch(e){}}}
+    for(let i=0;i<localStorage.length;i++){const k=localStorage.key(i);if(k&&!/^nibras/.test(k)){try{data.localStorage[k]=localStorage.getItem(k);}catch(e){}}}
     const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});
     const a=document.createElement('a');a.href=URL.createObjectURL(blob);
     const safe=(APP.school.name||'daragat').replace(/[^a-zA-Z0-9\u0600-\u06FF_\-]+/g,'_');
@@ -18931,7 +18931,7 @@ function backupImportFile(ev){
       const data=JSON.parse(e.target.result);
       if(!data||data.__backup!=='daragat'){backupSetStatus('❌ الملف غير صالح',false);return;}
       if(data.school){for(const k in data.school){try{APP[k]=data.school[k];}catch(_){}}saveApp();}
-      if(data.localStorage){for(const k in data.localStorage){try{localStorage.setItem(k,data.localStorage[k]);}catch(_){}}}
+      if(data.localStorage){for(const k in data.localStorage){if(/^nibras/.test(k))continue;try{localStorage.setItem(k,data.localStorage[k]);}catch(_){}}}
       backupSetStatus('✅ تم الاستعادة — جاري إعادة التحميل…',true);
       setTimeout(()=>location.reload(),1200);
     }catch(err){backupSetStatus('❌ تعذر قراءة الملف: '+err.message,false);}
@@ -41775,9 +41775,9 @@ function decorateDash(){
   ensureDcss();
   var date=top.querySelector('.dashboard-date');
   var q=document.createElement('div'); q.className='nbq';
-  var ex=navHas('openExamsModule'), gb=navHas('openRecordsHub')||navHas('openGradebook'), dv=navHas('openDevicesModule')&&typeof window.openDevicesModule==='function';
+  var ex=typeof window.nbOpenJadwal==='function'||!!window.__nbJadwalSoon, gb=navHas('openRecordsHub')||navHas('openGradebook'), dv=navHas('openDevicesModule')&&typeof window.openDevicesModule==='function';
   var rs=navHas('openBarcodeModule')&&typeof window.openBarcodeResultsScan==='function';
-  q.innerHTML=(rs?'<button type="button" class="nbq-btn rs" title="كشف النتائج بالباركود" onclick="openBarcodeResultsScan()"><span class="nbq-ic"><svg class="nbbc" viewBox="0 0 24 24" width="1em" height="1em" aria-hidden="true"><path fill="currentColor" d="M2 4h2v16H2zM5 4h1v16H5zM7 4h3v16H7zM11 4h1v16h-1zM13 4h2v16h-2zM16 4h1v16h-1zM18 4h1v16h-1zM20 4h2v16h-2z"/></svg></span><span class="nbq-t"><b>كشف النتائج</b><small>مسح باركود بطاقة النتيجة</small><small class="nbq-s">مسح باركود النتيجة</small></span><span class="nbq-go">‹</span></button>':'')+(ex?'<button type="button" class="nbq-btn ex" title="الامتحانات" onclick="openExamsModule()"><span class="nbq-ic">📝</span><span class="nbq-t"><b>الامتحانات</b><small>القوائم · الجلوس · البطاقات · الأسئلة</small><small class="nbq-s">القوائم · البطاقات · الأسئلة</small></span><span class="nbq-go">‹</span></button>':'')+
+  q.innerHTML=(rs?'<button type="button" class="nbq-btn rs" title="كشف النتائج بالباركود" onclick="openBarcodeResultsScan()"><span class="nbq-ic"><svg class="nbbc" viewBox="0 0 24 24" width="1em" height="1em" aria-hidden="true"><path fill="currentColor" d="M2 4h2v16H2zM5 4h1v16H5zM7 4h3v16H7zM11 4h1v16h-1zM13 4h2v16h-2zM16 4h1v16h-1zM18 4h1v16h-1zM20 4h2v16h-2z"/></svg></span><span class="nbq-t"><b>كشف النتائج</b><small>مسح باركود بطاقة النتيجة</small><small class="nbq-s">مسح باركود النتيجة</small></span><span class="nbq-go">‹</span></button>':'')+(ex?'<button type="button" class="nbq-btn ex" title="جدول الدروس الذكي" onclick="nbOpenJadwal()"><span class="nbq-ic">📅</span><span class="nbq-t"><b>جدول الدروس الذكي</b><small>إنشاء وتوزيع الحصص تلقائياً</small><small class="nbq-s">توزيع الحصص تلقائياً</small></span><span class="nbq-go">‹</span></button>':'')+
     (gb?'<button type="button" class="nbq-btn gb" title="سجلات الدرجات" onclick="'+(typeof window.openRecordsHub==='function'?'openRecordsHub()':'openGradebook()')+'"><span class="nbq-ic">📒</span><span class="nbq-t"><b>سجلات الدرجات</b><small>المعلم · الوسطي · الفصلي · الكنترول · النسب</small><small class="nbq-s">المعلم · الكنترول · النسب</small></span><span class="nbq-go">‹</span></button>':'')+
     (dv?'<button type="button" class="nbq-btn dv" title="الأجهزة الملحقة" onclick="openDevicesModule()"><span class="nbq-ic">🔗</span><span class="nbq-t"><b>الجهاز الملحق</b><small>ربط الأجهزة بلا إنترنت</small><small class="nbq-s">ربط بلا إنترنت</small></span><span class="nbq-go">‹</span></button>':'');
   var cnt=q.querySelectorAll('.nbq-btn').length; q.classList.toggle('n3',cnt===3&&!!(ex&&gb&&dv)); q.classList.toggle('n4',cnt===4);
@@ -46062,6 +46062,210 @@ function heroize(){
 if(typeof window.openRecordsHub==='function'){
   window.openRecordsHub=(function(o){ return function(){ var r=o.apply(this,arguments); try{ heroize(); setTimeout(heroize,60); }catch(e){} return r; }; })(window.openRecordsHub);
 }
+})();
+</script>
+<script>
+/* ===== nb-v1.66 =====
+   «جدول الدروس الذكي» داخل تطبيق الإدارة: يفتح موقع الجدول (Algadwak.2) في نافذة كاملة مع زر «رجوع» صغير بالأعلى.
+   - كل تطبيق يبقى ببياناته وتفعيله: مفاتيح الجدول (nibras-*) منفصلة عن مفاتيح الإدارة ولا يمس أحدهما الآخر.
+   - الطباعة وPDF وExcel والنسخ من داخل الجدول تمر عبر مسار الطباعة والحفظ في تطبيق الإدارة نفسه
+     (يعمل في الأندرويد والويندوز والمتصفح)، لأن نافذة الطباعة والتنزيل داخل الإطار لا تعمل في تطبيقات الهاتف. */
+(function(){
+'use strict';
+var URL0='https://hussainnahi1989-ctrl.github.io/Algadwak.2/';
+function jdUrl(){ return window.__nbJadwalUrl||URL0; }
+var CSS='#nbJd{position:fixed;inset:0;z-index:2147483000;display:flex;flex-direction:column;background:#f4f6fb;direction:rtl}'+
+ '#nbJd[hidden],#nbJd [hidden]{display:none!important}'+
+ '#nbJd .jd-bar{flex:0 0 auto;display:flex;align-items:center;gap:8px;height:40px;padding:0 8px;box-sizing:border-box;background:linear-gradient(135deg,#0b3d91,#1565c0);color:#fff;box-shadow:0 2px 8px rgba(0,0,0,.25);font-family:Tahoma,Arial,sans-serif}'+
+ '#nbJd .jd-back{display:inline-flex;align-items:center;gap:6px;height:30px;padding:0 12px;border-radius:15px;border:1px solid rgba(255,255,255,.35);background:rgba(255,255,255,.16);color:#fff;font:800 13px Tahoma,Arial,sans-serif;cursor:pointer;white-space:nowrap}'+
+ '#nbJd .jd-back:hover{background:rgba(255,255,255,.26)}#nbJd .jd-back:active{transform:scale(.96)}'+
+ '#nbJd .jd-t{flex:1 1 auto;min-width:0;font:900 13.5px Tahoma,Arial,sans-serif;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;opacity:.95}'+
+ '#nbJd .jd-ic{width:30px;height:30px;border-radius:15px;border:1px solid rgba(255,255,255,.3);background:rgba(255,255,255,.12);color:#fff;font-size:15px;cursor:pointer}'+
+ '#nbJd .jd-body{position:relative;flex:1 1 auto;min-height:0}#nbJd iframe{position:absolute;inset:0;width:100%;height:100%;border:0;background:#fff}'+
+ '#nbJd .jd-msg{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;text-align:center;padding:20px;font:800 15px Tahoma,Arial,sans-serif;color:#1f2933;background:#f4f6fb}'+
+ '#nbJd .jd-msg button{border:0;border-radius:12px;padding:10px 18px;background:#1565c0;color:#fff;font:800 14px Tahoma,Arial,sans-serif;cursor:pointer}'+
+ '#nbJd .jd-spin{width:34px;height:34px;border-radius:50%;border:4px solid #c5d3ea;border-top-color:#1565c0;animation:jdsp 1s linear infinite}@keyframes jdsp{to{transform:rotate(360deg)}}';
+var R=null;
+function toast(m){ try{ if(typeof window.nbAppToast==='function') return window.nbAppToast(m); }catch(e){} try{ if(typeof toastM==='function') return toastM(m); }catch(e){} }
+
+/* ---------- الحفظ: أي ملف (PDF/Excel/JSON/CSV) يُحفظ بطريقة تطبيق الإدارة ---------- */
+function b64(blob){ return new Promise(function(res,rej){ var r=new FileReader(); r.onload=function(){ var s=String(r.result||''), i=s.indexOf(','); res(i>=0?s.slice(i+1):s); }; r.onerror=function(){ rej(r.error); }; r.readAsDataURL(blob); }); }
+function saveBlob(blob,name){
+  name=String(name||'ملف').replace(/[\\\/:*?"<>|\n\r]+/g,'-');
+  var n=window.DaragatNative;
+  if(n&&typeof n.saveFile==='function'){
+    return b64(blob).then(function(d){ return n.saveFile(d,name); }).then(function(r){ if(r!=='cancel') toast('✅ حُفظ الملف «'+name+'»'); return r; },function(){ toast('تعذر حفظ الملف'); });
+  }
+  try{ var a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=name; a.style.display='none'; document.body.appendChild(a); a.click(); setTimeout(function(){ try{ a.remove(); }catch(e){} },4000); }catch(e){}
+  return Promise.resolve('ok');
+}
+function saveHref(W,href,name){
+  return W.fetch(href).then(function(r){ return r.blob(); }).then(function(b){ return saveBlob(b,name); },function(){ toast('تعذر حفظ الملف'); });
+}
+
+/* ---------- الطباعة: نسخة من الورقة تُطبع بمسار الطباعة في تطبيق الإدارة ---------- */
+function snapshot(doc){
+  [].forEach.call(doc.querySelectorAll('input'),function(i){ try{ if(i.type==='checkbox'||i.type==='radio'){ if(i.checked) i.setAttribute('checked',''); else i.removeAttribute('checked'); } else i.setAttribute('value',i.value); }catch(e){} });
+  [].forEach.call(doc.querySelectorAll('textarea'),function(t){ try{ t.textContent=t.value; }catch(e){} });
+  [].forEach.call(doc.querySelectorAll('select'),function(s){ [].forEach.call(s.options,function(o){ if(o.selected) o.setAttribute('selected',''); else o.removeAttribute('selected'); }); });
+  var cv=[].map.call(doc.querySelectorAll('canvas'),function(c){ try{ var r=c.getBoundingClientRect(); return {u:c.toDataURL('image/png'),w:c.style.width||(r.width?r.width+'px':''),h:c.style.height||(r.height?r.height+'px':''),cls:c.className,st:c.getAttribute('style')||''}; }catch(e){ return null; } });
+  var root=doc.documentElement.cloneNode(true);
+  [].forEach.call(root.querySelectorAll('script'),function(x){ x.remove(); });
+  [].forEach.call(root.querySelectorAll('canvas'),function(c,i){ var d=cv[i]; if(!d) return; var im=doc.createElement('img'); im.src=d.u; if(d.cls) im.className=d.cls; im.setAttribute('style',d.st+';width:'+d.w+';height:'+d.h); c.parentNode.replaceChild(im,c); });
+  var head=root.querySelector('head'); if(head&&!head.querySelector('base')){ var bs=doc.createElement('base'); bs.href=doc.baseURI||jdUrl(); head.insertBefore(bs,head.firstChild); }
+  return '<!DOCTYPE html>'+root.outerHTML;
+}
+var busyPrint=0;
+/* مقاس الورقة من @page في الورقة نفسها (الجدول يحدده: A4/A3، عمودي/أفقي) */
+function pageInfo(html,title){
+  var W=210,H=297,m,last=null,re=/@page\s*\{([^}]*)\}/gi;
+  while((m=re.exec(html))) if(/size\s*:/.test(m[1])) last=m[1];
+  if(last){ var sz=(/size\s*:\s*([^;]+)/i.exec(last)||[])[1]||'', land=/landscape/i.test(sz);
+    if(/A3/i.test(sz)){ W=297; H=420; } else if(/A5/i.test(sz)){ W=148; H=210; }
+    var mm=/([\d.]+)mm\s+([\d.]+)mm/.exec(sz); if(mm){ W=+mm[1]; H=+mm[2]; }
+    if(land&&W<H){ var t=W; W=H; H=t; } }
+  return {title:title||'جدول الدروس الذكي',widthMm:W,heightMm:H,marginsMm:[0,0,0,0],landscape:W>H};
+}
+/* الطباعة مباشرة (بلا معالجات أوراق الإدارة): التطبيق يطبع الصفحة كما صممها الجدول بقواعد الطباعة الخاصة به */
+function printDoc(doc){
+  var now=Date.now(); if(now-busyPrint<1200) return; busyPrint=now;
+  var html; try{ html=snapshot(doc); }catch(e){ toast('تعذرت الطباعة'); return; }
+  var title=''; try{ title=doc.title||''; }catch(e){}
+  var n=window.DaragatNative;
+  toast('🖨️ جاري فتح نافذة الطباعة…');
+  function viaFrame(){
+    var f=document.createElement('iframe'); f.setAttribute('aria-hidden','true'); f.className='nb-jd-print';
+    f.style.cssText='position:fixed;left:-10000px;top:0;width:210mm;height:297mm;border:0;background:#fff';
+    document.body.appendChild(f);
+    var d=f.contentDocument||f.contentWindow.document; d.open(); d.write(html); d.close();
+    var waited=0;(function wt(){ var imgs=[].slice.call(d.images||[]); if(imgs.every(function(i){ return i.complete; })||waited>4000) setTimeout(function(){ try{ f.contentWindow.focus(); f.contentWindow.print(); }catch(e){ toast('تعذرت الطباعة'); } },250); else { waited+=200; setTimeout(wt,200); } })();
+    setTimeout(function(){ try{ f.remove(); }catch(e){} },180000);
+  }
+  if(n&&typeof n.printHtml==='function'){
+    /* في تطبيق الأندرويد يُحوَّل printHtml في الإدارة إلى PDF مبني من بطاقات الإدارة؛ أوراق الجدول تُرسل للتطبيق كما هي */
+    var raw=(typeof window.__dnCall==='function')?function(h,o){ return window.__dnCall('printHtml',[h,o]); }:function(h,o){ return n.printHtml(h,o); };
+    Promise.resolve().then(function(){ return raw(html,JSON.stringify(pageInfo(html,title))); }).then(function(r){
+      var s=String(r==null?'ok':r).toLowerCase(); if(r===false||/^(false|error|fail)/.test(s)){ window.__nbJdErr='native:'+s; viaFrame(); }
+    },function(e){ window.__nbJdErr=String(e&&e.message||e); viaFrame(); });
+    return;
+  }
+  viaFrame();
+}
+
+/* ---------- تجهيز نافذة الجدول (نفس الموقع: يمكن الوصول إليها) ---------- */
+function patchWin(X){
+  try{ if(!X||X.__nbJdP) return; X.__nbJdP=1; X.print=function(){ try{ printDoc(X.document); }catch(e){} }; }catch(e){}
+}
+function adapt(W){
+  try{ if(!W||!W.document||W.__nbJdA||/^about:/.test(String(W.location.href))) return; }catch(e){ return; }   /* موقع من أصل آخر: يبقى كما هو */
+  W.__nbJdA=1; W.__nbInDaragat=true;
+  patchWin(W);
+  /* إطارات داخلية يطبع منها الجدول */
+  try{
+    var IF=W.HTMLIFrameElement&&W.HTMLIFrameElement.prototype, dsc=IF&&Object.getOwnPropertyDescriptor(IF,'contentWindow');
+    if(dsc&&dsc.get&&dsc.configurable){ Object.defineProperty(IF,'contentWindow',{configurable:true,enumerable:dsc.enumerable,get:function(){ var x=dsc.get.call(this); try{ if(x) patchWin(x); }catch(e){} return x; }}); }
+  }catch(e){}
+  /* window.open('') لنافذة طباعة → إطار مخفي في تطبيق الإدارة؛ وروابط blob (فتح PDF) → حفظ */
+  var oOpen=W.open;
+  W.open=function(u,n,f){
+    var s=String(u==null?'':u);
+    if(!s||s==='about:blank'){
+      var fr=document.createElement('iframe'); fr.setAttribute('aria-hidden','true'); fr.style.cssText='position:fixed;left:-10000px;top:0;width:210mm;height:297mm;border:0;background:#fff';
+      document.body.appendChild(fr); var fw=fr.contentWindow;
+      try{ fw.print=function(){ printDoc(fw.document); }; fw.close=function(){ setTimeout(function(){ try{ fr.remove(); }catch(e){} },120000); }; fw.__nbJdP=1; }catch(e){}
+      setTimeout(function(){ try{ fr.remove(); }catch(e){} },600000);
+      return fw;
+    }
+    if(/^(blob:|data:)/.test(s)){ saveHref(W,s,'جدول.pdf'); return null; }
+    if(/^https?:/i.test(s)&&s.indexOf(location.origin+'/Algadwak')!==0){ try{ return window.open(s,'_blank'); }catch(e){ return null; } }
+    return oOpen.apply(W,arguments);
+  };
+  /* التنزيلات: كل رابط تنزيل blob/data يُحفظ عبر تطبيق الإدارة */
+  function grab(a,e){
+    try{
+      if(!a||a.tagName!=='A') return false;
+      var href=a.getAttribute('href')||''; if(!/^(blob:|data:)/.test(href)) return false;
+      if(e){ if(e.__nbJd) return false; e.__nbJd=1; try{ e.preventDefault(); e.stopPropagation(); e.stopImmediatePropagation(); }catch(x){} }
+      var name=a.getAttribute('download')||'ملف';
+      try{ a.removeAttribute('download'); a.removeAttribute('href'); }catch(x){}
+      saveHref(W,href,name); return true;
+    }catch(x){ return false; }
+  }
+  try{
+    var AP=W.HTMLAnchorElement.prototype, oc=AP.click, od=AP.dispatchEvent;
+    AP.click=function(){ if(grab(this,null)) return; return oc.apply(this,arguments); };
+    AP.dispatchEvent=function(ev){ try{ if(ev&&ev.type==='click'&&grab(this,null)) return false; }catch(x){} return od.apply(this,arguments); };
+  }catch(e){}
+  try{ W.document.addEventListener('click',function(e){ var t=e.target, a=t&&t.closest?t.closest('a[href]'):null; if(!a) return;
+    if(grab(a,e)) return;
+    var h=a.getAttribute('href')||''; if(/^(https?:|mailto:|tel:|whatsapp:)/i.test(h)&&!/Algadwak/.test(h)){ e.preventDefault(); try{ window.open(h,'_blank'); }catch(x){} } },true); }catch(e){}
+  try{ if(W.navigator&&W.navigator.msSaveOrOpenBlob===undefined) W.navigator.msSaveOrOpenBlob=function(blob,name){ saveBlob(blob,name); return true; }; }catch(e){}
+}
+
+/* ---------- النافذة ---------- */
+function build(){
+  if(R) return R;
+  if(!document.getElementById('nbJdCss')){ var st=document.createElement('style'); st.id='nbJdCss'; st.textContent=CSS; document.head.appendChild(st); }
+  var w=document.createElement('div'); w.id='nbJd'; w.hidden=true;
+  w.innerHTML='<div class="jd-bar"><button type="button" class="jd-back" data-jd-back title="رجوع إلى تطبيق الإدارة">→ رجوع للإدارة</button><span class="jd-t">📅 جدول الدروس الذكي</span><button type="button" class="jd-ic" data-jd-reload title="إعادة تحميل">⟳</button></div>'+
+    '<div class="jd-body"><div class="jd-msg" data-jd-load><div class="jd-spin"></div><div>جاري فتح جدول الدروس الذكي…</div></div></div>';
+  document.body.appendChild(w);
+  var body=w.querySelector('.jd-body'), load=w.querySelector('[data-jd-load]');
+  var f=document.createElement('iframe'); f.title='جدول الدروس الذكي'; f.setAttribute('allow','clipboard-read; clipboard-write; fullscreen; camera');
+  body.insertBefore(f,load);
+  var t0=0, ok=false;
+  f.addEventListener('load',function(){ ok=true; load.hidden=true; try{ adapt(f.contentWindow); }catch(e){} });
+  function start(){
+    ok=false; load.hidden=false; load.innerHTML='<div class="jd-spin"></div><div>جاري فتح جدول الدروس الذكي…</div>';
+    t0=Date.now(); f.src=jdUrl();
+    setTimeout(function(){ if(!ok&&R&&!R.w.hidden){ load.innerHTML='<div>تعذر فتح جدول الدروس الذكي.<br><small style="font-weight:700;opacity:.75">أول فتح يحتاج اتصالاً بالإنترنت، وبعده يعمل بلا إنترنت.</small></div><button type="button" data-jd-retry>🔄 إعادة المحاولة</button>'; } },25000);
+  }
+  w.addEventListener('click',function(e){
+    if(e.target.closest('[data-jd-back]')) return close();
+    if(e.target.closest('[data-jd-reload]')||e.target.closest('[data-jd-retry]')){ try{ if(ok&&f.contentWindow){ f.contentWindow.location.reload(); load.hidden=false; ok=false; return; } }catch(x){} start(); }
+  });
+  R={w:w,f:f,start:start,started:false};
+  return R;
+}
+function close(){
+  if(!R||R.w.hidden) return false;
+  R.w.hidden=true;
+  try{ document.documentElement.style.overflow=R.prevOv||''; }catch(e){}
+  return true;
+}
+window.nbOpenJadwal=function(){
+  var r=build();
+  if(!r.started){ r.started=true; r.start(); }
+  r.prevOv=document.documentElement.style.overflow; document.documentElement.style.overflow='hidden';
+  r.w.hidden=false;
+  try{ adapt(r.f.contentWindow); }catch(e){}
+};
+window.nbCloseJadwal=close;
+/* زر الرجوع في الهاتف: يعود من الجدول إلى الإدارة */
+if(typeof window.appGoBack==='function'){
+  window.appGoBack=(function(o){ return function(){ if(close()) return true; return o.apply(this,arguments); }; })(window.appGoBack);
+}
+document.addEventListener('keydown',function(e){ if(e.key==='Escape'&&R&&!R.w.hidden&&!document.getElementById('nbPv')) close(); });
+
+/* ---------- الوصول: القائمة الجانبية وقائمة التنقل والقائمة الرئيسية ---------- */
+var LBL='جدول الدروس الذكي';
+function navBtn(cls,inner,onc){ var b=document.createElement('button'); b.type='button'; if(cls) b.className=cls; b.setAttribute('onclick',onc); b.setAttribute('data-nbjd','1'); b.innerHTML=inner; return b; }
+function addNav(){
+  try{
+    var sb=document.querySelector('#dashboardSidebar nav, #dashboardSidebar');
+    if(sb&&!sb.querySelector('[data-nbjd]')){ var ref=[].filter.call(sb.querySelectorAll('button[onclick]'),function(b){ return /openTimetableModule\(/.test(b.getAttribute('onclick')||''); })[0];
+      var b=navBtn('','<span class="dni">📅</span>'+LBL,'closeDashboardSidebar();nbOpenJadwal()'); if(ref) ref.parentNode.insertBefore(b,ref.nextSibling); }
+    var g=document.querySelector('.gnd-links');
+    if(g&&!g.querySelector('[data-nbjd]')){ var r2=g.querySelector('[data-nav="timetable"]'); var b2=navBtn('','<span>📅</span>'+LBL,'closeGlobalNav();nbOpenJadwal()'); b2.setAttribute('data-nav','jadwal'); if(r2) r2.parentNode.insertBefore(b2,r2.nextSibling); else g.appendChild(b2); }
+  }catch(e){}
+}
+if(typeof window.dashMenuItems==='function'){
+  window.dashMenuItems=(function(o){ return function(){ var a=o.apply(this,arguments); try{ if(Array.isArray(a)&&!a.some(function(x){ return x&&x[3]==='nbOpenJadwal()'; })){ var i=-1; a.forEach(function(x,k){ if(x&&x[3]==='openTimetableModule()') i=k; }); a.splice(i>=0?i+1:a.length,0,['📅',LBL,'إنشاء وتوزيع الحصص تلقائياً','nbOpenJadwal()','linear-gradient(135deg,#0b3d91,#29b6f6)']); } }catch(e){} return a; }; })(window.dashMenuItems);
+}
+['renderDashboard','goDashboard','renderDashboardLauncher'].forEach(function(n){
+  if(typeof window[n]==='function') window[n]=(function(o){ return function(){ var r=o.apply(this,arguments); try{ addNav(); setTimeout(addNav,80); }catch(e){} return r; }; })(window[n]);
+});
+addNav(); window.addEventListener('load',function(){ setTimeout(addNav,300); });
 })();
 </script>
 </body>
