@@ -18815,7 +18815,7 @@ if(document.readyState==='loading'){
 <!-- ===== AUTO UPDATE NOTIFICATION (small icon in topbar) ===== -->
 <script>
 (function(){
-  const APP_VERSION = "1.81.0";
+  const APP_VERSION = "1.81.2";
   try{ window.__nbAppVersion=APP_VERSION; }catch(e){}
   const CHECK_EVERY_MINUTES = 30;
   const LS_ACCEPTED = "daragat_accepted_version";
@@ -48480,7 +48480,7 @@ if(window.__nb175) return; window.__nb175=1;
 var SEEN='nbWhatsNewSeen';
 var CH=[
  ['1.81.0','19 تشرين الثاني 2026',[
-  ['🛍️','قسم «المتجر»','قسم جديد في آخر القائمة بأيقونة مميزة، يفتح متجر «تطبيقات نادرة» لتحميل تطبيقاتنا الأخرى للأندرويد والحاسوب.','القائمة ← المتجر'],
+  ['🛍️','قسم «المتجر»','قسم جديد في آخر القائمة بأيقونة مميزة، يفتح متجر «تطبيقات نادرة» لتحميل تطبيقاتنا الأخرى. داخل تطبيق الأندرويد يُفتح المتجر في متصفح الهاتف للتحميل.','القائمة ← المتجر'],
  ]],
  ['1.80.0','19 تشرين الثاني 2026',[
   ['➕','إضافة صفوف فارغة قبل الطباعة','في معاينة الطباعة، الشريط الجانبي فيه قسم «صفوف الجدول»: زر «➕ صف» يضيف صفاً فارغاً، و«+٥» يضيف خمسة، ويتم ترقيم التسلسل تلقائياً. إذا ضغطت على صف يُضاف الصف بعده، وزر «🗑️ صف» يحذف الصف المحدد، والتراجع ↶ يرجعه.','أي سجل ← طباعة ← المعاينة'],
@@ -49565,12 +49565,78 @@ if(window.__nb180) return; window.__nb180=1;
 var STORE_URL='https://hussainnahi1989-ctrl.github.io/Algadwak.2/store.html';
 var KEY='nbOpenStore()', LBL='المتجر', ICON='🛍️';
 window.nbStoreUrl=STORE_URL;
+function blank(url){
+  try{ var a=document.createElement('a'); a.href=url; a.target='_blank'; a.rel='noopener'; document.body.appendChild(a); a.click(); setTimeout(function(){ a.remove(); },1000); }
+  catch(e){ try{ window.open(url,'_blank'); }catch(x){ location.href=url; } }
+}
+/* داخل تطبيق الأندرويد (WebView): التحميل من Google Drive لا يعمل داخل التطبيق، فيجب فتح المتجر في متصفح الهاتف */
+function inAndroidApp(){ try{ return !!(window.flutter_inappwebview||window.AndroidDaragat||/;\s*wv\)/.test(navigator.userAgent)); }catch(e){ return false; } }
+/* فتح خارجي عبر جسر التطبيق إن وُجد (Android 3.1.0+ / Windows 3.0.5+) — يجب أن يعيد true */
+function nativeOpen(url){
+  return new Promise(function(res){
+    var done=false; function fin(v){ if(!done){ done=true; res(v===true); } }
+    setTimeout(function(){ fin(false); },1500);
+    try{ var N=window.DaragatNative; if(N&&typeof N.openExternal==='function'){ Promise.resolve(N.openExternal(url)).then(fin,function(){ fin(false); }); return; } }catch(e){}
+    try{ var F=window.flutter_inappwebview; if(F&&typeof F.callHandler==='function'){ Promise.resolve(F.callHandler('daragatOpenExternal',url)).then(fin,function(){ fin(false); }); return; } }catch(e){}
+    fin(false);
+  });
+}
+/* فتح المتصفح الخارجي بلا تحديث للتطبيق: تطبيق الأندرويد يفتح الروابط غير http (مثل whatsapp:) خارجياً إذا ضُغطت في الصفحة الرئيسية
+   (وليس في نافذة منبثقة). نجرّب: googlechrome:// ثم intent:// ، ونعرف النجاح من اختفاء الصفحة (انتقل المستخدم للمتصفح). */
+function mainClick(u){ var a=document.createElement('a'); a.href=u; a.style.display='none'; (document.body||document.documentElement).appendChild(a); try{ a.click(); }catch(e){} setTimeout(function(){ try{ a.remove(); }catch(e){} },0); }
+function externalBrowser(url,fail){
+  var L=['googlechrome://navigate?url='+url, intentUrl(url)], i=0, left=false;
+  function gone(){ if(document.hidden) left=true; }
+  function bl(){ left=true; }
+  document.addEventListener('visibilitychange',gone); window.addEventListener('pagehide',bl); window.addEventListener('blur',bl);
+  function end(ok){ document.removeEventListener('visibilitychange',gone); window.removeEventListener('pagehide',bl); window.removeEventListener('blur',bl); if(!ok&&fail) fail(); }
+  (function next(){
+    if(left) return end(true);
+    if(i>=L.length) return end(false);
+    mainClick(L[i++]); setTimeout(next,1300);
+  })();
+}
+window.nbOpenExternalBrowser=externalBrowser;
+function intentUrl(url){ var u=url.replace(/^https?:\/\//,''); return 'intent://'+u+'#Intent;scheme=https;action=android.intent.action.VIEW;category=android.intent.category.BROWSABLE;S.browser_fallback_url='+encodeURIComponent(url)+';end'; }
+function copy(t){
+  var ok=false; try{ var ta=document.createElement('textarea'); ta.value=t; ta.setAttribute('readonly',''); ta.style.cssText='position:fixed;top:-1000px;opacity:0'; document.body.appendChild(ta); ta.select(); ta.setSelectionRange(0,t.length); ok=document.execCommand('copy'); ta.remove(); }catch(e){}
+  try{ if(navigator.clipboard&&navigator.clipboard.writeText){ navigator.clipboard.writeText(t).catch(function(){}); ok=true; } }catch(e){}
+  return ok;
+}
+var DCSS='#nb180Dlg{position:fixed;inset:0;z-index:2147483200;background:rgba(10,8,30,.62);display:flex;align-items:center;justify-content:center;padding:14px;direction:rtl}'+
+'#nb180Dlg .bx{width:min(460px,100%);background:#fff;color:#1e1b4b;border-radius:22px;overflow:hidden;box-shadow:0 24px 70px rgba(0,0,0,.45)}'+
+'#nb180Dlg .hd{padding:18px 18px 14px;background:linear-gradient(135deg,#6d28d9,#c026d3 55%,#f59e0b);color:#fff;text-align:center}#nb180Dlg .hd i{font-style:normal;font-size:38px;display:block}'+
+'#nb180Dlg .hd h3{margin:4px 0 0!important;color:#fff!important;font-size:18px!important}'+
+'#nb180Dlg .bd{padding:14px 16px 6px;font-size:14px;font-weight:700;line-height:1.8;color:#334155}#nb180Dlg .bd b{color:#6d28d9}'+
+'#nb180Dlg .ln{direction:ltr;text-align:left;font:700 12px monospace;background:#f1f5f9;border:1px dashed #cbd5e1;border-radius:10px;padding:8px;margin-top:8px;word-break:break-all;color:#0f172a;user-select:all;-webkit-user-select:all}'+
+'#nb180Dlg .rw{display:flex;flex-direction:column;gap:8px;padding:12px 16px 16px}#nb180Dlg .rw button{border:0;border-radius:14px;padding:13px 14px;font:900 15px inherit;font-family:inherit;cursor:pointer}'+
+'#nb180Dlg .p{background:linear-gradient(135deg,#6d28d9,#a21caf);color:#fff}#nb180Dlg .s{background:#ede9fe;color:#4c1d95}#nb180Dlg .n{background:#f1f5f9;color:#334155}';
+function dialog(url){
+  var o=document.getElementById('nb180Dlg'); if(o) o.remove();
+  if(!document.getElementById('nb180DlgCss')){ var st=document.createElement('style'); st.id='nb180DlgCss'; st.textContent=DCSS; document.head.appendChild(st); }
+  var d=document.createElement('div'); d.id='nb180Dlg';
+  d.innerHTML='<div class="bx"><div class="hd"><i>🛍️</i><h3>متجر «تطبيقات نادرة»</h3></div>'+
+   '<div class="bd">لم يُفتح المتصفح تلقائياً على هذا الجهاز. تحميل التطبيقات يتم من <b>متصفح الهاتف</b>، لأن ملفات Google Drive لا تُحمَّل من داخل البرنامج. انسخ الرابط والصقه في المتصفح:<div class="ln">'+url+'</div></div>'+
+   '<div class="rw"><button class="p" data-k="br">🌐 فتح المتجر في المتصفح للتحميل</button><button class="s" data-k="cp">📋 نسخ رابط المتجر</button><button class="s" data-k="in">👀 تصفّح المتجر هنا (بدون تحميل)</button><button class="n" data-k="x">إغلاق</button></div></div>';
+  document.body.appendChild(d);
+  d.addEventListener('click',function(e){
+    if(e.target===d){ d.remove(); return; }
+    var b=e.target.closest&&e.target.closest('[data-k]'); if(!b) return; var k=b.getAttribute('data-k');
+    if(k==='x'){ d.remove(); return; }
+    if(k==='cp'){ copy(url); try{ toastM('📋 نُسخ الرابط — افتح Chrome والصقه في شريط العنوان'); }catch(_e){} return; }
+    if(k==='in'){ d.remove(); blank(url); return; }
+    if(k==='br'){ externalBrowser(url,function(){ try{ toastM('لم يُفتح المتصفح تلقائياً — استخدم «نسخ رابط المتجر» والصقه في المتصفح'); }catch(_e){} }); try{ toastM('🌐 يُفتح المتجر في المتصفح… إن لم يُفتح استخدم «نسخ رابط المتجر»'); }catch(_e){} return; }
+  });
+}
+window.nbStoreDialog=dialog;
 window.nbOpenStore=function(){
   try{ closeGlobalNav(); }catch(e){} try{ closeDashboardSidebar(); }catch(e){}
   var url=STORE_URL;
-  try{ var a=document.createElement('a'); a.href=url; a.target='_blank'; a.rel='noopener'; document.body.appendChild(a); a.click(); setTimeout(function(){ a.remove(); },1000); }
-  catch(e){ try{ window.open(url,'_blank'); }catch(x){ location.href=url; } }
-  try{ toastM('🛍️ يُفتح متجر «تطبيقات نادرة»…'); }catch(e){}
+  nativeOpen(url).then(function(ok){
+    if(ok){ try{ toastM('🛍️ فُتح المتجر في المتصفح'); }catch(e){} return; }
+    if(inAndroidApp()){ try{ toastM('🌐 يُفتح المتجر في متصفح الهاتف…'); }catch(e){} externalBrowser(url,function(){ dialog(url); }); return; }
+    blank(url); try{ toastM('🛍️ يُفتح متجر «تطبيقات نادرة»…'); }catch(e){}
+  });
 };
 /* بطاقات/كبسولات القائمة القديمة */
 if(typeof window.dashMenuItems==='function'){
