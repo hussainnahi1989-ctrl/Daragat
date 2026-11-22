@@ -18815,7 +18815,7 @@ if(document.readyState==='loading'){
 <!-- ===== AUTO UPDATE NOTIFICATION (small icon in topbar) ===== -->
 <script>
 (function(){
-  const APP_VERSION = "1.83.0";
+  const APP_VERSION = "1.84.0";
   try{ window.__nbAppVersion=APP_VERSION; }catch(e){}
   const CHECK_EVERY_MINUTES = 30;
   const LS_ACCEPTED = "daragat_accepted_version";
@@ -30517,7 +30517,7 @@ window.renderHomeView=function(){
       '<details data-man style="border:1px dashed var(--bd2,#ccc);border-radius:12px;padding:8px 10px"><summary style="cursor:pointer;font-weight:900">⌨️ لم يظهر جهاز المدرسة؟ اربط يدوياً</summary>' +
       '<p class="u-note">على جهاز المدرسة: «الأجهزة الملحقة» ← «👨‍🏫 تطبيق الأستاذ» ← «🔎 افحص الآن»، ثم اكتب «عنوان الربط اليدوي» الظاهر هناك.</p>' +
       '<div style="display:flex;gap:8px"><input class="u-in" data-mip="1" dir="ltr" placeholder="192.168.1.5#h1234567890" autocomplete="off" style="font:800 15px monospace;text-align:center"><button type="button" class="u-btn sm" data-mgo="1">متابعة</button></div>' +
-      '<p class="u-note">تأكد أيضاً: الجهازان على نفس الواي فاي (لا شبكة ضيف)، وعلى حاسوب ويندوز اضغط Ctrl+Shift+D ← «إصلاح جدار الحماية».</p></details>' +
+      '<p class="u-note">تأكد أيضاً: الجهازان على نفس الواي فاي (لا شبكة ضيف)، وعلى حاسوب ويندوز: «الأجهزة الملحقة» ← «تطبيق الأستاذ» ← «🛡️ إصلاح الربط الآن».</p></details>' +
       '<div data-cb style="display:none"><label class="u-lbl">رمز المعلم (6 أرقام من المدير)</label><div style="display:flex;gap:8px"><input class="u-in" data-code="1" inputmode="numeric" maxlength="6" autocomplete="off" style="font:900 22px monospace;letter-spacing:6px;text-align:center;direction:ltr"><button type="button" class="u-btn" data-go="1">ربط</button></div></div><div data-msg></div></div>';
     root.appendChild(m);
     var list = m.querySelector('[data-list]'), msg = m.querySelector('[data-msg]'), cb = m.querySelector('[data-cb]'), code = m.querySelector('[data-code]'), sel = null, busy = false;
@@ -45651,7 +45651,7 @@ function runDiag(out){
     var ip=r&&r.ip||'', port=r&&+r.port||0, ips=(r&&r.ips)||(ip?[ip]:[]);
     ok(port>0,port>0?'خادم الاستقبال يعمل على المنفذ '+ar(port):'خادم الاستقبال لا يعمل','أغلق البرنامج وافتحه من جديد، ثم افتح هذا القسم. إذا استمرت المشكلة قد يكون منفذ الشبكة محجوزاً لبرنامج آخر.');
     if(ips.length) info('عنوان هذا الجهاز على الشبكة: <b dir="ltr">'+esc(ips.join('  ،  '))+'</b>','جهاز الأستاذ يجب أن يكون على <b>نفس الشبكة</b>: أول ثلاثة أرقام من عنوانه مثل هذا الجهاز (مثلاً <span dir="ltr">'+esc(String(ips[0]).split('.').slice(0,3).join('.'))+'.x</span>). الشبكة «الضيف» أو مقوّي الإشارة بشبكة منفصلة لا تصلح.'); else ok(false,'الجهاز غير متصل بشبكة محلية','اربط الحاسوب بنفس الراوتر الذي يتصل به جهاز الأستاذ.');
-    if(isWin()) info('جدار حماية ويندوز','إذا لم يظهر الجهاز رغم ما سبق: اضغط <b>Ctrl + Shift + D</b> في البرنامج ← «إصلاح جدار الحماية» ووافق على صلاحيات المسؤول. وإن كان على الحاسوب برنامج حماية (Kaspersky، ESET، Avast…) فاسمح لبرنامج «درجات» على الشبكة الخاصة. واجعل نوع الشبكة في ويندوز «خاصة» (Private).');
+    if(isWin()) info('جدار حماية ويندوز','إذا ظهر اسم المدرسة في تطبيق الأستاذ ولم يتم الربط: اضغط الزر الأخضر <b>«🛡️ إصلاح الربط الآن»</b> في أعلى هذه الصفحة، افتح الملف واضغط «نعم»، ثم أعد تشغيل البرنامج. وإن كان على الحاسوب برنامج حماية (Kaspersky، ESET، Avast…) فاسمح لبرنامج «درجات» على الشبكة الخاصة. واجعل نوع الشبكة في ويندوز «خاصة» (Private).');
     info('الراوتر','بعض الراوترات تمنع الأجهزة من رؤية بعضها («عزل الأجهزة / AP Isolation / Client Isolation»). جرّب ربط الحاسوب وجهاز الأستاذ بنقطة اتصال هاتف واحدة: إن نجح الربط فالمشكلة في إعداد الراوتر.');
     var code=(h&&h.id&&ips.length)?(ips[0]+(port&&port!==47321?':'+port:'')+'#'+h.id):'';
     out.innerHTML='<ul style="list-style:none;padding:0;margin:0">'+rows.join('')+'</ul>'+(code?'<div class="nbdev-card" style="margin-top:10px;background:rgba(21,101,192,.07)"><b>⌨️ عنوان الربط اليدوي</b><p class="nbdev-note">إذا لم يظهر جهاز المدرسة في البحث، اكتب هذا العنوان في تطبيق الأستاذ من «لم يظهر جهاز المدرسة؟ اربط يدوياً»:</p><div dir="ltr" style="font:900 20px monospace;letter-spacing:1px;text-align:center;padding:8px;border:2px dashed #1565c0;border-radius:12px;user-select:all">'+esc(code)+'</div></div>':'');
@@ -45853,7 +45853,7 @@ var S={
  wifi:['افتح إعدادات الجهاز ← الواي فاي.','اتصل بشبكة الواي فاي نفسها التي عليها جهاز المدرسة (الحاسوب أو التابلت).','أطفئ «بيانات الهاتف» مؤقتاً حتى يستعمل الهاتف الواي فاي فقط.','ارجع إلى التطبيق واضغط «🔄 بحث».'],
  samenet:['الجهازان على شبكتين مختلفتين: أول ثلاثة أرقام من عنوانيهما غير متطابقة.','اربط الجهازين باسم الواي فاي نفسه تماماً (لا «شبكة الضيوف» ولا مقوي إشارة له اسم آخر).','إذا كان في المدرسة راوتران فاربط الجهازين بالراوتر نفسه.'],
  hostopen:['على جهاز المدرسة: افتح برنامج «ادارة المدرسه والامتحانات» واتركه مفتوحاً.','تأكد أن جهاز المدرسة هو الجهاز الرئيسي وليس «جهازاً ملحقاً».','تأكد أن المدير أضافك في «👨‍🏫 تطبيق الأستاذ» وأعطاك رمزك (6 أرقام).'],
- firewall:['إذا كان جهاز المدرسة حاسوب ويندوز: في البرنامج اضغط Ctrl + Shift + D ← «إصلاح جدار الحماية» ثم وافق على الصلاحيات.','إذا ظهرت نافذة «جدار حماية ويندوز» اختر «السماح بالوصول» وفعّل الشبكات الخاصة والعامة.','إذا كان على الحاسوب برنامج حماية (مثل Kaspersky أو ESET أو Avast) فاسمح فيه للبرنامج أيضاً.'],
+ firewall:['إذا كان جهاز المدرسة حاسوب ويندوز: افتح فيه «الأجهزة الملحقة» ← «👨‍🏫 تطبيق الأستاذ» ← الزر الأخضر «🛡️ إصلاح الربط الآن»، افتح الملف الذي يُحفظ واضغط «نعم»، ثم أغلق البرنامج وافتحه من جديد.','إذا ظهرت نافذة «جدار حماية ويندوز» اختر «السماح بالوصول» وفعّل الشبكات الخاصة والعامة.','إذا كان على الحاسوب برنامج حماية (مثل Kaspersky أو ESET أو Avast) فاسمح فيه للبرنامج أيضاً.'],
  isolation:['بعض الراوترات تمنع الأجهزة من رؤية بعضها («عزل الأجهزة» أو AP Isolation أو Client Isolation)، وهذا شائع في شبكات الضيوف.','للتأكد: شغّل «نقطة اتصال» من هاتف ثالث واربط به جهاز المدرسة وجهاز الأستاذ معاً، ثم جرّب الربط. إن نجح فالمشكلة في الراوتر.','الحل: من إعدادات الراوتر (العنوان مكتوب أسفل الراوتر، غالباً 192.168.1.1) أطفئ «AP Isolation / عزل الأجهزة»، أو اطلب ذلك من مزوّد الإنترنت، أو استعمل الشبكة الرئيسية بدل شبكة الضيوف.'],
  vpn:['أطفئ أي VPN أو برنامج تسريع إنترنت على الهاتف وعلى جهاز المدرسة.','أطفئ «الواي فاي الذكي / التبديل التلقائي إلى البيانات» من إعدادات الهاتف.'],
  manual:['إذا لم يظهر جهاز المدرسة في البحث فاربط يدوياً:','على جهاز المدرسة: «الأجهزة الملحقة» ← «👨‍🏫 تطبيق الأستاذ» ← «🔎 افحص الآن» وانظر إلى «عنوان الربط اليدوي».','في تطبيق الأستاذ: «ربط بالمدرسة» ← «⌨️ اربط يدوياً» واكتب العنوان كما هو، ثم رمزك.'],
@@ -48485,6 +48485,9 @@ function addGroup(){
 if(window.__nb175) return; window.__nb175=1;
 var SEEN='nbWhatsNewSeen';
 var CH=[
+ ['1.84.0','22 تشرين الثاني 2026',[
+  ['🛡️','إصلاح ربط تطبيق الأستاذ على ويندوز بضغطة واحدة','إذا ظهر اسم المدرسة في تطبيق الأستاذ وكُتب الرمز ولم يتم الربط: زر أخضر يحفظ أداة تصلح جدار حماية ويندوز ونوع الشبكة تلقائياً، مع اختبار سهل من هاتف الأستاذ.','الأجهزة الملحقة ← تطبيق الأستاذ'],
+ ]],
  ['1.83.0','22 تشرين الثاني 2026',[
   ['📊','سجل النسب للابتدائية بنفس رؤوس سجل المعلم','الأول إلى الرابع: نسبة امتحان نصف السنة وامتحان نهاية السنة. الخامس والسادس: نسبة كل عمود في سجل المعلم (الأشهر والمعدلات ونصف السنة والسعي والامتحان النهائي والدرجة النهائية والدور الثاني). باقي المراحل كما هي.','السجلات ← سجل النسب'],
  ]],
@@ -49894,6 +49897,143 @@ if(typeof window.openCentralRecordSection==='function'){
     try{ ensureCss(); rebuild(document.getElementById('view-central-record')); }catch(e){ try{console.warn('nb-v1.82',e);}catch(_){} }
     return r; }; })(window.openCentralRecordSection);
 }
+})();
+</script>
+<script>
+/* ===== nb-v1.84 =====
+   ويندوز: «🛡️ إصلاح ربط تطبيق الأستاذ» بضغطة واحدة.
+   السبب الشائع: يظهر اسم المدرسة في تطبيق الأستاذ ويُقبل الرمز، لكن الاتصال المباشر بين الجهازين يُمنع من جدار حماية ويندوز
+   (قاعدة «حظر» أنشأها ويندوز عندما ضُغط «إلغاء» في نافذة جدار الحماية، أو الشبكة مضبوطة «عامة»).
+   الحل من الموقع دون تحديث تطبيق الويندوز: ملف إصلاح جاهز (يطلب صلاحية المسؤول مرة واحدة) يحذف قواعد الحظر،
+   ويسمح للبرنامج على كل الشبكات، ويفتح منافذ الربط، ويجعل الشبكة «خاصة». ومعه اختبار سهل من هاتف الأستاذ. */
+(function(){
+'use strict';
+if(window.__nb184) return; window.__nb184=1;
+function esc(t){ return typeof escapeHtml==='function'?escapeHtml(String(t==null?'':t)):String(t==null?'':t); }
+function ar(v){ try{ return toArabicDigits(String(v)); }catch(e){ return String(v); } }
+function toast(m){ try{ toastM(m); }catch(e){} }
+function isWinApp(){ var u=navigator.userAgent||''; return /Windows/.test(u)&&(/Electron|daragat/i.test(u)||!!(window.DaragatNative&&typeof window.DaragatNative.lanInfo==='function')); }
+window.nbIsWinApp=isWinApp;
+function lan(){ var n=window.DaragatNative; if(!n||typeof n.lanInfo!=='function') return Promise.resolve(null);
+  return Promise.resolve().then(function(){ return n.lanInfo(); }).then(function(r){ if(typeof r==='string'){ try{ r=JSON.parse(r); }catch(e){ r=null; } } return r||null; },function(){ return null; }); }
+
+/* أوامر PowerShell (إنكليزية فقط حتى تعمل على أي لغة ويندوز) */
+function psScript(port){
+  port=+port||47321;
+  return [
+"$ErrorActionPreference='SilentlyContinue'",
+"$port="+port,
+"Write-Host '=== Daragat: fixing Teacher App link ===' -ForegroundColor Cyan",
+"$exes=@()",
+"Get-Process | Where-Object { $_.Path -like '*daragat*' } | ForEach-Object { $exes+=$_.Path }",
+"$roots=@(\"$env:LOCALAPPDATA\\Programs\",\"$env:ProgramFiles\",\"${env:ProgramFiles(x86)}\")",
+"foreach($r in $roots){ if($r -and (Test-Path $r)){ Get-ChildItem $r -Directory | Where-Object { $_.Name -like '*daragat*' } | ForEach-Object { Get-ChildItem $_.FullName -Filter *.exe | Where-Object { $_.Name -notlike 'Uninstall*' } | ForEach-Object { $exes+=$_.FullName } } } }",
+"$exes=$exes | Where-Object { $_ } | Sort-Object -Unique",
+"Write-Host ('[1] Program found: '+$exes.Count)",
+"$exes | ForEach-Object { Write-Host ('    '+$_) }",
+"$nf=[bool](Get-Command New-NetFirewallRule -ErrorAction SilentlyContinue)",
+"if($nf){",
+"  $b=Get-NetFirewallApplicationFilter | Where-Object { $_.Program -like '*daragat*' } | Get-NetFirewallRule | Where-Object { $_.Action -eq 'Block' }",
+"  Write-Host ('[2] Block rules removed: '+@($b).Count); $b | Remove-NetFirewallRule",
+"  Get-NetFirewallRule -DisplayName 'Daragat Link*' | Remove-NetFirewallRule",
+"  foreach($e in $exes){ New-NetFirewallRule -DisplayName 'Daragat Link (program in)' -Direction Inbound -Program $e -Action Allow -Profile Any | Out-Null; New-NetFirewallRule -DisplayName 'Daragat Link (program out)' -Direction Outbound -Program $e -Action Allow -Profile Any | Out-Null }",
+"  New-NetFirewallRule -DisplayName 'Daragat Link (TCP)' -Direction Inbound -Protocol TCP -LocalPort $port -Action Allow -Profile Any | Out-Null",
+"  New-NetFirewallRule -DisplayName 'Daragat Link (UDP)' -Direction Inbound -Protocol UDP -LocalPort 47322,5353 -Action Allow -Profile Any | Out-Null",
+"  Write-Host '[3] Allow rules added (all networks).'",
+"  Get-NetConnectionProfile | Where-Object { $_.NetworkCategory -eq 'Public' } | ForEach-Object { Set-NetConnectionProfile -InterfaceIndex $_.InterfaceIndex -NetworkCategory Private; Write-Host ('[4] Network set to Private: '+$_.Name) }",
+"  Enable-NetFirewallRule -Group '@FirewallAPI.dll,-32752' | Out-Null",
+"} else {",
+"  netsh advfirewall firewall delete rule name='Daragat Link' | Out-Null",
+"  foreach($e in $exes){ netsh advfirewall firewall add rule name='Daragat Link' dir=in action=allow (\"program=\"+$e) enable=yes profile=any | Out-Null; netsh advfirewall firewall add rule name='Daragat Link' dir=out action=allow (\"program=\"+$e) enable=yes profile=any | Out-Null }",
+"  netsh advfirewall firewall add rule name='Daragat Link' dir=in action=allow protocol=TCP (\"localport=\"+$port) profile=any | Out-Null",
+"  netsh advfirewall firewall add rule name='Daragat Link' dir=in action=allow protocol=UDP localport=47322,5353 profile=any | Out-Null",
+"  Write-Host '[3] Allow rules added (netsh).'",
+"}",
+"Write-Host '[5] This computer addresses:'",
+"ipconfig | Select-String 'IPv4' | ForEach-Object { Write-Host ('    '+$_.ToString().Trim()) }",
+"Write-Host ''",
+"Write-Host 'DONE. Close Daragat completely and open it again, then link the Teacher App.' -ForegroundColor Green"
+  ].join('\r\n');
+}
+function cmdFile(port){
+  return ['@echo off','title Daragat - Fix Teacher App link','net session >nul 2>&1','if %errorlevel% neq 0 (',
+    '  echo Requesting administrator permission... press YES',
+    '  powershell -NoProfile -Command "Start-Process -FilePath \'%~f0\' -Verb RunAs"','  exit /b',')',
+    'powershell -NoProfile -ExecutionPolicy Bypass -Command "$f=[IO.File]::ReadAllText(\'%~f0\'); Invoke-Expression ($f.Substring($f.IndexOf(\'#PS\'+\'START\')))"',
+    'echo.','pause','exit /b','#PSSTART',psScript(port),''].join('\r\n');
+}
+function getPort(){ return lan().then(function(r){ return (r&&+r.port)||47321; }); }
+function save(name,text){
+  try{
+    var blob=new Blob([text],{type:'application/octet-stream'}), url=URL.createObjectURL(blob);
+    var a=document.createElement('a'); a.href=url; a.download=name; a.style.display='none'; document.body.appendChild(a); a.click();
+    setTimeout(function(){ try{ URL.revokeObjectURL(url); a.remove(); }catch(e){} },60000); return true;
+  }catch(e){ return false; }
+}
+function copy(t){
+  var ok=false; try{ var ta=document.createElement('textarea'); ta.value=t; ta.style.cssText='position:fixed;top:-1000px;opacity:0'; document.body.appendChild(ta); ta.select(); ok=document.execCommand('copy'); ta.remove(); }catch(e){}
+  try{ if(navigator.clipboard&&navigator.clipboard.writeText){ navigator.clipboard.writeText(t).catch(function(){}); ok=true; } }catch(e){}
+  return ok;
+}
+window.nbWinFixDownload=function(){
+  getPort().then(function(p){ if(save('Daragat-Fix-Link.cmd',cmdFile(p))){ try{ localStorage.setItem('nbWinFixAt','1'); }catch(e){} toast('⬇️ حُفظ ملف الإصلاح — افتحه ثم اضغط «نعم»'); } else toast('تعذر حفظ الملف — استعمل «نسخ الأوامر»'); });
+};
+window.nbWinFixCopy=function(){
+  getPort().then(function(p){ copy(psScript(p)); toast('📋 نُسخت الأوامر — الصقها في PowerShell (مسؤول)'); });
+};
+
+/* البطاقة في «الأجهزة الملحقة» ← «تطبيق الأستاذ» */
+var CSS='.nb184{border-radius:18px;overflow:hidden;margin:0 0 14px;border:1.5px solid #f59e0b;background:#fff;box-shadow:0 10px 26px rgba(180,83,9,.15)}'+
+'.nb184 .hd{display:flex;gap:12px;align-items:center;padding:14px 16px;background:linear-gradient(135deg,#7c2d12,#c2410c 55%,#f59e0b);color:#fff}.nb184 .hd i{font-style:normal;font-size:34px;line-height:1}'+
+'.nb184 .hd h3{margin:0!important;color:#fff!important;font-size:17px!important}.nb184 .hd p{margin:3px 0 0;font-size:12.5px;font-weight:700;opacity:.95}'+
+'.nb184 .bd{padding:12px 16px 16px;color:#1f2937}.nb184 .why{background:#fff7ed;border:1px solid #fed7aa;border-radius:12px;padding:10px 12px;font-size:13px;line-height:1.8;font-weight:700}'+
+'.nb184 .go{display:block;width:100%;margin:12px 0 6px;border:0;border-radius:14px;padding:14px;font:900 17px inherit;font-family:inherit;color:#fff;cursor:pointer;background:linear-gradient(135deg,#15803d,#22c55e);box-shadow:0 8px 20px rgba(21,128,61,.3)}'+
+'.nb184 ol{margin:8px 0 0;padding-inline-start:22px;font-size:13.5px;line-height:1.9;font-weight:700}.nb184 ol b{color:#c2410c}'+
+'.nb184 .row{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}.nb184 .row button{flex:1 1 160px;border:0;border-radius:12px;padding:10px;font:800 13.5px inherit;font-family:inherit;cursor:pointer;background:#eef2f7;color:#1f2937}'+
+'.nb184 .tst{display:none;margin-top:10px;border:1px dashed #94a3b8;border-radius:12px;padding:10px 12px;font-size:13px;line-height:1.8;font-weight:700;background:#f8fafc}'+
+'.nb184 .tst .u{direction:ltr;text-align:center;font:900 19px monospace;background:#fff;border:1px solid #cbd5e1;border-radius:10px;padding:8px;margin:6px 0;user-select:all;-webkit-user-select:all;word-break:break-all}'+
+'.nb184 .small{font-size:12px;color:#64748b;margin-top:8px;line-height:1.7}'+
+'html[data-ui-skin^="night"] body #view-devices#view-devices#view-devices#view-devices .nb184 .hd{background:linear-gradient(135deg,#7c2d12,#c2410c 55%,#f59e0b)!important;color:#fff!important}'+'html[data-ui-skin^="night"] body #view-devices#view-devices#view-devices#view-devices .nb184 .hd h3,html[data-ui-skin^="night"] body #view-devices#view-devices#view-devices#view-devices .nb184 .hd p{color:#fff!important;-webkit-text-fill-color:#fff!important}'+'html[data-ui-skin^="night"] body #view-devices#view-devices#view-devices#view-devices .nb184 .go{background:linear-gradient(135deg,#15803d,#22c55e)!important;color:#fff!important;-webkit-text-fill-color:#fff!important}'+'html[data-ui-skin^="night"] .nb184{background:#1c1917;border-color:#b45309}html[data-ui-skin^="night"] .nb184 .bd{color:#e7e5e4}html[data-ui-skin^="night"] .nb184 .why{background:#292524;border-color:#78350f;color:#fde68a}'+
+'html[data-ui-skin^="night"] .nb184 .row button{background:#292524;color:#e7e5e4}html[data-ui-skin^="night"] .nb184 .tst{background:#1f2937;border-color:#475569}html[data-ui-skin^="night"] .nb184 .tst .u{background:#0f172a;border-color:#334155;color:#e5e7eb}html[data-ui-skin^="night"] .nb184 ol b{color:#fdba74}';
+function ensureCss(){ if(document.getElementById('nb184Css')) return; var s=document.createElement('style'); s.id='nb184Css'; s.textContent=CSS; document.head.appendChild(s); }
+function cardHtml(){
+  return '<div class="nb184 no-print"><div class="hd"><i>🛡️</i><div><h3>إصلاح ربط تطبيق الأستاذ على ويندوز</h3><p>يظهر اسم المدرسة ويُكتب الرمز ولكن لا يتم الربط؟ الحل بضغطة واحدة</p></div></div><div class="bd">'+
+    '<div class="why">السبب في أغلب الحالات: <b>جدار حماية ويندوز</b> يمنع الاتصال بين الحاسوب وهاتف الأستاذ — خصوصاً إذا ضُغط «إلغاء» في نافذة جدار الحماية أول مرة، أو كانت الشبكة في ويندوز «عامة». الأداة تصلح ذلك كله تلقائياً.</div>'+
+    '<button type="button" class="go" data-nb184="fix">🛡️ إصلاح الربط الآن</button>'+
+    '<ol><li>اضغط الزر الأخضر فيُحفظ ملف اسمه <b>Daragat-Fix-Link</b>.</li><li>افتح الملف (من مجلد التنزيلات). إذا ظهرت «Windows protected your PC» اضغط <b>More info ← Run anyway</b>.</li><li>اضغط <b>نعم (Yes)</b> عند طلب صلاحية المسؤول، وانتظر كلمة <b>DONE</b>.</li><li><b>أغلق البرنامج تماماً وافتحه من جديد</b>، ثم اربط تطبيق الأستاذ.</li></ol>'+
+    '<div class="row"><button type="button" data-nb184="test">📱 اختبر الوصول من هاتف الأستاذ</button><button type="button" data-nb184="copy">📋 نسخ الأوامر (طريقة بديلة)</button></div>'+
+    '<div class="tst" data-nb184-t></div>'+
+    '<div class="small">إذا بقيت المشكلة: برنامج حماية مثل Kaspersky أو ESET أو Avast يحتاج السماح لبرنامج «درجات» فيه أيضاً، أو أن الراوتر يمنع الأجهزة من رؤية بعضها (جرّب ربط الحاسوب وهاتف الأستاذ بنقطة اتصال هاتف واحدة).</div>'+
+    '</div></div>';
+}
+function showTest(box){
+  box.style.display='block'; box.innerHTML='⏳ …';
+  lan().then(function(r){
+    var ips=r?((r.ips&&r.ips.length?r.ips:(r.ip?[r.ip]:[]))||[]):[], port=(r&&+r.port)||47321;
+    if(!ips.length){ box.innerHTML='⚠️ هذا الحاسوب غير متصل بشبكة واي فاي أو كابل محلي الآن، أو أن البرنامج لم يبدأ الاستقبال بعد. أضف معلماً من «تطبيق الأستاذ» ثم أعد المحاولة.'; return; }
+    box.innerHTML='افتح <b>متصفح Chrome</b> على هاتف الأستاذ (وهو على نفس الواي فاي) واكتب هذا العنوان:'+
+      ips.map(function(ip){ return '<div class="u">http://'+esc(ip)+':'+port+'/hello</div>'; }).join('')+
+      '✅ إذا ظهرت صفحة فيها اسم المدرسة: الشبكة سليمة — اضغط «إصلاح الربط الآن» ثم أعد تشغيل البرنامج واربط.<br>'+
+      '❌ إذا لم تُفتح الصفحة: اضغط «إصلاح الربط الآن» وأعد الاختبار. إن بقيت لا تُفتح فالسبب برنامج حماية أو إعداد الراوتر.'+
+      (ips.length>1?'<br>ℹ️ للحاسوب أكثر من عنوان: جرّب العنوان الذي تتشابه أول ثلاثة أرقام منه مع عنوان هاتف الأستاذ.':'');
+  });
+}
+document.addEventListener('click',function(e){
+  var b=e.target.closest&&e.target.closest('[data-nb184]'); if(!b) return;
+  var k=b.getAttribute('data-nb184');
+  if(k==='fix') window.nbWinFixDownload();
+  else if(k==='copy'){ window.nbWinFixCopy(); var box=b.closest('.nb184').querySelector('[data-nb184-t]'); box.style.display='block'; box.innerHTML='الطريقة البديلة: اضغط زر «ابدأ» في ويندوز واكتب <b>PowerShell</b> ← اضغط عليه بالزر الأيمن ← <b>تشغيل كمسؤول (Run as administrator)</b> ← الصق الأوامر (Ctrl+V) ← Enter، وانتظر كلمة DONE، ثم أعد تشغيل البرنامج.'; }
+  else if(k==='test') showTest(b.closest('.nb184').querySelector('[data-nb184-t]'));
+});
+function add(){
+  if(!isWinApp()) return;
+  var v=document.getElementById('view-devices'); if(!v) return;
+  var on=v.querySelector('.nbd-tab.on[data-dtab="ust"]'), wrap=v.querySelector('.nbdev-wrap');
+  if(!on||!wrap||wrap.querySelector('.nb184')) return;
+  ensureCss(); wrap.insertAdjacentHTML('afterbegin',cardHtml());
+}
+window.nbWinFixCardHtml=function(){ ensureCss(); return cardHtml(); };
+var T=0; try{ new MutationObserver(function(){ if(T) return; T=setTimeout(function(){ T=0; add(); },200); }).observe(document.body,{childList:true,subtree:true}); }catch(e){}
 })();
 </script>
 </body>
