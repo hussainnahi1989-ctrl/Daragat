@@ -18828,7 +18828,7 @@ if(document.readyState==='loading'){
 <!-- ===== AUTO UPDATE NOTIFICATION (small icon in topbar) ===== -->
 <script>
 (function(){
-  const APP_VERSION = "1.90.0";
+  const APP_VERSION = "1.91.0";
   try{ window.__nbAppVersion=APP_VERSION; }catch(e){}
   const CHECK_EVERY_MINUTES = 30;
   const LS_ACCEPTED = "daragat_accepted_version";
@@ -21509,6 +21509,119 @@ function unpackText(txt, kind){
   return {type: o.t, sdp: o.s};
 }
 
+
+/* ===== nb-v1.91: ربط لا يتأثر بنوع الراوتر =====
+   إذا منع الراوتر/الشبكة الاتصال المباشر (عزل الأجهزة، منع البث المتعدد، جدار الحماية، اختلاف نطاق 2.4/5 GHz…)
+   ينتقل الربط تلقائياً إلى «قناة التطبيق»: نفس الطريق الذي يصل به اسم المدرسة ويُتحقق به من الرمز (اتصال TCP عبر تطبيق
+   الأندرويد/الويندوز)، فيعمل الجهاز الملحق وتطبيق الأستاذ بنفس الطريقة تماماً. الاتصال المباشر يبقى المفضّل متى توفر. */
+var RLY_PFX = 'DLS1.RLY.', RLY_MAX = 60000;
+function rlyEv(){ var L = {}; return {on: function(t, f){ (L[t] = L[t] || []).push(f); }, fire: function(t, ev){ (L[t] || []).slice().forEach(function(f){ try{ f(ev || {}); }catch(e){} }); }}; }
+function RelayDC(sendRaw){
+  var ev = rlyEv(), inbox = [], dc = {readyState: 'connecting', bufferedAmount: 0, bufferedAmountLowThreshold: 0, onmessage: null, onclose: null, onopen: null, onbufferedamountlow: null, label: 'dls', relay: true};
+  function flush(){ if(dc.readyState !== 'open' || !dc.onmessage) return; while(inbox.length){ var e = {data: inbox.shift()}; try{ dc.onmessage(e); }catch(x){} ev.fire('message', e); } }
+  dc.addEventListener = function(t, f){ ev.on(t, f); };
+  dc.removeEventListener = function(){};
+  dc.send = function(s){ if(dc.readyState !== 'open') throw new Error('not-open'); sendRaw(String(s)); };
+  dc.close = function(){ if(dc.readyState === 'closed') return; dc.readyState = 'closed'; ev.fire('close'); if(dc.onclose) try{ dc.onclose({}); }catch(e){} };
+  dc._open = function(){ if(dc.readyState !== 'connecting') return; dc.readyState = 'open'; ev.fire('open'); if(dc.onopen) try{ dc.onopen({}); }catch(e){} flush(); };
+  dc._rx = function(s){ if(dc.readyState === 'closed') return; inbox.push(s); flush(); };
+  dc._flush = flush;
+  return dc;
+}
+function RelayPC(onClose){
+  var ev = rlyEv(), pc = {connectionState: 'connected', iceConnectionState: 'relay', relay: true,
+    addEventListener: function(t, f){ ev.on(t, f); }, removeEventListener: function(){},
+    close: function(){ if(pc.connectionState === 'closed') return; pc.connectionState = 'closed'; ev.fire('connectionstatechange'); try{ if(onClose) onClose(); }catch(e){} },
+    getStats: function(){ return Promise.resolve(new Map()); }};
+  return pc;
+}
+/* ---- جهة الجهاز الرئيسي
+   نافذة منزلقة مرقّمة: كل رسالة لها رقم، ولا تُحذف حتى يؤكد الطرف الآخر استلامها؛ فلا تضيع ولا تتكرر حتى لو انقطع طلب أو أُعيد */
+var RLY = {};
+function rlySlice(list, mx){ mx = Math.max(2000, Math.min(RLY_MAX, +mx || RLY_MAX)); var out = [], n = 0; for(var i = 0; i < list.length; i++){ if(out.length && n + list[i].length > mx) break; out.push(list[i]); n += list[i].length; } return out; }
+function rlyIn(S, o){ var a = +o.a || 0; while(S.base < a && S.out.length){ S.out.shift(); S.base++; } (o.m || []).forEach(function(x, j){ var k = (+o.b || 0) + j; if(k > S.inLast){ S.inLast = k; S.dc._rx(x); } }); }
+function rlyOut(S, mx){ return {ok: 1, a: S.inLast, b: S.base + 1, m: rlySlice(S.out, mx)}; }
+function rlyHost(o, pass){
+  if(o.op === 'open'){
+    if(G.isGuest()) return {ok: 0, err: 'guest'};
+    var c = H.cfg, preOk = false, preTeacher = null, pw = String(o.pass || pass || '');
+    if(pw !== ''){
+      var chk = H.passCheck(pw);
+      if(chk && typeof chk === 'object'){ preTeacher = chk.teacherId; if(c.lanOn && c.lanPass && pw === String(c.lanPass)) preOk = true; }
+      else if(chk !== 'ok') return {ok: 0, err: String(chk)};
+      else preOk = true;
+    } else if(!Object.keys(c.trusted || {}).length && !c.on) return {ok: 0, err: 'not-receiving'};
+    var sid = rid(16), S = {sid: sid, out: [], base: 0, inLast: 0, last: now()};
+    S.dc = RelayDC(function(s){ S.out.push(s); });
+    S.pc = RelayPC(function(){ S.dead = true; setTimeout(function(){ delete RLY[sid]; }, 15000); });
+    RLY[sid] = S;
+    H.relayAdopt(S.pc, S.dc, preOk, preTeacher);
+    S.dc._open();
+    dlog('host: relay link opened' + (preTeacher ? ' (teacher)' : ''));
+    var r0 = rlyOut(S, o.mx); r0.sid = sid; return r0;
+  }
+  var S2 = RLY[o.sid]; if(!S2) return {ok: 0, err: 'gone'};
+  S2.last = now();
+  rlyIn(S2, o);
+  if(o.op === 'close'){ try{ S2.dc.close(); }catch(e){} try{ S2.pc.close(); }catch(e){} return {ok: 1, a: S2.inLast, b: S2.base + 1, m: []}; }
+  var r = rlyOut(S2, o.mx);
+  if(S2.dead && !r.m.length) return {ok: 0, err: 'gone'};
+  return r;
+}
+setInterval(function(){ Object.keys(RLY).forEach(function(k){ var S = RLY[k]; if(S && !S.dead && now() - S.last > 25000){ dlog('host: relay idle → closed'); try{ S.dc.close(); }catch(e){} try{ S.pc.close(); }catch(e){} } }); }, 5000);
+/* ---- جهة الجهاز الملحق / تطبيق الأستاذ */
+function relayPrefGet(h){ try{ var o = JSON.parse(localStorage.getItem('daragat_dls_relay_v1') || '{}'); return o[h] || null; }catch(e){ return null; } }
+function relayPrefSet(h, v){ try{ var o = JSON.parse(localStorage.getItem('daragat_dls_relay_v1') || '{}'); if(v) o[h] = {at: now(), n: (o[h] && o[h].n) || 0}; else delete o[h]; localStorage.setItem('daragat_dls_relay_v1', JSON.stringify(o)); }catch(e){} }
+/* بعد أن ينجح الربط عبر التطبيق: نذهب إليه مباشرة، ونجرّب الاتصال المباشر مرة كل 6 محاولات */
+function relayFirst(h){ var p = relayPrefGet(h); if(!p) return false; try{ var o = JSON.parse(localStorage.getItem('daragat_dls_relay_v1') || '{}'); o[h].n = ((o[h].n || 0) + 1) % 6; localStorage.setItem('daragat_dls_relay_v1', JSON.stringify(o)); return o[h].n !== 0; }catch(e){ return true; } }
+async function relayCall(hostId, hint, obj, pass){
+  var n = window.DaragatNative, r = null;
+  try{ r = await n.dlsSignal(hostId, RLY_PFX + b64e(JSON.stringify(obj)), 15000, hint || '', pass || ''); }catch(e){ r = null; }
+  if(typeof r !== 'string' || r.indexOf(RLY_PFX) < 0){ var x = new Error(typeof r === 'string' ? r : 'unreach'); x.code = (typeof r === 'string' && r.length < 24) ? r : 'unreach'; throw x; }
+  return JSON.parse(b64d(r.slice(r.indexOf(RLY_PFX) + RLY_PFX.length).replace(/[^A-Za-z0-9_\-]/g, '')));
+}
+async function relayOpen(hostId, hint, pass){
+  var n = window.DaragatNative; if(!n || typeof n.dlsSignal !== 'function') throw new Error('no-native');
+  var mx = RLY_MAX;
+  var res = null;
+  for(var t = 0; t < 3 && !res; t++){ try{ res = await relayCall(hostId, hint, {op: 'open', pass: pass || '', mx: mx}, pass); }catch(e){ if(t === 2 || (e && e.code && e.code !== 'unreach' && e.code !== 'error')) throw e; mx = Math.max(3000, Math.floor(mx / 3)); await sleep(300); } }
+  if(!res || !res.ok){ var e0 = new Error((res && res.err) || 'refused'); e0.code = (res && res.err) || 'refused'; throw e0; }
+  var sid = res.sid, out = [], base = 0, rxLast = 0, closed = false, fails = 0, wake = null, act = now();
+  var dc = RelayDC(function(s){ out.push(s); if(wake){ var w = wake; wake = null; w(); } });
+  var pc = RelayPC(function(){ closed = true; if(wake){ var w = wake; wake = null; w(); } });
+  function take(r){ var a = +r.a || 0; while(base < a && out.length){ out.shift(); base++; } (r.m || []).forEach(function(x, j){ var k = (+r.b || 0) + j; if(k > rxLast){ rxLast = k; dc._rx(x); } }); }
+  take(res);
+  dc._open();
+  (async function loop(){
+    var bye = false;
+    while(true){
+      if(closed && !bye){ bye = true; }
+      var batch = rlySlice(out, mx), r = null;
+      try{ r = await relayCall(hostId, hint, {op: bye ? 'close' : 'x', sid: sid, a: rxLast, b: base + 1, m: batch, mx: mx}); fails = 0; }
+      catch(e){ if(bye) break; mx = Math.max(3000, Math.floor(mx / 2)); /* بعض الأجهزة تقبل رسائل أصغر */ if(++fails >= 6){ dlog('relay: lost (' + (e && e.message) + ')'); break; } await sleep(500); continue; }
+      if(!r || !r.ok){ if(!bye) dlog('relay: closed by host (' + (r && r.err) + ')'); break; }
+      take(r);
+      if(bye) break;
+      if(closed) continue;
+      if(out.length || (r.m && r.m.length) || batch.length){ act = now(); await sleep(30); }
+      else { var idle = now() - act > 6000 ? 900 : 350; await new Promise(function(res2){ wake = res2; setTimeout(function(){ if(wake === res2){ wake = null; res2(); } }, idle); }); }
+    }
+    closed = true; try{ dc.close(); }catch(e){} try{ pc.close(); }catch(e){}
+  })();
+  return {pc: pc, dc: dc, via: 'relay'};
+}
+/* الاتصال المباشر أولاً، وإن تعذر خلال ثوانٍ: عبر التطبيق */
+async function openOrRelay(pc, dc, hostId, hint, pass, onRelay){
+  var pref = !!relayPrefGet(hostId);
+  try{ await waitOpen(dc, pref ? 5000 : 9000); if(pref) relayPrefSet(hostId, false); return {pc: pc, dc: dc, via: 'p2p'}; }catch(e){}
+  try{ pc.close(); }catch(x){}
+  dlog('p2p blocked by network → app channel');
+  if(onRelay) try{ onRelay(); }catch(x){}
+  try{ var R = await relayOpen(hostId, hint, pass); relayPrefSet(hostId, true); dlog('relay: connected'); return R; }
+  catch(e){ dlog('relay: failed (' + (e && e.message) + ')'); var x2 = null; if(e && e.code && e.code !== 'unreach') x2 = e.code; return {fail: true, code: x2}; }
+}
+window.__dlsRelayInfo = function(){ return {pref: (function(){ try{ return JSON.parse(localStorage.getItem('daragat_dls_relay_v1') || '{}'); }catch(e){ return {}; } })(), hostSessions: Object.keys(RLY).length}; };
+
 /* ---------------------------------------------------------------- UI hooks (filled by part F) */
 var UI = {approval: function(){}, changed: function(){}, lock: function(){}, unlock: function(){}, badge: function(){}};
 
@@ -21804,7 +21917,7 @@ var H = (function(){
   function teacherPeers(tid){ return list(function(p){ return p.state === 'teacher' && p.teacherId === tid && p.link; }).sort(function(a, b){ return (b.chatLive ? 1 : 0) - (a.chatLive ? 1 : 0); }); }
   function teacherSend(tid, msg){ var ps = teacherPeers(tid); if(!ps.length) return false; try{ ps[0].link.send(msg); return true; }catch(e){ return false; } }
   function teacherOnline(tid){ return teacherPeers(tid).some(function(p){ return p.chatLive; }); }
-  return {teacherSend: teacherSend, teacherOnline: teacherOnline, enable: enable, disable: disable, renewCode: renewCode, approve: approve, reject: reject, kick: kick, kickAll: kickAll, block: block, unblock: unblock, forget: forget, forgetAll: forgetAll, setPerm: setPerm, manualOffer: manualOffer, lanAnswer: lanAnswer, passCheck: passCheck, setLan: setLan, setLanPass: setLanPass, setLanName: setLanName, lanName: lanName, view: view, onLocalRemove: onLocalRemove, cfg: cfg, isOn: function(){ return !!cfg.on; }, peers: function(){ return peers; }};
+  return {relayAdopt: function(pc, dc, preOk, preTeacher){ var pr = adopt(pc, dc, 'lan'); if(preOk) pr.preOk = true; if(preTeacher) pr.preTeacher = preTeacher; return pr; }, teacherSend: teacherSend, teacherOnline: teacherOnline, enable: enable, disable: disable, renewCode: renewCode, approve: approve, reject: reject, kick: kick, kickAll: kickAll, block: block, unblock: unblock, forget: forget, forgetAll: forgetAll, setPerm: setPerm, manualOffer: manualOffer, lanAnswer: lanAnswer, passCheck: passCheck, setLan: setLan, setLanPass: setLanPass, setLanName: setLanName, lanName: lanName, view: view, onLocalRemove: onLocalRemove, cfg: cfg, isOn: function(){ return !!cfg.on; }, peers: function(){ return peers; }};
 })();
 
 /* ================================================================= GUEST (الجهاز الملحق) */
@@ -21938,6 +22051,10 @@ var G = (function(){
     connecting = true;
     try{
       setSt('connecting', 'جاري البحث عن الجهاز الرئيسي على الشبكة…');
+      if(relayFirst(cfg.hostId)){
+        try{ var RF = await relayOpen(cfg.hostId, [cfg.hostAddr || ''].concat(cfg.hostAddrs || []).filter(Boolean).join(','), ''); dlog('guest: relay-first ok'); connecting = false; return await attach(RF.pc, RF.dc, (cfg && cfg.code) || '', name || (cfg && cfg.name), full); }
+        catch(e){ dlog('guest: relay-first failed (' + (e && e.message) + ')'); connecting = true; }
+      }
       var pc = newPC(), dc = pc.createDataChannel('dls');
       await pc.setLocalDescription(await pc.createOffer()); await waitIce(pc, 2500);
       var r = null;
@@ -21950,7 +22067,10 @@ var G = (function(){
       }
       await pc.setRemoteDescription(unpackText(r, 'a'));
       setSt('connecting', 'جاري إنشاء الاتصال المباشر داخل الشبكة…');
-      try{ await waitOpen(dc, 20000); }catch(e){ try{ pc.close(); }catch(x){} throw err('تعذر الاتصال المباشر. تأكد أن الجهازين على نفس شبكة الواي فاي.'); }
+      var hl = [cfg.hostAddr || ''].concat(cfg.hostAddrs || []).filter(Boolean).join(',');
+      var LL = await openOrRelay(pc, dc, cfg.hostId, hl, '', function(){ setSt('connecting', 'الشبكة تمنع الاتصال المباشر — جاري الربط عبر التطبيق…'); });
+      if(LL.fail) throw err('تعذر الاتصال المباشر. تأكد أن الجهازين على نفس شبكة الواي فاي.');
+      pc = LL.pc; dc = LL.dc;
       connecting = false;
       return await attach(pc, dc, (cfg && cfg.code) || '', name || (cfg && cfg.name), full);
     } finally { connecting = false; }
@@ -21997,7 +22117,9 @@ var G = (function(){
       if(typeof r !== 'string' || r.indexOf('DLS1.') < 0){ try{ pc.close(); }catch(e){} setSt('idle', ''); var e4 = err(NET_REASONS[r] || 'تعذر الوصول إلى الجهاز الرئيسي. تأكد أن البرنامج مفتوح عليه وأن الجهازين على نفس الواي فاي.'); e4.code = (typeof r === 'string' && NET_REASONS[r]) ? r : 'unreach'; throw e4; }
       await pc.setRemoteDescription(unpackText(r, 'a'));
       setSt('connecting', 'جاري إنشاء الاتصال المباشر داخل الشبكة…');
-      try{ await waitOpen(dc, 20000); }catch(e){ try{ pc.close(); }catch(x){} setSt('idle', ''); var e6 = err('تعذر الاتصال المباشر. تأكد أن الجهازين على نفس شبكة الواي فاي.'); e6.code = 'p2p'; throw e6; }
+      var LN = await openOrRelay(pc, dc, host.dlsId, hint, String(pass || ''), function(){ setSt('connecting', 'الشبكة تمنع الاتصال المباشر — جاري الربط عبر التطبيق…'); });
+      if(LN.fail){ setSt('idle', ''); var e6 = err(NET_REASONS[LN.code] || 'تعذر الاتصال المباشر. تأكد أن الجهازين على نفس شبكة الواي فاي.'); e6.code = LN.code || 'p2p'; throw e6; }
+      pc = LN.pc; dc = LN.dc;
       connecting = false;
       var res = await attach(pc, dc, '', name, true, false);
       if(cfg && hint && !cfg.hostAddr){ cfg.hostAddr = hint; save(); }
@@ -22082,14 +22204,20 @@ var T = (function(){
     busy = true;
     var pc = null;
     try{
-      pc = newPC(); var dc = pc.createDataChannel('dls');
+      var dc = null, RF = null;
+      if(relayFirst(o.hostId)){ try{ RF = await relayOpen(o.hostId, o.hint || '', o.pass || ''); pc = RF.pc; dc = RF.dc; dlog('teacher: relay-first ok'); }catch(e){ RF = null; dlog('teacher: relay-first failed (' + (e && e.message) + ')'); if(e && REASONS[e.code] && e.code !== 'notfound'){ var e0 = terr(REASONS[e.code]); e0.code = e.code; throw e0; } } }
+      if(!RF){
+      pc = newPC(); dc = pc.createDataChannel('dls');
       await pc.setLocalDescription(await pc.createOffer()); await waitIce(pc, 2500);
       var r = null;
       try{ r = await n.dlsSignal(o.hostId, packText('o', pc.localDescription), 30000, o.hint || '', o.pass || ''); }catch(e){ r = null; }
       dlog('teacher: signal -> ' + String(r).slice(0, 16));
       if(typeof r !== 'string' || r.indexOf('DLS1.') < 0){ try{ pc.close(); }catch(e){} var e1 = terr(REASONS[r] || 'تعذر الوصول إلى جهاز المدرسة.'); e1.code = (typeof r === 'string' && REASONS[r]) ? r : 'unreach'; throw e1; }
       await pc.setRemoteDescription(unpackText(r, 'a'));
-      try{ await waitOpen(dc, 20000); }catch(e){ try{ pc.close(); }catch(x){} var e2 = terr('تعذر الاتصال المباشر. تأكد أن الجهازين على نفس الواي فاي.'); e2.code = 'p2p'; throw e2; }
+      var LT = await openOrRelay(pc, dc, o.hostId, o.hint || '', o.pass || '');
+      if(LT.fail){ var e2 = terr(REASONS[LT.code] || 'تعذر الاتصال المباشر. تأكد أن الجهازين على نفس الواي فاي.'); e2.code = LT.code || 'p2p'; throw e2; }
+      pc = LT.pc; dc = LT.dc;
+      }
       return await new Promise(function(resolve, reject){
         var out = {welcome: null, pkg: null, ack: null, lan: null}, pushId = null, pushed = false, done = false, link = null;
         var to = setTimeout(function(){ fin(terr('انتهت مهلة المزامنة. حاول مجدداً.')); }, 120000);
@@ -22125,7 +22253,9 @@ var T = (function(){
     try{ r = await n.dlsSignal(o.hostId, packText('o', pc.localDescription), 30000, o.hint || '', ''); }catch(e){ r = null; }
     if(typeof r !== 'string' || r.indexOf('DLS1.') < 0){ try{ pc.close(); }catch(e){} throw terr(String(r || 'no-answer')); }
     await pc.setRemoteDescription(unpackText(r, 'a'));
-    try{ await waitOpen(dc, 20000); }catch(e){ try{ pc.close(); }catch(x){} throw terr('no-open'); }
+    var LV = await openOrRelay(pc, dc, o.hostId, o.hint || '', '');
+    if(LV.fail) throw terr('no-open');
+    pc = LV.pc; dc = LV.dc;
     var link = null, closed = false;
     link = new Link(pc, dc, function(m){
       if(m.t === 'deny'){ try{ o.onDeny && o.onDeny(m.r); }catch(e){} try{ link.close('deny'); }catch(e){} return; }
@@ -22444,6 +22574,12 @@ window.__dlsAns = window.__dlsAns || {};
 window.__dlsNativeAnswer = function(reqId, offerText, pass){
   reqId = String(reqId || '');
   window.__dlsAns[reqId] = {state: 'pending'};
+  if(String(offerText || '').indexOf(RLY_PFX) === 0){   /* nb-v1.91: قناة التطبيق */
+    var rr; try{ rr = rlyHost(JSON.parse(b64d(String(offerText).slice(RLY_PFX.length))), pass); }catch(e){ rr = {ok: 0, err: String(e && e.message || e)}; }
+    window.__dlsAns[reqId] = {state: 'ok', answer: RLY_PFX + b64e(JSON.stringify(rr))};
+    setTimeout(function(){ try{ delete window.__dlsAns[reqId]; }catch(e){} }, 60000);
+    return true;
+  }
   try{
     if(G.isGuest()) throw new Error('guest');
     var c = H.cfg, preOk = false, preTeacher = null;
@@ -48501,6 +48637,10 @@ function addGroup(){
 if(window.__nb175) return; window.__nb175=1;
 var SEEN='nbWhatsNewSeen';
 var CH=[
+ ['1.91.0','23 تشرين الثاني 2026',[
+  ['🔗','ربط لا يتأثر بنوع الراوتر','إذا منع الراوتر الاتصال المباشر بين الأجهزة (عزل الأجهزة، اختلاف شبكة 2.4 و5 GHz، جدار الحماية…) ينتقل الربط تلقائياً خلال ثوانٍ إلى «قناة التطبيق» — نفس الطريق الذي يظهر به اسم المدرسة ويُتحقق به من الرمز — فيعمل الجهاز الملحق وتطبيق الأستاذ من الأندرويد والويندوز دون أي إعداد.','الربط'],
+  ['⚡','إعادة اتصال أسرع','بعد أول ربط ناجح عبر قناة التطبيق يتذكر الجهاز ذلك ويتصل فوراً في المرات التالية، ويعود للاتصال المباشر تلقائياً متى سمحت الشبكة.','الربط']
+ ]],
  ['1.90.0','23 تشرين الثاني 2026',[
   ['🧾','باركود بطاقة النتائج يعرض كل المعلومات','عند مسحه بأي قارئ باركود يظهر: اسم الطالب ومدرسته وصفه وشعبته وكل مواده بدرجاتها النهائية والمجموع ونسبة النجاح والنتيجة (والمدير والمرشد عند توفر المساحة) — ومسحه بكاميرا البرنامج يعرض النتيجة الحقيقية الحالية من السجلات.','الباركود'],
   ['📚','تطبيق الأستاذ: «سجل الدرجات»','بطاقة كبيرة في الرئيسية تفتح كل الشعب المكلَّف بها الأستاذ مرتبة حسب الصف والشعبة، وتحت كل شعبة موادها مع نسبة الإدخال وما لم يُرسل.','تطبيق الأستاذ'],
