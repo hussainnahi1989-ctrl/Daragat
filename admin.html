@@ -1421,6 +1421,8 @@ body.jd-mode #jdWrap{display:block}
 .jd-tag.leg{background:var(--goldS);color:#8a5a00}
 .jd-tag.onl{background:var(--priS);color:var(--pri)}
 .jd-key{font-family:monospace;direction:ltr;font-weight:900;letter-spacing:1px;font-size:12px;background:var(--card2);border:1px dashed var(--bd2);border-radius:8px;padding:2px 6px;display:inline-block;margin-top:4px;cursor:pointer}
+.jd-tag.qrl-on{background:#dcfce7;color:#166534}
+.jd-tag.qrl-off{background:var(--card2);color:var(--tx2);border:1px dashed var(--bd2)}
 .jd-head{display:flex;align-items:center;gap:10px;margin:2px 0 10px;flex-wrap:wrap}
 .jd-head h2{margin:0;font-size:17px;font-weight:900}
 .jd-head .note{font-size:12.5px;color:var(--tx2);font-weight:700}
@@ -1446,11 +1448,15 @@ body.jd-mode #jdWrap{display:block}
   function permKey(dev){ return pick(wide(SEC+'#'+nk(dev)+'#'+SEC,5),16); }
   function enc31(n){ var s=''; for(var i=0;i<4;i++){ s=ALPHA[n%31]+s; n=Math.floor(n/31); } return s; }
   function timedKey(dev,t,expMs){ var body=t+enc31(Math.ceil((expMs-EPOCH)/3600000)); return 'T'+body+pick(wide(SEC+'#TIMED#'+nk(dev)+'#'+body+'#'+SEC,5),12); }
+  /* مفتاح «ربط جهاز المعلم» (الجهاز الملحق) — مطابق لبرنامج الجدول */
+  var JLS='JADWALI~QRLINK~HN2026';
+  function qrlKey(dev){ return 'QRL'+pick(wide(JLS+'#QRLINK#'+nk(dev)+'#'+JLS,5),12); }
+  function fmtQrl(k){ k=nk(k); return k.length===15?k.slice(0,3)+'-'+k.slice(3,7)+'-'+k.slice(7,11)+'-'+k.slice(11):k; }
   function keyFor(dev,plan,exp){ return plan==='permanent'?permKey(dev):timedKey(dev,PL[plan].t,exp); }
   function fmtKey(k){ k=nk(k); if(k.length===16) return k.replace(/(.{4})/g,'$1-').slice(0,-1); if(k.length===18) return k.slice(0,6)+'-'+k.slice(6,10)+'-'+k.slice(10,14)+'-'+k.slice(14); return k; }
   function fmtDev(d){ d=nk(d); return d.length===12?d.replace(/(.{4})/g,'$1-').slice(0,-1):d; }
   function expFor(plan){ return plan==='permanent'?0:Date.now()+PL[plan].d*86400000; }
-  window.__jdKeys={permKey:permKey,timedKey:timedKey,keyFor:keyFor};
+  window.__jdKeys={permKey:permKey,timedKey:timedKey,keyFor:keyFor,qrlKey:qrlKey};
 
   /* ---------- أدوات ---------- */
   function E(s){ return esc(s); }
@@ -1481,6 +1487,17 @@ body.jd-mode #jdWrap{display:block}
   }
   window.jdApprove=function(btn,k){ setActive(k,pickV(btn,'jdpl-'+k),pickV(btn,'jdpa-'+k),false); };
   window.jdChange=function(btn,k){ setActive(k,pickV(btn,'jdpl-'+k),pickV(btn,'jdpa-'+k),true); };
+  window.jdQrl=function(k,on){
+    var r=acc[k]||{}, dev=r.deviceCode;
+    if(on){
+      if(!dev||nk(dev).length!==12){ alert('لا يوجد رمز جهاز صحيح لهذا الحساب'); return; }
+      if(!confirm('📲 تفعيل «ربط جهاز المعلم» (الجهاز الملحق) لـ '+(r.schoolName||r.email)+'؟\nيتفعّل عند العميل عند اتصاله بالإنترنت.')) return;
+      R(k).update({qrlActive:true,qrlRevoked:null,qrlKey:qrlKey(dev),qrlAt:TS()}).then(function(){ alert('✅ تم تفعيل الجهاز الملحق'); }).catch(function(e){ alert(e.message); });
+    }else{
+      if(!confirm('إلغاء تفعيل «ربط جهاز المعلم» لهذا الحساب؟')) return;
+      R(k).update({qrlActive:false,qrlRevoked:true,qrlKey:null,qrlRevokedAt:TS()}).catch(function(e){ alert(e.message); });
+    }
+  };
   window.jdReject=function(k){ if(!confirm('رفض طلب التفعيل؟')) return; R(k).update({status:'rejected'}); };
   window.jdStop=function(k){ if(!confirm('⏹ إيقاف الحساب؟\nيتوقف التوليد التلقائي عند العميل عند اتصاله بالإنترنت.')) return; R(k).update({status:'suspended',accountDisabled:true,disabledReason:'تم إيقاف الحساب من الإدارة',suspendedAt:TS()}).catch(function(e){ alert(e.message); }); };
   window.jdDel=function(k){ var r=acc[k]||{}; if(!confirm('🗑 حذف الحساب نهائيًا؟\n'+(r.email||k)+'\nيُرسل أولًا إيقاف للتطبيق ثم يُحذف السجل.')) return; var ref=R(k); ref.update({status:'suspended',accountDisabled:true,disabledReason:'تم حذف الحساب من الإدارة',deletedAt:TS()}).then(function(){ setTimeout(function(){ ref.remove().catch(function(){}); },700); }).catch(function(e){ alert(e.message); }); };
@@ -1494,7 +1511,8 @@ body.jd-mode #jdWrap{display:block}
     var exp=plan==='permanent'?0:(toTs(r.expiresAt)>Date.now()?toTs(r.expiresAt):expFor(plan));
     R(k).update({status:'approved',accountDisabled:false,disabledReason:null,plan:plan,expiresAt:exp,licKey:keyFor(nd,plan,exp),
       previousDeviceCode:r.deviceCode||null,deviceCode:nd,lastSeenDevice:r.pendingDeviceInfo||r.lastSeenDevice||null,
-      pendingDeviceCode:null,pendingDeviceInfo:null,statusBeforeTransfer:null,transferApprovedAt:TS(),approvedAt:r.approvedAt||TS()})
+      pendingDeviceCode:null,pendingDeviceInfo:null,statusBeforeTransfer:null,transferApprovedAt:TS(),approvedAt:r.approvedAt||TS(),
+      qrlKey:r.qrlActive?qrlKey(nd):null})
       .then(function(){ alert('✅ تم نقل الاشتراك'); }).catch(function(e){ alert(e.message); });
   };
   window.jdTransferNo=function(k){ var r=acc[k]||{}; if(!confirm('رفض طلب النقل؟')) return; R(k).update({status:r.statusBeforeTransfer||'pending',pendingDeviceCode:null,pendingDeviceInfo:null,statusBeforeTransfer:null}); };
@@ -1523,10 +1541,11 @@ body.jd-mode #jdWrap{display:block}
       if(r.plan!=='permanent'&&r.expiresAt){ var dd=Math.ceil((toTs(r.expiresAt)-Date.now())/86400000); ex='<div class="at-sub '+(dd<0?'at-bad':dd<=7?'at-warn':'')+'">ينتهي: '+E(fmtDate(toTs(r.expiresAt)))+' ('+(dd<0?'منتهي':'باقي '+dd+' يوم')+')</div>'; }
       plan='<span class="badge-plan">'+E(plab(r.plan))+'</span>'+ex+(r.licKey?'<div><span class="jd-key" title="مفتاح هذا الجهاز — اضغط للنسخ" onclick="jdCopy('+J(fmtKey(r.licKey))+',this)">🔑 '+E(fmtKey(r.licKey))+'</span></div>':'');
     }else plan='';
+    if(isA) plan+='<div style="margin-top:6px">'+(r.qrlActive?'<span class="jd-tag qrl-on">📲 الملحق مفعّل</span>'+(r.qrlKey?' <span class="jd-key" title="مفتاح الجهاز الملحق — اضغط للنسخ" onclick="jdCopy('+J(fmtQrl(r.qrlKey))+',this)">'+E(fmtQrl(r.qrlKey))+'</span>':''):'<span class="jd-tag qrl-off">📲 الملحق غير مفعّل</span>')+'</div>';
     plan+='<div class="at-plan"><select class="inline" id="jdpl-'+E(k)+'">'+planOpts(isA?cur:'permanent')+'</select><input type="text" id="jdpa-'+E(k)+'" value="'+E(r.paidAmount||'')+'" placeholder="المبلغ" class="inline at-ltr at-amt" onchange="jdPaid('+jk+',this.value)"></div>';
     var act='<div class="actions at-actions">'
       +(isT?'<button class="btn success small" onclick="jdTransferOk('+jk+')">✔ موافقة النقل</button><button class="btn danger small" onclick="jdTransferNo('+jk+')">✖ رفض النقل</button>'
-        :isA?'<button class="btn warn small" onclick="jdChange(this,'+jk+')">⏱ تغيير المدة</button>'
+        :isA?'<button class="btn warn small" onclick="jdChange(this,'+jk+')">⏱ تغيير المدة</button>'+(r.qrlActive?'<button class="btn ghost small" onclick="jdQrl('+jk+',false)">📲 إلغاء الملحق</button>':'<button class="btn violet small" onclick="jdQrl('+jk+',true)">📲 فعّل الجهاز الملحق</button>')
         :'<button class="btn success small" onclick="jdApprove(this,'+jk+')">✔ فعّل</button>'+(r.status==='pending'?'<button class="btn ghost small" onclick="jdReject('+jk+')">رفض</button>':''))
       +(!stopped(r)&&(isA||isT)?'<button class="btn warn small" onclick="jdStop('+jk+')">⏹ إيقاف</button>':'')
       +'<button class="btn danger small" onclick="jdDel('+jk+')">🗑 حذف</button></div>';
@@ -1558,20 +1577,22 @@ body.jd-mode #jdWrap{display:block}
     return '<div class="card"><h3 class="card-title">🔑 توليد مفتاح الجدول (أوفلاين)</h3>'
       +'<p class="muted">أدخل رمز الجهاز الظاهر في برنامج الجدول (12 حرفًا) واختر المدة. المفتاح يعمل بدون إنترنت على هذا الجهاز فقط.</p>'
       +'<label>رمز الجهاز<input type="text" id="jdKgDev" dir="ltr" placeholder="XXXX-XXXX-XXXX" maxlength="20" style="text-align:center;letter-spacing:3px;font-family:monospace;font-size:16px"></label>'
-      +'<label>المدة<select id="jdKgPlan">'+planOpts('permanent')+'</select></label>'
+      +'<label>نوع المفتاح<select id="jdKgType" onchange="document.getElementById(\'jdKgPlanBox\').style.display=this.value===\'qrl\'?\'none\':\'\'"><option value="main">تفعيل البرنامج</option><option value="qrl">📲 الجهاز الملحق (ربط جهاز المعلم — QRL)</option></select></label>'
+      +'<label id="jdKgPlanBox">المدة<select id="jdKgPlan">'+planOpts('permanent')+'</select></label>'
       +'<div style="margin-top:14px"><button class="btn primary" onclick="jdGen()">🔓 توليد المفتاح</button></div><div id="jdKgOut"></div></div>';
   }
   window.jdGen=function(){
-    var dev=nk($('jdKgDev').value), plan=$('jdKgPlan').value;
+    var dev=nk($('jdKgDev').value), plan=$('jdKgPlan').value, isQ=$('jdKgType').value==='qrl';
     if(dev.length!==12){ alert('رمز الجهاز يجب أن يكون 12 حرفًا (مثل ABCD-EFGH-JKLM)'); return; }
+    if(isQ){ var q=fmtQrl(qrlKey(dev)); $('jdKgOut').innerHTML='<p style="margin-top:14px;font-weight:800">مفتاح الجهاز الملحق (ربط جهاز المعلم):</p><div class="keybox" dir="ltr">'+E(q)+'</div><div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn primary" onclick="jdCopy('+J(q)+',this)">📋 نسخ</button><a class="btn whatsapp" target="_blank" rel="noopener" href="https://wa.me/?text='+encodeURIComponent('مفتاح تفعيل ميزة «ربط جهاز المعلم» — تطبيق جدولي:\n'+q+'\n\nرمز الجهاز: '+fmtDev(dev))+'">📱 مشاركة واتساب</a></div>'; return; }
     var exp=expFor(plan), k=fmtKey(keyFor(dev,plan,exp));
     $('jdKgOut').innerHTML='<p style="margin-top:14px;font-weight:800">المفتاح ('+E(plab(plan))+(exp?' — ينتهي '+E(fmtDate(exp)):'')+'):</p><div class="keybox" id="jdKeyOut" dir="ltr">'+E(k)+'</div>'
       +'<div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn primary" onclick="jdCopy('+J(k)+',this)">📋 نسخ</button>'
       +'<a class="btn whatsapp" target="_blank" rel="noopener" href="https://wa.me/?text='+encodeURIComponent('مفتاح تفعيل برنامج الجدول الأسبوعي الذكي ('+plab(plan)+'):\n'+k+'\n\nرمز الجهاز: '+fmtDev(dev))+'">📱 مشاركة واتساب</a></div>';
   };
   window.jdCSV=function(){
-    var rows=[['#','email','schoolName','principalName','phone','deviceCode','status','source','plan','expiresAt','registeredAt','approvedAt','paidAmount','licKey']];
-    list().forEach(function(r,i){ rows.push([i+1,r.email,r.schoolName||'',r.principalName||'',normIraqPhone(r.phone||''),fmtDev(r.deviceCode),stLabel(r),r.legacy?'مفعّل سابقًا':'أونلاين',plab(r.plan),r.expiresAt?fmtDate(toTs(r.expiresAt)):'',fmtDate(toTs(r.registeredAt)),fmtDate(toTs(r.approvedAt)),r.paidAmount||'',fmtKey(r.licKey||'')]); });
+    var rows=[['#','email','schoolName','principalName','phone','deviceCode','status','source','plan','expiresAt','registeredAt','approvedAt','paidAmount','licKey','companion']];
+    list().forEach(function(r,i){ rows.push([i+1,r.email,r.schoolName||'',r.principalName||'',normIraqPhone(r.phone||''),fmtDev(r.deviceCode),stLabel(r),r.legacy?'مفعّل سابقًا':'أونلاين',plab(r.plan),r.expiresAt?fmtDate(toTs(r.expiresAt)):'',fmtDate(toTs(r.registeredAt)),fmtDate(toTs(r.approvedAt)),r.paidAmount||'',fmtKey(r.licKey||''),r.qrlActive?'مفعّل':'']); });
     var csv=rows.map(function(r){ return r.map(function(c){ return '"'+String(c).replace(/"/g,'""')+'"'; }).join(','); }).join('\n');
     var a=document.createElement('a'); a.href=URL.createObjectURL(new Blob(['﻿'+csv],{type:'text/csv;charset=utf-8'})); a.download='jadwal-accounts-'+new Date().toISOString().slice(0,10)+'.csv'; a.click();
   };
