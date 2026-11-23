@@ -18815,7 +18815,7 @@ if(document.readyState==='loading'){
 <!-- ===== AUTO UPDATE NOTIFICATION (small icon in topbar) ===== -->
 <script>
 (function(){
-  const APP_VERSION = "1.84.0";
+  const APP_VERSION = "1.85.0";
   try{ window.__nbAppVersion=APP_VERSION; }catch(e){}
   const CHECK_EVERY_MINUTES = 30;
   const LS_ACCEPTED = "daragat_accepted_version";
@@ -48485,6 +48485,9 @@ function addGroup(){
 if(window.__nb175) return; window.__nb175=1;
 var SEEN='nbWhatsNewSeen';
 var CH=[
+ ['1.85.0','23 تشرين الثاني 2026',[
+  ['🔗','ربط أقوى للأجهزة الملحقة وتطبيق الأستاذ','عندما يظهر اسم المدرسة ويُقبل الرمز ثم «تعذر الاتصال المباشر»: يرسل البرنامج الآن عنوان الجهاز الحقيقي على الشبكة مع طلب الربط، فيتصل الجهازان مباشرة حتى لو منعت الشبكة أو جدار الحماية طريقة التعارف المعتادة.','الأجهزة الملحقة'],
+ ]],
  ['1.84.0','22 تشرين الثاني 2026',[
   ['🛡️','إصلاح ربط تطبيق الأستاذ على ويندوز بضغطة واحدة','إذا ظهر اسم المدرسة في تطبيق الأستاذ وكُتب الرمز ولم يتم الربط: زر أخضر يحفظ أداة تصلح جدار حماية ويندوز ونوع الشبكة تلقائياً، مع اختبار سهل من هاتف الأستاذ.','الأجهزة الملحقة ← تطبيق الأستاذ'],
  ]],
@@ -50034,6 +50037,48 @@ function add(){
 }
 window.nbWinFixCardHtml=function(){ ensureCss(); return cardHtml(); };
 var T=0; try{ new MutationObserver(function(){ if(T) return; T=setTimeout(function(){ T=0; add(); },200); }).observe(document.body,{childList:true,subtree:true}); }catch(e){}
+})();
+</script>
+<script>
+/* ===== nb-v1.85 =====
+   الربط المباشر (الجهاز الملحق + تطبيق الأستاذ): متصفحات أندرويد وويندوز الحديثة تُخفي عنوان الجهاز في عرض الاتصال
+   باسم مؤقت «xxxx.local» ولا يعرفه الجهاز الآخر إلا إذا سمحت الشبكة/جدار الحماية بالبث المتعدد (mDNS).
+   عندما يُمنع ذلك يظهر اسم المدرسة ويُقبل الرمز لكن «تعذر الاتصال المباشر».
+   هنا نضيف — بجانب الاسم المؤقت — عنوان الجهاز الحقيقي على الشبكة (من التطبيق نفسه: lanInfo)، فيجد الجهازان بعضهما مباشرة.
+   لا يتغير أي شيء آخر: إذا لم يوجد اسم مؤقت أو لم يُعرف العنوان يبقى الاتصال كما هو تماماً. */
+(function(){
+'use strict';
+var P=window.RTCPeerConnection; if(!P||!P.prototype||P.prototype.__nbMd) return;
+var d=Object.getOwnPropertyDescriptor(P.prototype,'localDescription'); if(!d||!d.get) return;
+P.prototype.__nbMd=1;
+var IPS=[];
+function priv(ip){ return /^(10\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.|169\.254\.)/.test(ip)||ip==='127.0.0.1'; }
+function refresh(){
+  try{ var n=window.DaragatNative; if(!n||typeof n.lanInfo!=='function') return;
+    Promise.resolve().then(function(){ return n.lanInfo(); }).then(function(r){ if(typeof r==='string'){ try{ r=JSON.parse(r); }catch(e){ r=null; } }
+      var a=[]; if(r){ if(r.ip) a.push(String(r.ip)); (r.ips||[]).forEach(function(x){ x=String(x); if(a.indexOf(x)<0) a.push(x); }); }
+      a=a.filter(function(x){ return /^\d+\.\d+\.\d+\.\d+$/.test(x)&&priv(x); }); if(a.length) IPS=a.slice(0,4); },function(){});
+  }catch(e){}
+}
+refresh(); setTimeout(refresh,2500); setInterval(refresh,30000);
+window.addEventListener('online',function(){ setTimeout(refresh,1500); });
+document.addEventListener('visibilitychange',function(){ if(document.visibilityState==='visible') refresh(); });
+var RE=/^a=candidate:(\S+) (\d+) (udp) (\d+) ([0-9a-zA-Z\-]+\.local) (\d+) typ host(.*)$/i;
+function munge(sdp){
+  var lines=String(sdp).split(/\r\n/), out=[], added=0;
+  lines.forEach(function(l){
+    out.push(l); var m=RE.exec(l); if(!m) return;
+    IPS.forEach(function(ip,k){ out.push('a=candidate:'+m[1]+'7'+k+' '+m[2]+' '+m[3]+' '+Math.max(1,(+m[4])-1-k)+' '+ip+' '+m[6]+' typ host'+m[7]); added++; });
+  });
+  if(added){ window.__nbMdnsFix=(window.__nbMdnsFix||0)+added; }
+  return out.join('\r\n');
+}
+window.nbSdpMunge=function(s,ips){ var o=IPS; if(ips) IPS=ips; try{ return munge(s); }finally{ if(ips) IPS=o; } };
+Object.defineProperty(P.prototype,'localDescription',{configurable:true,enumerable:d.enumerable,get:function(){
+  var x=d.get.call(this);
+  try{ if(x&&IPS.length&&/\.local \d+ typ host/.test(x.sdp||'')) return new RTCSessionDescription({type:x.type,sdp:munge(x.sdp)}); }catch(e){}
+  return x;
+}});
 })();
 </script>
 </body>
