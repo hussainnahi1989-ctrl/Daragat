@@ -482,9 +482,17 @@ function loadCfg(){try{return JSON.parse(localStorage.getItem(LS_CFG)||"null")||
 function saveCfgObj(c){
   try{localStorage.setItem(LS_CFG,JSON.stringify(c));}
   catch(e){
-    const keep=[LS_CFG,LS_SES];
-    Object.keys(localStorage).filter(k=>!keep.includes(k)).forEach(k=>{try{localStorage.removeItem(k);}catch(_){}});
-    localStorage.setItem(LS_CFG,JSON.stringify(c));
+    /* ذاكرة المتصفح ممتلئة: نحذف فقط بقايا جلسات Firebase المؤقتة الخاصة بهذه اللوحة.
+       ⚠️ لا نلمس أي مفتاح آخر أبداً: هذا الموقع مشترك مع الجدول والمتجر وباقي التطبيقات،
+       ومسح مفاتيحهم يمسح بيانات المدرسة والتفعيل ورمز النشر. */
+    try{
+      const doomed=[];
+      for(let i=0;i<localStorage.length;i++){const k=localStorage.key(i); if(k && k.indexOf('firebase:')===0) doomed.push(k);}
+      doomed.forEach(k=>{try{localStorage.removeItem(k);}catch(_){}});
+      localStorage.setItem(LS_CFG,JSON.stringify(c));
+    }catch(e2){
+      alert("تعذّر حفظ إعدادات اللوحة: ذاكرة المتصفح ممتلئة.\nلم يُحذف أي شيء من بيانات التطبيقات الأخرى.");
+    }
   }
 }
 let cfg=loadCfg();
