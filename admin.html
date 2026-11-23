@@ -1404,5 +1404,253 @@ window.nbReceiptCanvas=function(r){ return Promise.all([logoImg(),stampImg()]).t
 })();
 </script>
 
+
+<!-- ===================== قسم «الجدول» في لوحة التفعيل =====================
+     مستقل تمامًا عن قسم «الإدارة»: يقرأ ويكتب في activation/jadwal/accounts فقط،
+     ولا يغيّر أي دالة أو بيانات من قسم الإدارة. -->
+<style id="jd-css">
+.appsw{display:inline-flex;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);border-radius:14px;padding:3px;gap:3px}
+.appsw button{border:0;background:transparent;color:#fff;font-weight:900;font-size:13px;padding:8px 14px;border-radius:11px;cursor:pointer;font-family:inherit;white-space:nowrap}
+.appsw button.on{background:#fff;color:#14306e;box-shadow:0 4px 12px rgba(0,0,0,.18)}
+#jdWrap{display:none}
+body.jd-mode #dashPage>nav.tabs,body.jd-mode #srchBar,body.jd-mode #dashPage>main{display:none!important}
+body.jd-mode #jdWrap{display:block}
+#jdWrap main{max-width:1400px;margin:0 auto;padding:12px}
+.jd-dev{font-family:monospace;direction:ltr;font-weight:900;letter-spacing:1px;font-size:12.5px}
+.jd-tag{display:inline-block;border-radius:8px;padding:1px 8px;font-size:11px;font-weight:900;margin-inline-start:4px}
+.jd-tag.leg{background:var(--goldS);color:#8a5a00}
+.jd-tag.onl{background:var(--priS);color:var(--pri)}
+.jd-key{font-family:monospace;direction:ltr;font-weight:900;letter-spacing:1px;font-size:12px;background:var(--card2);border:1px dashed var(--bd2);border-radius:8px;padding:2px 6px;display:inline-block;margin-top:4px;cursor:pointer}
+.jd-head{display:flex;align-items:center;gap:10px;margin:2px 0 10px;flex-wrap:wrap}
+.jd-head h2{margin:0;font-size:17px;font-weight:900}
+.jd-head .note{font-size:12.5px;color:var(--tx2);font-weight:700}
+</style>
+<script>
+/* ===== jadwal-admin v1 ===== */
+(function(){
+  'use strict';
+  var JP='activation/jadwal/accounts';
+  /* يجب أن تطابق سرّ برنامج الجدول حرفيًا */
+  var SEC='MASOUDI-SCHEDULE-2026-HN';
+  var ALPHA='23456789ABCDEFGHJKMNPQRSTUVWXYZ';
+  var EPOCH=Date.UTC(2026,0,1);
+  var LS_APP='daragat_admin_app';
+  var PL={daily:{t:'D',d:1,l:'يومي'},monthly:{t:'M',d:30,l:'شهري'},yearly:{t:'Y',d:365,l:'سنوي'},permanent:{d:0,l:'دائم'}};
+  var acc={}, tab='all', q='', started=false;
+
+  /* ---------- مفاتيح مطابقة لبرنامج الجدول ---------- */
+  function h32(s){ var h=0x811c9dc5; for(var i=0;i<s.length;i++){ h^=s.charCodeAt(i); h=(h+((h<<1)+(h<<4)+(h<<7)+(h<<8)+(h<<24)))>>>0; } return h>>>0; }
+  function wide(s,r){ var o='',x=s; for(var i=0;i<(r||4);i++){ x=s+'|'+i+'|'+h32(x+i); o+=('00000000'+h32(x).toString(16)).slice(-8); } return o.toUpperCase(); }
+  function nk(s){ return String(s==null?'':s).replace(/[٠-٩]/g,function(d){return String(d.charCodeAt(0)-0x0660);}).replace(/[۰-۹]/g,function(d){return String(d.charCodeAt(0)-0x06F0);}).toUpperCase().replace(/[^0-9A-Z]/g,''); }
+  function pick(h,n){ var o=''; for(var i=0;i<n;i++) o+=ALPHA[parseInt(h.substr(i*2,2),16)%ALPHA.length]; return o; }
+  function permKey(dev){ return pick(wide(SEC+'#'+nk(dev)+'#'+SEC,5),16); }
+  function enc31(n){ var s=''; for(var i=0;i<4;i++){ s=ALPHA[n%31]+s; n=Math.floor(n/31); } return s; }
+  function timedKey(dev,t,expMs){ var body=t+enc31(Math.ceil((expMs-EPOCH)/3600000)); return 'T'+body+pick(wide(SEC+'#TIMED#'+nk(dev)+'#'+body+'#'+SEC,5),12); }
+  function keyFor(dev,plan,exp){ return plan==='permanent'?permKey(dev):timedKey(dev,PL[plan].t,exp); }
+  function fmtKey(k){ k=nk(k); if(k.length===16) return k.replace(/(.{4})/g,'$1-').slice(0,-1); if(k.length===18) return k.slice(0,6)+'-'+k.slice(6,10)+'-'+k.slice(10,14)+'-'+k.slice(14); return k; }
+  function fmtDev(d){ d=nk(d); return d.length===12?d.replace(/(.{4})/g,'$1-').slice(0,-1):d; }
+  function expFor(plan){ return plan==='permanent'?0:Date.now()+PL[plan].d*86400000; }
+  window.__jdKeys={permKey:permKey,timedKey:timedKey,keyFor:keyFor};
+
+  /* ---------- أدوات ---------- */
+  function E(s){ return esc(s); }
+  function J(s){ return jsq(s); }
+  function plab(p){ return (PL[p]||{}).l||p||'—'; }
+  function TS(){ return firebase.database.ServerValue.TIMESTAMP; }
+  function R(k){ return db.ref(JP+'/'+k); }
+  function stopped(r){ return !!(r.accountDisabled||['suspended','deleted','cancelled'].indexOf(r.status)>=0); }
+  function expired(r){ return r.status==='approved'&&r.plan!=='permanent'&&toTs(r.expiresAt)&&toTs(r.expiresAt)<Date.now(); }
+  function stLabel(r){ if(stopped(r)) return 'موقوف'; if(expired(r)) return 'منتهي'; return {pending:'بانتظار الموافقة',approved:'مفعّل',rejected:'مرفوض',device_transfer_pending:'نقل جهاز'}[r.status]||r.status||'—'; }
+  function stClass(r){ if(stopped(r)||r.status==='rejected'||expired(r)) return 'rejected'; if(r.status==='approved') return 'approved'; if(r.status==='device_transfer_pending') return 'conflict'; return 'pending'; }
+  function list(){ return Object.keys(acc).map(function(k){ var v=acc[k]||{}; return Object.assign({key:k,email:v.email||k.replace(/,/g,'.')},v); }); }
+  function waTo(phone,text){ var d=normIraqPhone(phone||''), w=waPhone(d); if(!/^07\d{9}$/.test(d)||!w) return ''; return 'https://wa.me/'+w+'?text='+encodeURIComponent(text||'السلام عليكم، بخصوص برنامج الجدول الأسبوعي الذكي'); }
+  function pickV(btn,id){ var b=btn&&btn.closest&&btn.closest('tr,.acct-card'); var el=b?b.querySelector('#'+CSS.escape(id)):null; return (el||document.getElementById(id)||{value:''}).value; }
+
+  /* ---------- الإجراءات ---------- */
+  function setActive(k,plan,amount,isChange){
+    var r=acc[k]||{}; var dev=r.deviceCode;
+    if(!PL[plan]){ alert('اختر مدة صحيحة'); return; }
+    if(!dev||nk(dev).length!==12){ alert('لا يوجد رمز جهاز صحيح لهذا الحساب'); return; }
+    if(isChange && !confirm('تغيير اشتراك '+(r.schoolName||r.email)+' إلى: '+plab(plan)+'؟\nتبدأ المدة الجديدة من الآن.')) return;
+    var exp=expFor(plan);
+    var patch={status:'approved',accountDisabled:false,disabledReason:null,plan:plan,expiresAt:exp,licKey:keyFor(dev,plan,exp)};
+    if(!r.approvedAt) patch.approvedAt=TS();
+    if(isChange){ patch.planChangedAt=TS(); patch.previousPlan=r.plan||null; patch.previousExpiresAt=r.expiresAt||0; }
+    if(amount!==undefined&&String(amount).trim()!=='') patch.paidAmount=String(amount).trim();
+    R(k).update(patch).then(function(){ alert('✅ تم التفعيل: '+plab(plan)+(exp?'\nينتهي: '+fmtDate(exp):'')+'\nسيتفعّل البرنامج عند العميل تلقائيًا'); }).catch(function(e){ alert('❌ تعذر الحفظ: '+e.message); });
+  }
+  window.jdApprove=function(btn,k){ setActive(k,pickV(btn,'jdpl-'+k),pickV(btn,'jdpa-'+k),false); };
+  window.jdChange=function(btn,k){ setActive(k,pickV(btn,'jdpl-'+k),pickV(btn,'jdpa-'+k),true); };
+  window.jdReject=function(k){ if(!confirm('رفض طلب التفعيل؟')) return; R(k).update({status:'rejected'}); };
+  window.jdStop=function(k){ if(!confirm('⏹ إيقاف الحساب؟\nيتوقف التوليد التلقائي عند العميل عند اتصاله بالإنترنت.')) return; R(k).update({status:'suspended',accountDisabled:true,disabledReason:'تم إيقاف الحساب من الإدارة',suspendedAt:TS()}).catch(function(e){ alert(e.message); }); };
+  window.jdDel=function(k){ var r=acc[k]||{}; if(!confirm('🗑 حذف الحساب نهائيًا؟\n'+(r.email||k)+'\nيُرسل أولًا إيقاف للتطبيق ثم يُحذف السجل.')) return; var ref=R(k); ref.update({status:'suspended',accountDisabled:true,disabledReason:'تم حذف الحساب من الإدارة',deletedAt:TS()}).then(function(){ setTimeout(function(){ ref.remove().catch(function(){}); },700); }).catch(function(e){ alert(e.message); }); };
+  window.jdTransferOk=function(k){
+    var r=acc[k]||{}, nd=r.pendingDeviceCode;
+    if(!nd){ alert('لا يوجد جهاز جديد في الطلب'); return; }
+    var was=r.statusBeforeTransfer==='approved'||!!r.approvedAt||!!r.legacy;
+    var plan=PL[r.plan]?r.plan:'monthly';
+    if(!was && !confirm('⚠️ هذا الحساب لم يُفعَّل من قبل.\nالموافقة على النقل ستجعله مفعّلًا ('+plab(plan)+').\nمتابعة؟')) return;
+    if(was && !confirm('✅ الموافقة على نقل الاشتراك للجهاز الجديد؟\nيتوقف الجهاز القديم عند اتصاله بالإنترنت.')) return;
+    var exp=plan==='permanent'?0:(toTs(r.expiresAt)>Date.now()?toTs(r.expiresAt):expFor(plan));
+    R(k).update({status:'approved',accountDisabled:false,disabledReason:null,plan:plan,expiresAt:exp,licKey:keyFor(nd,plan,exp),
+      previousDeviceCode:r.deviceCode||null,deviceCode:nd,lastSeenDevice:r.pendingDeviceInfo||r.lastSeenDevice||null,
+      pendingDeviceCode:null,pendingDeviceInfo:null,statusBeforeTransfer:null,transferApprovedAt:TS(),approvedAt:r.approvedAt||TS()})
+      .then(function(){ alert('✅ تم نقل الاشتراك'); }).catch(function(e){ alert(e.message); });
+  };
+  window.jdTransferNo=function(k){ var r=acc[k]||{}; if(!confirm('رفض طلب النقل؟')) return; R(k).update({status:r.statusBeforeTransfer||'pending',pendingDeviceCode:null,pendingDeviceInfo:null,statusBeforeTransfer:null}); };
+  window.jdPaid=function(k,v){ R(k).update({paidAmount:String(v||'').trim()}); };
+  window.jdPhone=function(k,v){ R(k).update({phone:normIraqPhone(v)}); };
+  window.jdCopy=function(t,el){ try{ navigator.clipboard.writeText(t).then(function(){ var o=el.textContent; el.textContent='✅ نُسخ'; setTimeout(function(){ el.textContent=o; },1200); }); }catch(e){ prompt('انسخ:',t); } };
+
+  /* ---------- العرض ---------- */
+  function planOpts(sel){ return ['daily','monthly','yearly','permanent'].map(function(p){ return '<option value="'+p+'"'+(p===sel?' selected':'')+'>'+PL[p].l+'</option>'; }).join(''); }
+  function row(r,i){
+    var k=r.key, jk=J(k), ph=normIraqPhone(r.phone||''), wa=waTo(ph,'السلام عليكم، بخصوص تفعيل برنامج الجدول الأسبوعي الذكي'+(r.schoolName?' — '+r.schoolName:''));
+    var isA=r.status==='approved'&&!stopped(r), isT=r.status==='device_transfer_pending', cur=PL[r.plan]?r.plan:'monthly';
+    var d=r.lastSeenDevice||{};
+    var school='<div class="at-school">'+E(r.schoolName||'—')+'</div><div class="at-sub"><span class="at-num">#'+(i+1)+'</span> <span class="badge-status s-'+stClass(r)+'">'+E(stLabel(r))+'</span>'+(r.legacy?'<span class="jd-tag leg">مفعّل سابقًا</span>':'<span class="jd-tag onl">أونلاين</span>')+'</div>'
+      +'<div class="at-sub">📅 التسجيل: '+E(fmtDate(toTs(r.registeredAt)||toTs(r.legacyRegisteredAt)))+(r.approvedAt?' · التفعيل: '+E(fmtDate(toTs(r.approvedAt))):'')+'</div>';
+    var prin='<div class="at-strong">'+E(r.principalName||r.name||'—')+'</div>';
+    var em='<span class="code at-ltr">'+E(r.email)+'</span>';
+    var phone=(wa?'<a href="'+E(wa)+'" target="_blank" rel="noopener" class="btn whatsapp small">💬 '+E(ph)+'</a>':'<div class="at-warn">⚠️ لا يوجد هاتف</div>')
+      +'<input type="tel" value="'+E(ph||r.phone||'')+'" placeholder="07xxxxxxxxx" class="inline at-ltr at-in" maxlength="11" onchange="jdPhone('+jk+',this.value)">';
+    var dev='<div class="jd-dev">'+E(fmtDev(r.deviceCode))+'</div><div class="at-sub">'+E([d.type,d.os,d.browser].filter(Boolean).join(' · '))+'</div>'
+      +(isT?'<div class="at-sub" style="color:var(--warnB);font-weight:900">⬅ الجهاز الجديد: <span class="jd-dev">'+E(fmtDev(r.pendingDeviceCode))+'</span></div>':'')
+      +(r.lastSeenAt?'<div class="at-sub">آخر ظهور: '+E(fmtDate(toTs(r.lastSeenAt)))+'</div>':'');
+    var plan;
+    if(isA){
+      var ex='';
+      if(r.plan!=='permanent'&&r.expiresAt){ var dd=Math.ceil((toTs(r.expiresAt)-Date.now())/86400000); ex='<div class="at-sub '+(dd<0?'at-bad':dd<=7?'at-warn':'')+'">ينتهي: '+E(fmtDate(toTs(r.expiresAt)))+' ('+(dd<0?'منتهي':'باقي '+dd+' يوم')+')</div>'; }
+      plan='<span class="badge-plan">'+E(plab(r.plan))+'</span>'+ex+(r.licKey?'<div><span class="jd-key" title="مفتاح هذا الجهاز — اضغط للنسخ" onclick="jdCopy('+J(fmtKey(r.licKey))+',this)">🔑 '+E(fmtKey(r.licKey))+'</span></div>':'');
+    }else plan='';
+    plan+='<div class="at-plan"><select class="inline" id="jdpl-'+E(k)+'">'+planOpts(isA?cur:'permanent')+'</select><input type="text" id="jdpa-'+E(k)+'" value="'+E(r.paidAmount||'')+'" placeholder="المبلغ" class="inline at-ltr at-amt" onchange="jdPaid('+jk+',this.value)"></div>';
+    var act='<div class="actions at-actions">'
+      +(isT?'<button class="btn success small" onclick="jdTransferOk('+jk+')">✔ موافقة النقل</button><button class="btn danger small" onclick="jdTransferNo('+jk+')">✖ رفض النقل</button>'
+        :isA?'<button class="btn warn small" onclick="jdChange(this,'+jk+')">⏱ تغيير المدة</button>'
+        :'<button class="btn success small" onclick="jdApprove(this,'+jk+')">✔ فعّل</button>'+(r.status==='pending'?'<button class="btn ghost small" onclick="jdReject('+jk+')">رفض</button>':''))
+      +(!stopped(r)&&(isA||isT)?'<button class="btn warn small" onclick="jdStop('+jk+')">⏹ إيقاف</button>':'')
+      +'<button class="btn danger small" onclick="jdDel('+jk+')">🗑 حذف</button></div>';
+    return '<tr class="'+stClass(r)+'">'
+      +'<td data-label="اسم المدرسة" class="at-head"><div class="at-v">'+school+'</div></td>'
+      +'<td data-label="اسم المدير"><div class="at-v">'+prin+'</div></td>'
+      +'<td data-label="الإيميل"><div class="at-v">'+em+'</div></td>'
+      +'<td data-label="رقم الموبايل"><div class="at-v">'+phone+'</div></td>'
+      +'<td data-label="رمز الجهاز"><div class="at-v">'+dev+'</div></td>'
+      +'<td data-label="الاشتراك"><div class="at-v">'+plan+'</div></td>'
+      +'<td data-label="الإجراءات" class="at-act"><div class="at-v">'+act+'</div></td></tr>';
+  }
+  function table(L,title){
+    if(!L.length) return '<div class="card"><p class="muted">لا توجد سجلات.</p></div>';
+    return '<div class="card"><div class="toolbar"><h3 class="card-title">'+E(title)+' <span class="count">'+L.length+'</span></h3><div class="grow"></div><button class="btn ghost small" onclick="jdCSV()">⬇ CSV</button></div>'
+      +'<div class="acct-wrap"><table class="acct-tbl"><thead><tr><th>اسم المدرسة</th><th>اسم المدير</th><th>الإيميل</th><th>رقم الموبايل</th><th>رمز الجهاز</th><th>الاشتراك</th><th>الإجراءات</th></tr></thead><tbody>'
+      +L.map(row).join('')+'</tbody></table></div></div>';
+  }
+  function match(r){
+    if(!q) return true;
+    var t=normAr(q), dq=t.replace(/[^0-9]/g,'');
+    var hay=normAr([r.schoolName,r.principalName,r.name,r.email,r.phone,fmtDev(r.deviceCode),r.deviceCode,r.pendingDeviceCode].join(' '));
+    if(hay.indexOf(t)>=0) return true;
+    if(dq.length>=4 && digits(r.phone).indexOf(dq.replace(/^964/,'0'))>=0) return true;
+    return false;
+  }
+  function digits(p){ return String(p||'').replace(/\D/g,''); }
+  function renderKeygen(){
+    return '<div class="card"><h3 class="card-title">🔑 توليد مفتاح الجدول (أوفلاين)</h3>'
+      +'<p class="muted">أدخل رمز الجهاز الظاهر في برنامج الجدول (12 حرفًا) واختر المدة. المفتاح يعمل بدون إنترنت على هذا الجهاز فقط.</p>'
+      +'<label>رمز الجهاز<input type="text" id="jdKgDev" dir="ltr" placeholder="XXXX-XXXX-XXXX" maxlength="20" style="text-align:center;letter-spacing:3px;font-family:monospace;font-size:16px"></label>'
+      +'<label>المدة<select id="jdKgPlan">'+planOpts('permanent')+'</select></label>'
+      +'<div style="margin-top:14px"><button class="btn primary" onclick="jdGen()">🔓 توليد المفتاح</button></div><div id="jdKgOut"></div></div>';
+  }
+  window.jdGen=function(){
+    var dev=nk($('jdKgDev').value), plan=$('jdKgPlan').value;
+    if(dev.length!==12){ alert('رمز الجهاز يجب أن يكون 12 حرفًا (مثل ABCD-EFGH-JKLM)'); return; }
+    var exp=expFor(plan), k=fmtKey(keyFor(dev,plan,exp));
+    $('jdKgOut').innerHTML='<p style="margin-top:14px;font-weight:800">المفتاح ('+E(plab(plan))+(exp?' — ينتهي '+E(fmtDate(exp)):'')+'):</p><div class="keybox" id="jdKeyOut" dir="ltr">'+E(k)+'</div>'
+      +'<div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn primary" onclick="jdCopy('+J(k)+',this)">📋 نسخ</button>'
+      +'<a class="btn whatsapp" target="_blank" rel="noopener" href="https://wa.me/?text='+encodeURIComponent('مفتاح تفعيل برنامج الجدول الأسبوعي الذكي ('+plab(plan)+'):\n'+k+'\n\nرمز الجهاز: '+fmtDev(dev))+'">📱 مشاركة واتساب</a></div>';
+  };
+  window.jdCSV=function(){
+    var rows=[['#','email','schoolName','principalName','phone','deviceCode','status','source','plan','expiresAt','registeredAt','approvedAt','paidAmount','licKey']];
+    list().forEach(function(r,i){ rows.push([i+1,r.email,r.schoolName||'',r.principalName||'',normIraqPhone(r.phone||''),fmtDev(r.deviceCode),stLabel(r),r.legacy?'مفعّل سابقًا':'أونلاين',plab(r.plan),r.expiresAt?fmtDate(toTs(r.expiresAt)):'',fmtDate(toTs(r.registeredAt)),fmtDate(toTs(r.approvedAt)),r.paidAmount||'',fmtKey(r.licKey||'')]); });
+    var csv=rows.map(function(r){ return r.map(function(c){ return '"'+String(c).replace(/"/g,'""')+'"'; }).join(','); }).join('\n');
+    var a=document.createElement('a'); a.href=URL.createObjectURL(new Blob(['﻿'+csv],{type:'text/csv;charset=utf-8'})); a.download='jadwal-accounts-'+new Date().toISOString().slice(0,10)+'.csv'; a.click();
+  };
+  function render(){
+    var box=$('jdBody'); if(!box) return;
+    var keep={}; box.querySelectorAll('select[id]').forEach(function(s){ keep[s.id]=s.value; });
+    var all=list().sort(function(a,b){ return (toTs(b.requestedAt)||toTs(b.registeredAt)||toTs(b.legacyRegisteredAt))-(toTs(a.requestedAt)||toTs(a.registeredAt)||toTs(a.legacyRegisteredAt)); });
+    var pen=all.filter(function(r){ return r.status==='pending'&&!stopped(r); }),
+        tra=all.filter(function(r){ return r.status==='device_transfer_pending'&&!stopped(r); }),
+        app=all.filter(function(r){ return r.status==='approved'&&!stopped(r)&&!r.legacy; }),
+        leg=all.filter(function(r){ return r.legacy&&r.status==='approved'&&!stopped(r); }),
+        stp=all.filter(function(r){ return stopped(r)||r.status==='rejected'; });
+    var C={all:all.length,pending:pen.length,transfers:tra.length,approved:app.length,legacy:leg.length,stopped:stp.length};
+    Object.keys(C).forEach(function(k){ var b=$('jdB-'+k); if(b) b.textContent=C[k]; });
+    $('jdStats').innerHTML='<div class="stat info"><div class="ic">🗓️</div><div class="num">'+all.length+'</div><div class="lbl">إجمالي حسابات الجدول</div></div>'
+      +'<div class="stat warn"><div class="ic">📞</div><div class="num">'+pen.length+'</div><div class="lbl">بانتظار الموافقة</div></div>'
+      +'<div class="stat tr"><div class="ic">🔄</div><div class="num">'+tra.length+'</div><div class="lbl">نقل أجهزة</div></div>'
+      +'<div class="stat ok"><div class="ic">✅</div><div class="num">'+app.length+'</div><div class="lbl">مفعّلة أونلاين</div></div>'
+      +'<div class="stat vio"><div class="ic">🛡️</div><div class="num">'+leg.length+'</div><div class="lbl">مفعّلون سابقًا (موثّقون)</div></div>';
+    var html;
+    if(tab==='keygen'){ if(!$('jdKgDev')) box.innerHTML=renderKeygen(); return; }
+    var src={all:all,pending:pen,transfers:tra,approved:app,legacy:leg,stopped:stp}[tab]||all;
+    var titles={all:'كل حسابات الجدول',pending:'طلبات التفعيل',transfers:'طلبات نقل الأجهزة',approved:'المفعّلة أونلاين',legacy:'المفعّلون سابقًا — سُجّلوا تلقائيًا',stopped:'الموقوفة والمرفوضة'};
+    var L=src.filter(match);
+    html=(q?'<p class="srch-why">نتائج البحث عن «<b>'+E(q)+'</b>»: '+L.length+'</p>':'')+table(L,titles[tab]||'');
+    box.innerHTML=html;
+    box.querySelectorAll('select[id]').forEach(function(s){ if(keep[s.id]!==undefined) s.value=keep[s.id]; });
+  }
+  function tabs(t){ tab=t; document.querySelectorAll('#jdTabs button').forEach(function(b){ b.classList.toggle('active',b.dataset.jd===t); }); if(t!=='keygen'||!$('jdKgDev')) $('jdBody').innerHTML=''; render(); }
+
+  /* ---------- البناء والتبديل بين التطبيقين ---------- */
+  function build(){
+    var dash=$('dashPage'); if(!dash||$('jdWrap')) return;
+    var h1=dash.querySelector('header h1');
+    var sw=document.createElement('div'); sw.className='appsw'; sw.id='appSwitch';
+    sw.innerHTML='<button type="button" data-app="daragat">🏫 الإدارة</button><button type="button" data-app="jadwal">🗓️ الجدول</button>';
+    if(h1&&h1.parentNode) h1.parentNode.insertBefore(sw,h1.nextSibling);
+    sw.addEventListener('click',function(e){ var b=e.target.closest('button[data-app]'); if(b) setApp(b.dataset.app); });
+    var w=document.createElement('div'); w.id='jdWrap';
+    w.innerHTML='<nav class="tabs jd-tabs" id="jdTabs">'
+      +'<button data-jd="all" class="active">📋 الكل <span class="badge info" id="jdB-all">0</span></button>'
+      +'<button data-jd="pending">📞 بانتظار الموافقة <span class="badge warn" id="jdB-pending">0</span></button>'
+      +'<button data-jd="transfers">🔄 نقل جهاز <span class="badge warn" id="jdB-transfers">0</span></button>'
+      +'<button data-jd="approved">✅ المفعّلة <span class="badge ok" id="jdB-approved">0</span></button>'
+      +'<button data-jd="legacy">🛡️ المفعّلون سابقًا <span class="badge vio" id="jdB-legacy">0</span></button>'
+      +'<button data-jd="stopped">⛔ الموقوفة <span class="badge" id="jdB-stopped">0</span></button>'
+      +'<button data-jd="keygen">🔑 توليد مفتاح</button></nav>'
+      +'<div class="srch"><span class="srch-ic">🔎</span><input type="search" id="jdSearch" autocomplete="off" placeholder="بحث: اسم المدرسة، الهاتف، البريد، رمز الجهاز…"></div>'
+      +'<main><div class="stats" id="jdStats"></div><div id="jdBody"></div></main>';
+    dash.appendChild(w);
+    $('jdTabs').addEventListener('click',function(e){ var b=e.target.closest('button[data-jd]'); if(b) tabs(b.dataset.jd); });
+    var t=0; $('jdSearch').addEventListener('input',function(){ clearTimeout(t); var v=this.value; t=setTimeout(function(){ q=v.trim(); render(); },150); });
+    var saved=''; try{ saved=localStorage.getItem(LS_APP)||''; }catch(e){}
+    setApp(saved==='jadwal'?'jadwal':'daragat');
+  }
+  function setApp(a){
+    document.body.classList.toggle('jd-mode',a==='jadwal');
+    document.querySelectorAll('#appSwitch button').forEach(function(b){ b.classList.toggle('on',b.dataset.app===a); });
+    try{ localStorage.setItem(LS_APP,a); }catch(e){}
+    if(a==='jadwal') start();
+  }
+  function start(){
+    if(started||!db) return; started=true;
+    $('jdBody').innerHTML='<div class="card"><p class="muted">جارٍ تحميل حسابات الجدول…</p></div>';
+    db.ref(JP).on('value',function(s){ acc=s.val()||{}; render(); },function(e){
+      $('jdBody').innerHTML='<div class="card"><p class="muted" style="color:var(--badB);font-weight:800">❌ تعذّر قراءة حسابات الجدول: '+E(e.message)+'<br>تأكد من إضافة قواعد «jadwal» في Firebase ← Realtime Database ← Rules.</p></div>';
+    });
+  }
+  /* زر الإعدادات ⚙️ في الشريط العلوي يخص قسم الإدارة */
+  document.addEventListener('click',function(e){ if(e.target.closest&&e.target.closest('header .hbtn.set')) setApp('daragat'); },true);
+  /* ننتظر دخول الأدمن وتهيئة Firebase من قسم الإدارة دون تعديل كوده */
+  var tries=0, iv=setInterval(function(){
+    tries++;
+    var ok=false; try{ ok=!!(db && $('dashPage') && $('dashPage').style.display!=='none'); }catch(e){}
+    if(ok){ clearInterval(iv); build(); }
+    else if(tries>600) clearInterval(iv);
+  },300);
+})();
+</script>
+
 </body>
 </html>
