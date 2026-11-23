@@ -18828,7 +18828,7 @@ if(document.readyState==='loading'){
 <!-- ===== AUTO UPDATE NOTIFICATION (small icon in topbar) ===== -->
 <script>
 (function(){
-  const APP_VERSION = "1.87.0";
+  const APP_VERSION = "1.88.0";
   try{ window.__nbAppVersion=APP_VERSION; }catch(e){}
   const CHECK_EVERY_MINUTES = 30;
   const LS_ACCEPTED = "daragat_accepted_version";
@@ -48500,6 +48500,11 @@ function addGroup(){
 if(window.__nb175) return; window.__nb175=1;
 var SEEN='nbWhatsNewSeen';
 var CH=[
+ ['1.88.0','23 تشرين الثاني 2026',[
+  ['📅','تطبيق الأستاذ: قسم «الجدول» الجديد','امسح باركود جدولك من تطبيق الجدول الأكاديمي (بالكاميرا أو من صورة أو بلصق رمز الربط)، فيظهر جدولك اليومي والأسبوعي والحصة الجارية والقادمة مع العد التنازلي. وللمراقبين: حصص كل الشعب الآن. ولجهاز المدير: جدول المدرسة كاملاً.','تطبيق الأستاذ'],
+  ['🔔','تنبيهات الحصص','تنبيه قبل بدء الحصة (تختار المدة)، وعند بدئها، وعند انتهائها مع اسم الحصة التالية — بجرس واهتزاز، وتصل حتى والتطبيق في الخلفية.','تطبيق الأستاذ'],
+  ['📱','واجهة أجمل وتناسب كل الهواتف','تصميم أوضح للبطاقات والأزرار، وتنسيق خاص للشاشات الصغيرة وتكبير الخط، فلا تحتاج للانزلاق يميناً أو يساراً لرؤية أي معلومة.','تطبيق الأستاذ']
+ ]],
  ['1.87.0','23 تشرين الثاني 2026',[
   ['🔐','نقل الاشتراك إلى جهاز آخر بموافقة الإدارة','لحماية اشتراككم: عند تسجيل الدخول بحسابكم على جهاز جديد يُرسل طلب نقل تلقائياً، ويعمل الجهاز الجديد لحظة موافقة الإدارة. جهازكم الحالي يبقى يعمل كما هو.','الحساب'],
  ]],
@@ -50178,6 +50183,483 @@ function watch(d){
 setInterval(function(){
   try{ var f=document.querySelector('#nbPv iframe'); if(!f) return; var d=f.contentDocument; if(d&&d.body&&d.body.childElementCount) watch(d); }catch(e){}
 },500);
+})();
+</script>
+<script>
+/* ===== nb-v1.88-ui =====
+   تطبيق الأستاذ: لمسات تصميم أكثر احترافية + حماية من الانزلاق الأفقي على كل أحجام الشاشات
+   (الهواتف الصغيرة 320px، وتكبير الخط من إعدادات أندرويد، والأجهزة اللوحية).
+   CSS فقط + تغليف أي جدول عريض بحاوية تمرير خاصة به — لا تتغير أي وظيفة أو بيانات. */
+(function(){
+'use strict';
+if(!/[?&]app=teacher/.test(location.search)) return;
+var css=[
+'#ustApp{-webkit-text-size-adjust:100%;text-size-adjust:100%;max-width:100vw;overflow:hidden}',
+'#ustApp .u-main{overflow-x:hidden!important;overscroll-behavior-x:none}',
+'#ustApp .u-main .u-wrap{width:100%;max-width:820px}',
+'#ustApp img,#ustApp video,#ustApp canvas,#ustApp iframe,#ustApp svg{max-width:100%}',
+'#ustApp input,#ustApp select,#ustApp textarea{max-width:100%}',
+'#ustApp .u-card,#ustApp .u-sheet,#ustApp .u-msg,#ustApp .u-note,#ustApp .u-hero{overflow-wrap:break-word;word-wrap:break-word}',
+'#ustApp .u-sheet{max-width:min(560px,100vw)}',
+'#ustApp .u-sc .t{min-width:min(180px,100%)}',
+'#ustApp .u-asgs{grid-template-columns:repeat(auto-fill,minmax(min(158px,100%),1fr))!important}',
+'#ustApp .u-roles{grid-template-columns:repeat(auto-fill,minmax(min(140px,100%),1fr))!important}',
+'#ustApp .u-chips,#ustApp .u-tabs{max-width:100%}',
+'#ustApp .u-tab{min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}',
+'#ustApp .nb188-tw{max-width:100%;overflow-x:auto;-webkit-overflow-scrolling:touch}',
+/* لمسات الشكل */
+'#ustApp .u-top{border-radius:0 0 22px 22px;padding-bottom:16px}',
+'#ustApp .u-top h1{letter-spacing:.1px}',
+'#ustApp .u-ib{transition:transform .12s,background .12s}#ustApp .u-ib:active{transform:scale(.92);background:rgba(255,255,255,.28)}',
+'#ustApp .u-card{border:1px solid var(--bd);box-shadow:0 1px 2px rgba(16,42,67,.04),0 6px 18px var(--sh)}',
+'#ustApp[data-theme="dark"] .u-card{border-color:var(--bd)}',
+'#ustApp .u-asg{border:1px solid var(--bd);border-inline-start:6px solid var(--c,#00897b);padding:13px 12px;display:grid;gap:2px;align-content:start;transition:transform .12s,box-shadow .12s;min-width:0}',
+'#ustApp .u-asg:active{transform:scale(.98)}',
+'#ustApp .u-asg b{font-size:16px;line-height:1.45;overflow-wrap:anywhere}',
+'#ustApp .u-asg .m{line-height:1.6;overflow-wrap:anywhere}',
+'#ustApp .u-asg .m:last-child{flex-wrap:wrap;gap:4px}',
+'#ustApp .u-role{min-height:84px;padding:12px;border-radius:18px;transition:transform .12s}#ustApp .u-role:active{transform:scale(.97)}',
+'#ustApp .u-role b{line-height:1.35}#ustApp .u-role small{line-height:1.5}',
+'#ustApp .u-btn{transition:transform .1s,filter .1s;max-width:100%}#ustApp .u-btn:active{transform:scale(.97);filter:brightness(.95)}',
+'#ustApp .u-sec{font-weight:900;color:var(--mut);font-size:13.5px;padding:4px 4px 0}',
+'#ustApp .u-hero{box-shadow:0 10px 26px rgba(13,71,161,.22)}',
+'#ustApp .u-toast{max-width:calc(100vw - 24px);overflow-wrap:anywhere}',
+/* الهواتف الصغيرة */
+'@media (max-width:380px){#ustApp .u-top{padding-left:10px;padding-right:10px}#ustApp .u-top .u-row{gap:7px}#ustApp .u-ib{min-width:38px;height:38px;font-size:17px;border-radius:11px}#ustApp .u-top h1{font-size:16.5px}#ustApp .u-top small{font-size:11.5px}#ustApp .u-main{padding-left:9px;padding-right:9px}#ustApp .u-card{padding:12px;border-radius:16px}#ustApp .u-wrap{gap:10px}#ustApp .u-st{grid-template-columns:24px minmax(0,1fr) 76px;gap:6px}#ustApp .u-sin{width:76px;height:46px;font-size:19px}#ustApp .u-tab{font-size:13px;padding:9px 4px}#ustApp .u-chip{padding:7px 11px;font-size:13px}#ustApp .u-btn{padding:11px 13px}#ustApp .u-btn.sm{padding:8px 10px}}',
+'@media (max-width:330px){#ustApp .u-asgs{grid-template-columns:minmax(0,1fr)!important}#ustApp .u-roles{grid-template-columns:repeat(2,minmax(0,1fr))!important}#ustApp .u-role .i{font-size:22px}#ustApp .u-role b{font-size:14px}}',
+'@media (min-width:700px){#ustApp .u-main{padding-left:18px;padding-right:18px}}'
+].join('\n');
+function addCss(){ if(document.getElementById('nb188u')) return; var s=document.createElement('style'); s.id='nb188u'; s.textContent=css; document.head.appendChild(s); }
+function scrollable(el,stop){ while(el&&el!==stop){ var o=getComputedStyle(el).overflowX; if(o==='auto'||o==='scroll') return true; el=el.parentElement; } return false; }
+function wrapTables(r){
+  try{ [].forEach.call(r.querySelectorAll('.u-main table'),function(t){ if(t.__nbw) return; t.__nbw=1; var p=t.parentElement; if(!p||p.closest('#nbJdw')) return; if(scrollable(p,r)) return; if(t.parentElement.closest('table')) return; var w=document.createElement('div'); w.className='nb188-tw'; p.insertBefore(w,t); w.appendChild(t); }); }catch(e){}
+}
+var tries=0; (function wait(){ var r=document.getElementById('ustApp'); if(r){ addCss(); var t=0; try{ new MutationObserver(function(){ clearTimeout(t); t=setTimeout(function(){ wrapTables(r); },30); }).observe(r,{childList:true,subtree:true}); }catch(e){} wrapTables(r); return; } if(++tries<120) setTimeout(wait,250); })();
+})();
+</script>
+<script>
+/* ===== nb-v1.88-jdw =====
+   تطبيق الأستاذ: قسم «📅 الجدول» — يقرأ باركود جدول المعلم المُصدَّر من تطبيق الجدول الأكاديمي (Algadwak)
+   بنفس صيغة تطبيق «جدولي» (NBJ: نص JSON مباشر، أو NBJZ: مضغوط، أو NBJ1: رمز الربط)،
+   ويعرض حصص اليوم والأسبوع والحصة الجارية والقادمة، مع تنبيهات قبل بدء الحصة وعند بدئها وانتهائها
+   (داخل التطبيق، وفي الخلفية عبر الغلاف bgNotify إن وُجد).
+   يعمل فقط داخل تطبيق الأستاذ (?app=teacher) ولا يغيّر أي شيء في البرنامج الرئيسي أو في بيانات الدرجات. */
+(function(){
+'use strict';
+if(!/[?&]app=teacher/.test(location.search)) return;
+var KEY='ust_jdw_v1', B62='0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ';
+var S=load(), OV=null, ST={tab:'today', day:null, mgCls:0, scan:null}, AC=null, TICK=0;
+function load(){ try{ var o=JSON.parse(localStorage.getItem(KEY)||'null')||{}; o.al=o.al||{}; o.fired=o.fired||{}; return o; }catch(e){ return {al:{},fired:{}}; } }
+function save(){ try{ localStorage.setItem(KEY,JSON.stringify(S)); }catch(e){} }
+function AL(){ var a=S.al; return {on:a.on!==false, before:a.before==null?5:+a.before, start:a.start!==false, end:a.end!==false, sound:a.sound!==false, vib:a.vib!==false}; }
+function esc(s){ return String(s==null?'':s).replace(/[&<>"']/g,function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); }
+function ar(n){ return String(n).replace(/\d/g,function(d){ return '٠١٢٣٤٥٦٧٨٩'[d]; }); }
+function hm(m){ m=Math.round(m); var h=Math.floor(m/60)%24, mi=m%60, ap=h<12?'ص':'م', h12=h%12||12; return ar(h12+':'+(mi<10?'0':'')+mi)+' '+ap; }
+function dur(m){ m=Math.max(0,Math.round(m)); if(m<60) return ar(m)+' د'; var h=Math.floor(m/60), r=m%60; return ar(h)+' س'+(r?' و'+ar(r)+' د':''); }
+function nowMin(){ var d=new Date(); return d.getHours()*60+d.getMinutes()+d.getSeconds()/60; }
+function dKey(d){ d=d||new Date(); return d.getFullYear()+'-'+(d.getMonth()+1)+'-'+d.getDate(); }
+function root(){ return document.getElementById('ustApp'); }
+function N(){ return window.DaragatNative||null; }
+
+/* ---------- قراءة الحمولة ---------- */
+function b64bytes(b){ var s=atob(b), u=new Uint8Array(s.length); for(var i=0;i<s.length;i++) u[i]=s.charCodeAt(i); return u; }
+function utf8(u){ try{ return new TextDecoder('utf-8').decode(u); }catch(e){ var s=''; for(var i=0;i<u.length;i++) s+=String.fromCharCode(u[i]); return decodeURIComponent(escape(s)); } }
+function inflate(u){
+  if(typeof DecompressionStream!=='undefined'){
+    try{ var ds=new DecompressionStream('deflate-raw'), w=ds.writable.getWriter(); w.write(u); w.close();
+      return new Response(ds.readable).arrayBuffer().then(function(b){ return new Uint8Array(b); }).catch(function(){ return pk(u); }); }catch(e){}
+  }
+  return Promise.resolve().then(function(){ return pk(u); });
+  function pk(x){ if(window.pako&&window.pako.inflateRaw) return window.pako.inflateRaw(x); throw new Error('nozip'); }
+}
+function decode(text){
+  var t=String(text||'').trim().replace(/^["'\s]+|["'\s]+$/g,'');
+  var m=/(NBJZ:|NBJ1:)\s*([A-Za-z0-9+\/=_\-\s]+)/.exec(t);
+  return Promise.resolve().then(function(){
+    if(m){ var b=m[2].replace(/\s+/g,'').replace(/-/g,'+').replace(/_/g,'/');
+      if(m[1]==='NBJ1:') return utf8(b64bytes(b));
+      return inflate(b64bytes(b)).then(utf8); }
+    var i=t.indexOf('{'); if(i>=0) return t.slice(i);
+    throw new Error('fmt');
+  }).then(function(js){ var o=JSON.parse(js); if(!o||o.a!=='NBJ'||!Array.isArray(o.d)||!Array.isArray(o.h)) throw new Error('fmt'); return o; });
+}
+/* ---------- نموذج الجدول ---------- */
+function P(){ return S.p||null; }
+function slot(p,d,i){ var t=(p.h[(p.f&&p.f[d])||0]||p.h[0]||[])[i]; return t?{s:+t[0],e:+t[1]}:null; }
+function perDay(p,d){ var n=(p.h[(p.f&&p.f[d])||0]||[]).length; if(p.q&&p.q[d]) n=Math.min(n,+p.q[d]); return n; }
+function lessons(p,d){
+  var out={}, L=p.l||[];
+  for(var k=0;k+3<L.length;k+=4){ if(L[k]!==d) continue; var i=L[k+1]; var o=out[i]||(out[i]={p:i,sub:p.b[L[k+2]]||'',cls:[]}); var c=p.c[L[k+3]]; if(c&&o.cls.indexOf(c)<0) o.cls.push(c); }
+  return out;
+}
+function dayRows(p,d){ var n=perDay(p,d), ls=lessons(p,d), r=[]; for(var i=0;i<n;i++){ var t=slot(p,d,i); if(!t) continue; r.push({p:i,s:t.s,e:t.e,L:ls[i]||null}); } return r; }
+function todayIdx(p,date){ var wd=(date||new Date()).getDay(); return (p.w||[]).indexOf(wd); }
+function excluded(p,d){ return (p.x||[]).map(Number).indexOf(d)>=0; }
+function myCount(p,d){ return dayRows(p,d).filter(function(r){ return r.L; }).length; }
+function supNames(p,d){ var row=(p.su&&p.su[d])||[]; return row.map(function(i){ return i>=0?(p.sn||[])[i]:''; }).filter(Boolean); }
+function isSup(p,d){ return supNames(p,d).indexOf(p.n)>=0; }
+function e62(s){ var n=0; for(var i=0;i<s.length;i++) n=n*62+B62.indexOf(s[i]); return n; }
+/* مراقب اليوم: حصص كل الشعب الآن */
+function svNow(p,d,i){
+  var row=(p.sv||[]).filter(function(r){ return r[0]===d; })[0]; if(!row) return null;
+  return (p.sc||[]).map(function(c,ci){ var s=row[ci+1]||'', x=s.substr(i*3,3); if(!x||x.length<3||x==='~~~') return {c:c}; return {c:c, sub:(p.ss||[])[B62.indexOf(x[0])]||'', t:(p.st||[])[e62(x.substr(1))]||''}; });
+}
+/* جهاز المدير: جدول المدرسة كاملاً */
+function mgCell(p,d,ci,i){ var g=p.mg; if(!g) return null; var tw=g.tw||1, w=1+tw, s=((g.r[d]||[])[ci])||'', x=s.substr(i*w,w); if(!x||x.length<w||/^~+$/.test(x)) return null; return {sub:g.s[B62.indexOf(x[0])]||'', t:g.t[e62(x.substr(1))]||''}; }
+
+/* الحالة الآن */
+function status(p){
+  var d=todayIdx(p), m=nowMin();
+  if(d<0||excluded(p,d)) return {kind:'off', d:d, next:nextDay(p)};
+  var rows=dayRows(p,d), mine=rows.filter(function(r){ return r.L; });
+  if(!mine.length) return {kind:'free', d:d, next:nextDay(p)};
+  var cur=null, nxt=null; rows.forEach(function(r){ if(m>=r.s&&m<r.e) cur=r; if(!nxt&&r.s>m&&r.L) nxt=r; });
+  var last=mine[mine.length-1];
+  if(m>=last.e) return {kind:'done', d:d, n:mine.length, next:nextDay(p)};
+  if(cur&&cur.L) return {kind:'now', d:d, r:cur, nx:nxt, m:m};
+  if(m<mine[0].s) return {kind:'before', d:d, nx:nxt, m:m, n:mine.length};
+  return {kind:'gap', d:d, cur:cur, nx:nxt, m:m};
+}
+function nextDay(p){
+  var t=new Date(); for(var k=1;k<=7;k++){ var dt=new Date(t.getTime()+k*864e5), d=todayIdx(p,dt); if(d<0||excluded(p,d)) continue; var r=dayRows(p,d).filter(function(x){ return x.L; }); if(r.length) return {d:d, r:r[0], k:k}; }
+  return null;
+}
+
+/* ---------- الأنماط ---------- */
+function css(){
+  if(document.getElementById('nbJdwCss')) return;
+  var s=document.createElement('style'); s.id='nbJdwCss'; s.textContent=[
+  '#ustApp .jd-card{border:0;width:100%;text-align:right;font-family:inherit;cursor:pointer;color:#fff;border-radius:20px;padding:14px;display:grid;gap:10px;background:linear-gradient(135deg,#283593 0%,#3949ab 45%,#00897b 100%);box-shadow:0 8px 22px rgba(40,53,147,.28);position:relative;overflow:hidden}',
+  '#ustApp .jd-card:before{content:"";position:absolute;inset:auto -40px -60px auto;width:170px;height:170px;border-radius:50%;background:rgba(255,255,255,.08)}',
+  '#ustApp .jd-h{display:flex;align-items:center;gap:10px;min-width:0}#ustApp .jd-ic{flex:0 0 auto;width:44px;height:44px;border-radius:14px;background:rgba(255,255,255,.16);display:grid;place-items:center;font-size:24px}',
+  '#ustApp .jd-h b{font-size:17px;display:block}#ustApp .jd-h small{display:block;font-size:12px;opacity:.85;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}#ustApp .jd-h .t{flex:1;min-width:0}',
+  '#ustApp .jd-go{flex:0 0 auto;background:rgba(255,255,255,.18);border-radius:12px;padding:6px 10px;font-size:12.5px;font-weight:900}',
+  '#ustApp .jd-now{background:rgba(255,255,255,.13);border-radius:14px;padding:10px 12px;display:grid;gap:6px;position:relative}',
+  '#ustApp .jd-now .l1{display:flex;justify-content:space-between;gap:8px;align-items:baseline;flex-wrap:wrap}#ustApp .jd-now .l1 b{font-size:16px;min-width:0;overflow-wrap:anywhere}#ustApp .jd-now .l1 span{font-size:12.5px;font-weight:900;opacity:.95;white-space:nowrap}',
+  '#ustApp .jd-now .l2{font-size:12.5px;opacity:.9;font-weight:700;overflow-wrap:anywhere}',
+  '#ustApp .jd-pb{height:7px;border-radius:7px;background:rgba(255,255,255,.22);overflow:hidden}#ustApp .jd-pb i{display:block;height:100%;background:#ffd54f;border-radius:7px}',
+  '#nbJdw{position:absolute;inset:0;z-index:30;display:flex;flex-direction:column;background:var(--bg);color:var(--tx)}',
+  '#nbJdw .jd-top{background:linear-gradient(135deg,#283593,#00897b);color:#fff;padding:calc(10px + env(safe-area-inset-top)) 12px 12px;box-shadow:0 4px 16px rgba(0,0,0,.18)}',
+  '#nbJdw .jd-top .u-row{display:flex;align-items:center;gap:10px;max-width:820px;margin:0 auto}#nbJdw .jd-top h1{flex:1;min-width:0;margin:0;font-size:18px;font-weight:900;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}#nbJdw .jd-top h1 small{display:block;font-size:12px;opacity:.85;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}',
+  '#nbJdw .jd-main{flex:1;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;padding:12px 12px 40px}#nbJdw .jd-wrap{max-width:820px;margin:0 auto;display:grid;gap:12px;grid-template-columns:minmax(0,1fr)}#nbJdw .jd-wrap>*{min-width:0}',
+  '#nbJdw .jd-tabs{display:flex;gap:4px;background:var(--card);border-radius:16px;padding:4px;box-shadow:0 2px 12px var(--sh)}#nbJdw .jd-tabs button{flex:1;min-width:0;border:0;background:transparent;border-radius:12px;padding:9px 2px;font:900 13px inherit;font-family:inherit;color:var(--mut);cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}#nbJdw .jd-tabs button.on{background:var(--priS);color:var(--priT)}',
+  '#nbJdw .jd-days{display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;padding:2px}#nbJdw .jd-days::-webkit-scrollbar{display:none}#nbJdw .jd-days button{flex:0 0 auto;border:1.5px solid var(--bd2);background:var(--chip);color:var(--chipTx);border-radius:14px;padding:7px 12px;font:900 13px inherit;font-family:inherit;cursor:pointer;display:grid;justify-items:center;gap:1px}#nbJdw .jd-days button small{font-size:10.5px;opacity:.8;font-weight:800}#nbJdw .jd-days button.on{background:var(--pri);border-color:var(--pri);color:#fff}#nbJdw .jd-days button.td:not(.on){border-color:var(--pri);color:var(--priT)}',
+  '#nbJdw .jd-list{background:var(--card);border-radius:18px;box-shadow:0 2px 12px var(--sh);overflow:hidden}',
+  '#nbJdw .jd-r{display:grid;grid-template-columns:44px minmax(0,1fr) auto;gap:10px;align-items:center;padding:11px 12px;border-bottom:1px solid var(--soft);position:relative}#nbJdw .jd-r:last-child{border-bottom:0}',
+  '#nbJdw .jd-r .n{width:44px;height:44px;border-radius:13px;display:grid;place-items:center;background:var(--priS);color:var(--priT);font-weight:900;font-size:12px;line-height:1.15;text-align:center}#nbJdw .jd-r .n b{font-size:17px;display:block}',
+  '#nbJdw .jd-r .tx{min-width:0}#nbJdw .jd-r .tx b{display:block;font-size:15.5px;overflow-wrap:anywhere}#nbJdw .jd-r .tx small{display:block;font-size:12.5px;color:var(--mut);font-weight:700;overflow-wrap:anywhere}',
+  '#nbJdw .jd-r .tm{font-size:12px;color:var(--mut);font-weight:800;text-align:left;direction:rtl;white-space:nowrap;line-height:1.5}',
+  '#nbJdw .jd-r.free .n{background:var(--g);color:var(--mut2)}#nbJdw .jd-r.free .tx b{color:var(--mut2);font-weight:800}',
+  '#nbJdw .jd-r.past{opacity:.55}#nbJdw .jd-r.cur{background:linear-gradient(90deg,transparent,var(--priS))}#nbJdw .jd-r.cur:before{content:"";position:absolute;right:0;top:8px;bottom:8px;width:4px;border-radius:4px;background:var(--pri)}#nbJdw .jd-r.cur .n{background:var(--pri);color:#fff}',
+  '#nbJdw .jd-r.sv{grid-template-columns:78px minmax(0,1fr)}#nbJdw .jd-r.sv .n{width:78px;height:auto;min-height:40px;padding:4px 6px;font-size:12.5px;line-height:1.35}',
+  '#nbJdw .jd-brk{padding:5px 12px;font-size:11.5px;color:var(--mut2);font-weight:800;background:var(--soft);text-align:center}',
+  '#nbJdw .jd-pill{display:inline-block;border-radius:20px;padding:2px 9px;font-size:11.5px;font-weight:900;background:var(--grnS);color:var(--grn)}#nbJdw .jd-pill.o{background:var(--orgS);color:var(--org)}#nbJdw .jd-pill.b{background:var(--blueS);color:var(--blue)}',
+  '#nbJdw .jd-dh{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:11px 12px;background:var(--soft);font-weight:900;flex-wrap:wrap}#nbJdw .jd-dh small{color:var(--mut);font-weight:800}',
+  '#nbJdw .jd-sum{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}#nbJdw .jd-sum div{background:var(--card);border-radius:16px;padding:10px 6px;text-align:center;box-shadow:0 2px 12px var(--sh)}#nbJdw .jd-sum b{display:block;font-size:20px;color:var(--priT)}#nbJdw .jd-sum small{font-size:11.5px;color:var(--mut);font-weight:800}',
+  '#nbJdw .jd-hero{border-radius:20px;padding:16px;color:#fff;background:linear-gradient(135deg,#283593,#00897b);display:grid;gap:8px;box-shadow:0 8px 22px rgba(40,53,147,.25)}#nbJdw .jd-hero .k{font-size:12.5px;opacity:.9;font-weight:800}#nbJdw .jd-hero b{font-size:20px;overflow-wrap:anywhere}#nbJdw .jd-hero .cd{font-size:30px;font-weight:900;letter-spacing:.5px}',
+  '#nbJdw .jd-set{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:12px;border-bottom:1px solid var(--soft)}#nbJdw .jd-set:last-child{border-bottom:0}#nbJdw .jd-set .t{min-width:0;flex:1}#nbJdw .jd-set .t b{display:block;font-size:14.5px}#nbJdw .jd-set .t small{display:block;color:var(--mut);font-size:12px;font-weight:700}',
+  '#nbJdw .jd-sw{flex:0 0 auto;width:50px;height:29px;border-radius:20px;border:0;background:var(--bd2);position:relative;cursor:pointer}#nbJdw .jd-sw:after{content:"";position:absolute;top:3px;right:3px;width:23px;height:23px;border-radius:50%;background:#fff;box-shadow:0 1px 4px rgba(0,0,0,.3);transition:right .15s}#nbJdw .jd-sw.on{background:var(--pri)}#nbJdw .jd-sw.on:after{right:24px}',
+  '#nbJdw .jd-seg{display:flex;gap:5px;flex-wrap:wrap}#nbJdw .jd-seg button{border:1.5px solid var(--bd2);background:var(--chip);color:var(--chipTx);border-radius:11px;padding:6px 10px;font:900 12.5px inherit;font-family:inherit;cursor:pointer}#nbJdw .jd-seg button.on{background:var(--pri);border-color:var(--pri);color:#fff}',
+  '#nbJdw .jd-empty{text-align:center;padding:26px 16px;display:grid;gap:10px;justify-items:center}#nbJdw .jd-empty .big{font-size:56px;line-height:1}#nbJdw .jd-empty p{margin:0;color:var(--mut);line-height:1.9;font-size:14px}',
+  '#nbJdw .jd-scan{position:relative;width:100%;max-width:420px;margin:0 auto;aspect-ratio:1/1;border-radius:22px;overflow:hidden;background:#000}#nbJdw .jd-scan video{width:100%;height:100%;object-fit:cover;display:block}',
+  '#nbJdw .jd-scan .fr{position:absolute;inset:12%;border-radius:18px;box-shadow:0 0 0 999px rgba(0,0,0,.35);pointer-events:none}#nbJdw .jd-scan .fr:before,#nbJdw .jd-scan .fr:after{content:"";position:absolute;left:8%;right:8%;height:3px;top:50%;background:linear-gradient(90deg,transparent,#4dd0e1,transparent);animation:jdl 1.8s ease-in-out infinite}#nbJdw .jd-scan .fr:after{display:none}',
+  '#nbJdw .jd-scan .cn{position:absolute;width:34px;height:34px;border:4px solid #4dd0e1}#nbJdw .jd-scan .c1{top:-2px;right:-2px;border-left:0;border-bottom:0;border-radius:0 14px 0 0}#nbJdw .jd-scan .c2{top:-2px;left:-2px;border-right:0;border-bottom:0;border-radius:14px 0 0 0}#nbJdw .jd-scan .c3{bottom:-2px;right:-2px;border-left:0;border-top:0;border-radius:0 0 14px 0}#nbJdw .jd-scan .c4{bottom:-2px;left:-2px;border-right:0;border-top:0;border-radius:0 0 0 14px}',
+  '@keyframes jdl{0%,100%{transform:translateY(-110px)}50%{transform:translateY(110px)}}',
+  '#nbJdw .jd-scan .msg{position:absolute;left:0;right:0;bottom:10px;text-align:center;color:#fff;font-weight:800;font-size:13px;text-shadow:0 1px 3px #000;padding:0 10px}',
+  '#nbJdw .jd-acts{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(150px,100%),1fr));gap:8px}#nbJdw .jd-acts .u-btn{width:100%;white-space:normal;line-height:1.4}',
+  '#nbJdw textarea.u-in{min-height:84px;direction:ltr;font-size:13px;resize:vertical}',
+  '#nbJdw .jd-mgc{display:flex;gap:6px;flex-wrap:wrap}',
+  '.jd-ban{position:fixed;top:calc(10px + env(safe-area-inset-top));left:10px;right:10px;z-index:2147483647;max-width:520px;margin:0 auto;border-radius:18px;padding:12px 14px;color:#fff;background:linear-gradient(135deg,#283593,#00897b);box-shadow:0 14px 34px rgba(0,0,0,.35);display:flex;gap:12px;align-items:center;direction:rtl;font-family:inherit;animation:jdb .35s ease-out}',
+  '.jd-ban .i{font-size:28px;flex:0 0 auto}.jd-ban .t{flex:1;min-width:0}.jd-ban b{display:block;font-size:15.5px}.jd-ban small{display:block;font-size:12.5px;opacity:.92;font-weight:700;overflow-wrap:anywhere}.jd-ban button{flex:0 0 auto;border:0;border-radius:12px;background:rgba(255,255,255,.2);color:#fff;font:900 13px inherit;font-family:inherit;padding:8px 10px;cursor:pointer}',
+  '.jd-ban.st{background:linear-gradient(135deg,#c62828,#ef6c00)}.jd-ban.en{background:linear-gradient(135deg,#2e7d32,#00897b)}',
+  '@keyframes jdb{from{transform:translateY(-120%);opacity:0}to{transform:none;opacity:1}}'
+  ].join('\n'); document.head.appendChild(s);
+}
+
+/* ---------- بطاقة الصفحة الرئيسية ---------- */
+function isHome(r){ return !!(r&&r.querySelector('.u-top [data-a="settings"]')&&!r.querySelector('[data-a="welcome-done"]')&&r.querySelector('.u-main .u-wrap')); }
+function cardInner(){
+  var p=P();
+  if(!p) return '<div class="jd-h"><span class="jd-ic">📅</span><div class="t"><b>الجدول</b><small>امسح باركود جدولك من تطبيق الجدول الأكاديمي</small></div><span class="jd-go">📷 مسح</span></div>'+
+    '<div class="jd-now"><div class="l2">تظهر حصتك الحالية والقادمة هنا، وتصلك تنبيهات قبل بدء كل حصة وعند انتهائها.</div></div>';
+  var st=status(p), d=st.d, body='';
+  var dn=d>=0?(p.d[d]||''):'';
+  if(st.kind==='now'){ var r=st.r, pc=Math.min(100,Math.max(0,(st.m-r.s)*100/(r.e-r.s)));
+    body='<div class="jd-now"><div class="l1"><b>الآن: '+esc(r.L.sub)+'</b><span>⏳ متبقٍ '+dur(r.e-st.m)+'</span></div><div class="l2">الحصة '+ar(r.p+1)+' · '+esc(r.L.cls.join('، '))+' · '+hm(r.s)+' – '+hm(r.e)+'</div><div class="jd-pb"><i style="width:'+pc.toFixed(1)+'%"></i></div>'+
+      (st.nx?'<div class="l2">التالية: الحصة '+ar(st.nx.p+1)+' — '+esc(st.nx.L.sub)+' ('+esc(st.nx.L.cls.join('، '))+') '+hm(st.nx.s)+'</div>':'<div class="l2">✅ هذه آخر حصة لك اليوم</div>')+'</div>'; }
+  else if(st.kind==='before'||st.kind==='gap'){ var x=st.nx;
+    body='<div class="jd-now"><div class="l1"><b>'+(st.kind==='before'?'أول حصة لك':'حصتك القادمة')+': '+esc(x.L.sub)+'</b><span>⏰ بعد '+dur(x.s-st.m)+'</span></div><div class="l2">الحصة '+ar(x.p+1)+' · '+esc(x.L.cls.join('، '))+' · '+hm(x.s)+'</div>'+(st.kind==='before'?'<div class="l2">لديك اليوم '+ar(st.n)+' حصص</div>':(st.cur?'<div class="l2">الآن: الحصة '+ar(st.cur.p+1)+' — فراغ</div>':'<div class="l2">الآن: استراحة</div>'))+'</div>'; }
+  else { var nx=st.next, t=st.kind==='done'?'✅ انتهت حصصك اليوم ('+ar(st.n)+')':st.kind==='free'?'🌿 لا حصص لك اليوم':'🏖️ لا دوام لك اليوم';
+    body='<div class="jd-now"><div class="l1"><b>'+t+'</b></div>'+(nx?'<div class="l2">التالية: '+esc(p.d[nx.d])+(nx.k===1?' (غداً)':'')+' — الحصة '+ar(nx.r.p+1)+' '+esc(nx.r.L.sub)+' · '+hm(nx.r.s)+'</div>':'')+'</div>'; }
+  var sup=d>=0&&isSup(p,d)?' · 🛡️ مراقب اليوم':'';
+  return '<div class="jd-h"><span class="jd-ic">📅</span><div class="t"><b>الجدول</b><small>'+esc(dn?dn+' · ':'')+esc(p.s||'')+sup+'</small></div><span class="jd-go">عرض ‹</span></div>'+body;
+}
+function injectCard(){
+  var r=root(); if(!isHome(r)) return;
+  var w=r.querySelector('.u-main .u-wrap'); if(!w) return;
+  var c=w.querySelector('.jd-card');
+  if(!c){ c=document.createElement('button'); c.type='button'; c.className='jd-card'; c.setAttribute('data-jdw','open'); w.insertBefore(c,w.firstChild); }
+  var h=cardInner(); if(c.__h!==h){ c.innerHTML=h; c.__h=h; }
+}
+
+/* ---------- صفحة الجدول ---------- */
+function open(tab){ css(); if(tab) ST.tab=tab; if(!P()) ST.tab='scan'; ensureOv(); draw(); }
+function ensureOv(){ var r=root(); if(!r) return; if(!OV){ OV=document.createElement('div'); OV.id='nbJdw'; OV.addEventListener('click',onClick); OV.addEventListener('change',onChange); } if(OV.parentNode!==r) r.appendChild(OV); OV.style.display='flex'; }
+function close(){ stopScan(); if(OV){ OV.style.display='none'; try{ OV.remove(); }catch(e){} } OV=null; injectCard(); }
+function isOpen(){ return !!(OV&&OV.parentNode&&OV.style.display!=='none'); }
+function top(t,sub,right){ return '<div class="jd-top"><div class="u-row"><button class="u-ib" data-jdw="back" aria-label="رجوع">→</button><h1>'+t+(sub?'<small>'+sub+'</small>':'')+'</h1>'+(right||'')+'</div></div>'; }
+function draw(){
+  if(!OV) return; var p=P(), y=0, m0=OV.querySelector('.jd-main'); if(m0) y=m0.scrollTop;
+  if(ST.tab!=='scan') stopScan();
+  var h;
+  if(!p||ST.tab==='scan') h=top('📅 الجدول', p?'تحديث الجدول بباركود جديد':'ربط جدولك من تطبيق الجدول الأكاديمي')+'<div class="jd-main"><div class="jd-wrap">'+scanHtml(p)+'</div></div>';
+  else {
+    var tabs=[['today','اليوم'],['week','الأسبوع']]; if(p.mg) tabs.push(['school','المدرسة']); tabs.push(['alerts','التنبيهات']);
+    if(!tabs.some(function(t){ return t[0]===ST.tab; })) ST.tab='today';
+    h=top('📅 '+esc(p.n||'جدولي'), esc(p.s||''), '<button class="u-ib" data-jdw="tab" data-t="scan" aria-label="مسح باركود جديد">📷</button>')+
+      '<div class="jd-main"><div class="jd-wrap"><div class="jd-tabs">'+tabs.map(function(t){ return '<button type="button" data-jdw="tab" data-t="'+t[0]+'" class="'+(ST.tab===t[0]?'on':'')+'">'+t[1]+'</button>'; }).join('')+'</div>'+
+      (ST.tab==='today'?todayHtml(p):ST.tab==='week'?weekHtml(p):ST.tab==='school'?schoolHtml(p):alertsHtml(p))+'</div></div>';
+  }
+  OV.innerHTML=h; var m1=OV.querySelector('.jd-main'); if(m1&&y) m1.scrollTop=y;
+  if(ST.tab==='scan'||!p){ var box=OV.querySelector('[data-scanbox]'); if(box&&ST.autoCam){ ST.autoCam=false; startCam(box); } }
+}
+function dayChips(p,sel){
+  var td=todayIdx(p);
+  return '<div class="jd-days">'+p.d.map(function(n,d){ var c=excluded(p,d)?0:myCount(p,d); return '<button type="button" data-jdw="day" data-d="'+d+'" class="'+(d===sel?'on ':'')+(d===td?'td':'')+'">'+esc(n)+'<small>'+(excluded(p,d)?'لا دوام':ar(c)+' حصص')+'</small></button>'; }).join('')+'</div>';
+}
+function rowsHtml(p,d,live){
+  var rows=dayRows(p,d), m=nowMin(), out='', prev=null;
+  if(excluded(p,d)) return '<div class="jd-list"><div class="jd-empty"><div class="big">🏖️</div><p>هذا اليوم خارج دوامك.</p></div></div>';
+  rows.forEach(function(r){
+    if(prev&&r.s-prev.e>=5) out+='<div class="jd-brk">☕ استراحة '+dur(r.s-prev.e)+' · '+hm(prev.e)+' – '+hm(r.s)+'</div>';
+    var cls=r.L?'':'free', tag='';
+    if(live){ if(m>=r.e) cls+=' past'; else if(m>=r.s){ cls+=' cur'; tag='<span class="jd-pill">جارية · متبقٍ '+dur(r.e-m)+'</span>'; } else if(r.L&&!out.match(/jd-pill o/)){ tag='<span class="jd-pill o">بعد '+dur(r.s-m)+'</span>'; } }
+    out+='<div class="jd-r '+cls+'"><div class="n"><span>الحصة</span><b>'+ar(r.p+1)+'</b></div><div class="tx"><b>'+(r.L?esc(r.L.sub):'فراغ')+'</b>'+(r.L?'<small>'+esc(r.L.cls.join('، '))+'</small>':'')+(tag?'<small style="margin-top:3px">'+tag+'</small>':'')+'</div><div class="tm">'+hm(r.s)+'<br>'+hm(r.e)+'</div></div>';
+    prev=r;
+  });
+  return '<div class="jd-list">'+(out||'<div class="jd-empty"><p>لا توجد حصص.</p></div>')+'</div>';
+}
+function todayHtml(p){
+  var td=todayIdx(p); if(ST.day==null||ST.day>=p.d.length) ST.day=td>=0?td:0; var d=ST.day, live=d===td, html='';
+  if(live){ var st=status(p);
+    if(st.kind==='now') html+='<div class="jd-hero"><div class="k">الحصة الجارية · الحصة '+ar(st.r.p+1)+'</div><b>'+esc(st.r.L.sub)+' — '+esc(st.r.L.cls.join('، '))+'</b><div class="cd">'+dur(st.r.e-st.m)+'</div><div class="k">متبقٍ حتى نهاية الحصة ('+hm(st.r.e)+')'+(st.nx?' · التالية '+esc(st.nx.L.sub)+' '+hm(st.nx.s):'')+'</div><div class="jd-pb" style="background:rgba(255,255,255,.22)"><i style="width:'+Math.min(100,(st.m-st.r.s)*100/(st.r.e-st.r.s)).toFixed(1)+'%"></i></div></div>';
+    else if(st.kind==='before'||st.kind==='gap') html+='<div class="jd-hero"><div class="k">'+(st.kind==='before'?'أول حصة لك اليوم':'حصتك القادمة')+' · الحصة '+ar(st.nx.p+1)+'</div><b>'+esc(st.nx.L.sub)+' — '+esc(st.nx.L.cls.join('، '))+'</b><div class="cd">'+dur(st.nx.s-st.m)+'</div><div class="k">تبدأ '+hm(st.nx.s)+'</div></div>';
+    else if(st.kind==='done') html+='<div class="jd-hero"><div class="k">اليوم</div><b>✅ انتهت حصصك اليوم — '+ar(st.n)+' حصص</b>'+(st.next?'<div class="k">التالية: '+esc(p.d[st.next.d])+' · '+esc(st.next.r.L.sub)+' '+hm(st.next.r.s)+'</div>':'')+'</div>';
+    if(isSup(p,d)){ var cur=null, m=nowMin(); dayRows(p,d).forEach(function(r){ if(m>=r.s&&m<r.e) cur=r; });
+      var sv=cur?svNow(p,d,cur.p):null;
+      html+='<div class="jd-list"><div class="jd-dh"><span>🛡️ أنت مراقب اليوم</span><small>'+(cur?'الحصة '+ar(cur.p+1)+' الآن في المدرسة':'')+'</small></div>'+
+        (sv?sv.map(function(x){ return '<div class="jd-r sv'+(x.sub?'':' free')+'"><div class="n">'+esc(x.c)+'</div><div class="tx"><b>'+(x.sub?esc(x.sub):'فراغ')+'</b>'+(x.t?'<small>'+esc(x.t)+'</small>':'')+'</div></div>'; }).join(''):'<div class="jd-brk">تظهر هنا حصص كل الشعب أثناء الدوام</div>')+'</div>';
+    }
+  }
+  var cnt=excluded(p,d)?0:myCount(p,d), rows=dayRows(p,d), sups=supNames(p,d);
+  html+=dayChips(p,d)+'<div class="jd-sum"><div><b>'+ar(cnt)+'</b><small>حصصي</small></div><div><b>'+ar(Math.max(0,rows.length-cnt))+'</b><small>فراغ</small></div><div><b>'+(rows.length?hm(rows[0].s).replace(/ .$/,''):'—')+'</b><small>بداية الدوام</small></div></div>';
+  html+=rowsHtml(p,d,live);
+  if(sups.length) html+='<div class="jd-list"><div class="jd-dh"><span>🛡️ مراقبو '+esc(p.d[d])+'</span></div><div style="padding:10px 12px;line-height:2;font-weight:700">'+sups.map(function(n){ return n===p.n?'<b style="color:var(--priT)">'+esc(n)+' (أنت)</b>':esc(n); }).join(' · ')+'</div></div>';
+  return html;
+}
+function weekHtml(p){
+  var td=todayIdx(p), tot=0; p.d.forEach(function(_,d){ if(!excluded(p,d)) tot+=myCount(p,d); });
+  var subs={}, cls={}; for(var k=0;k+3<(p.l||[]).length;k+=4){ subs[p.b[p.l[k+2]]]=1; cls[p.c[p.l[k+3]]]=1; }
+  var html='<div class="jd-sum"><div><b>'+ar(tot)+'</b><small>حصة أسبوعياً</small></div><div><b>'+ar(Object.keys(subs).length)+'</b><small>مواد</small></div><div><b>'+ar(Object.keys(cls).length)+'</b><small>شعب</small></div></div>';
+  p.d.forEach(function(n,d){
+    var rows=dayRows(p,d).filter(function(r){ return r.L; });
+    html+='<div class="jd-list"><div class="jd-dh"><span>'+(d===td?'📍 ':'')+esc(n)+(isSup(p,d)?' <span class="jd-pill b">مراقب</span>':'')+'</span><small>'+(excluded(p,d)?'لا دوام':ar(rows.length)+' حصص')+'</small></div>'+
+      (excluded(p,d)||!rows.length?'<div class="jd-brk">'+(excluded(p,d)?'خارج دوامك':'لا حصص')+'</div>':rows.map(function(r){ return '<div class="jd-r"><div class="n"><span>الحصة</span><b>'+ar(r.p+1)+'</b></div><div class="tx"><b>'+esc(r.L.sub)+'</b><small>'+esc(r.L.cls.join('، '))+'</small></div><div class="tm">'+hm(r.s)+'<br>'+hm(r.e)+'</div></div>'; }).join(''))+'</div>';
+  });
+  return html+'<p class="u-note" style="text-align:center;color:var(--mut);font-size:12px">الجدول من «'+esc(p.s||'')+'» — أُصدر '+(p.g?ar(new Date(p.g*1000).toLocaleDateString('en-GB')):'')+'</p>';
+}
+function schoolHtml(p){
+  var g=p.mg, td=todayIdx(p); if(ST.day==null) ST.day=td>=0?td:0; var d=ST.day, ci=Math.min(ST.mgCls||0,g.c.length-1), m=nowMin(), live=d===td;
+  var html=dayChips(p,d)+'<div class="u-card" style="background:var(--card);border-radius:18px;padding:12px;box-shadow:0 2px 12px var(--sh)"><div class="jd-mgc jd-seg">'+g.c.map(function(c,i){ return '<button type="button" data-jdw="mgc" data-i="'+i+'" class="'+(i===ci?'on':'')+'">'+esc(c)+'</button>'; }).join('')+'</div></div>';
+  var rows=dayRows(p,d), cur=null; if(live) rows.forEach(function(r){ if(m>=r.s&&m<r.e) cur=r; });
+  if(live&&cur){ html+='<div class="jd-list"><div class="jd-dh"><span>🏫 الآن في المدرسة — الحصة '+ar(cur.p+1)+'</span><small>'+hm(cur.s)+' – '+hm(cur.e)+'</small></div>'+g.c.map(function(c,i){ var x=mgCell(p,d,i,cur.p); return '<div class="jd-r sv'+(x?'':' free')+'"><div class="n">'+esc(c)+'</div><div class="tx"><b>'+(x?esc(x.sub):'فراغ')+'</b>'+(x?'<small>'+esc(x.t)+'</small>':'')+'</div></div>'; }).join('')+'</div>'; }
+  html+='<div class="jd-list"><div class="jd-dh"><span>'+esc(g.c[ci])+' — '+esc(p.d[d])+'</span></div>'+rows.map(function(r){ var x=mgCell(p,d,ci,r.p), c=live?(m>=r.e?' past':m>=r.s?' cur':''):''; return '<div class="jd-r'+(x?'':' free')+c+'"><div class="n"><span>الحصة</span><b>'+ar(r.p+1)+'</b></div><div class="tx"><b>'+(x?esc(x.sub):'فراغ')+'</b>'+(x?'<small>'+esc(x.t)+'</small>':'')+'</div><div class="tm">'+hm(r.s)+'<br>'+hm(r.e)+'</div></div>'; }).join('')+'</div>';
+  return html;
+}
+function sw(k,on){ return '<button type="button" class="jd-sw'+(on?' on':'')+'" data-jdw="al" data-k="'+k+'" aria-label="تبديل"></button>'; }
+function bgState(){ var n=N(); if(n&&typeof n.bgNotify==='function') return 'native'; if('Notification' in window) return Notification.permission==='granted'?'web':'ask'; return 'none'; }
+function alertsHtml(p){
+  var a=AL(), b=bgState();
+  var info=b==='native'?'<div class="u-msg o">✅ تصلك التنبيهات حتى والتطبيق في الخلفية أو الشاشة مقفلة (ما دام «العمل في الخلفية» مفعّلاً).</div>':
+    b==='web'?'<div class="u-msg o">✅ إشعارات المتصفح مفعّلة.</div>':
+    b==='ask'?'<div class="u-msg i">🔔 فعّل الإشعارات ليصلك التنبيه حتى خارج الصفحة. <button type="button" class="u-btn sm" data-jdw="perm" style="margin-top:6px">تفعيل الإشعارات</button></div>':
+    '<div class="u-msg i">التنبيهات تعمل والتطبيق مفتوح.</div>';
+  return '<div class="jd-list">'+
+    '<div class="jd-set"><div class="t"><b>🔔 تنبيهات الحصص</b><small>تشغيل أو إيقاف كل التنبيهات</small></div>'+sw('on',a.on)+'</div>'+
+    '<div class="jd-set" style="display:grid;gap:8px"><div class="t"><b>⏰ قبل بدء الحصة</b><small>تنبيه مبكر لتستعد وتتوجه إلى الصف</small></div><div class="jd-seg">'+[0,2,3,5,10].map(function(x){ return '<button type="button" data-jdw="before" data-v="'+x+'" class="'+(a.before===x?'on':'')+'">'+(x?ar(x)+' دقائق':'بدون')+'</button>'; }).join('')+'</div></div>'+
+    '<div class="jd-set"><div class="t"><b>🔴 عند بدء الحصة</b><small>«بدأت الحصة … الآن»</small></div>'+sw('start',a.start)+'</div>'+
+    '<div class="jd-set"><div class="t"><b>🟢 عند انتهاء الحصة</b><small>مع اسم حصتك التالية</small></div>'+sw('end',a.end)+'</div>'+
+    '<div class="jd-set"><div class="t"><b>🔊 صوت الجرس</b><small>نغمة قصيرة داخل التطبيق</small></div>'+sw('sound',a.sound)+'</div>'+
+    '<div class="jd-set"><div class="t"><b>📳 الاهتزاز</b></div>'+sw('vib',a.vib)+'</div>'+
+    '</div>'+info+
+    '<div class="jd-acts"><button type="button" class="u-btn g" data-jdw="test">🔔 تجربة التنبيه</button><button type="button" class="u-btn g" data-jdw="tab" data-t="scan">📷 تحديث الجدول</button><button type="button" class="u-btn r" data-jdw="del">🗑️ حذف الجدول</button></div>';
+}
+function scanHtml(p){
+  return (p?'<div class="u-msg i">جدولك الحالي: <b>'+esc(p.n)+'</b> — '+esc(p.s||'')+'. امسح باركوداً جديداً لتحديثه.</div>':'')+
+    '<div class="jd-list" style="padding:14px;display:grid;gap:12px">'+
+    '<div style="display:flex;gap:10px;align-items:center"><span style="font-size:34px">📲</span><div style="min-width:0"><b style="font-size:16px">امسح باركود جدولك</b><div style="color:var(--mut);font-size:12.5px;font-weight:700;line-height:1.8">من تطبيق الجدول الأكاديمي: «ربط جهاز المعلم» أو بطاقات QR للمعلمين.</div></div></div>'+
+    '<div data-scanbox><div class="jd-empty" style="padding:10px"><div class="big">📷</div><p>وجّه الكاميرا نحو الباركود، وسيُقرأ تلقائياً.</p></div></div>'+
+    '<div class="jd-acts"><button type="button" class="u-btn" data-jdw="cam">📷 فتح الكاميرا</button><button type="button" class="u-btn b" data-jdw="img">🖼️ من صورة</button></div>'+
+    '<details><summary style="cursor:pointer;font-weight:900;color:var(--priT);padding:4px 0">🔑 لصق «رمز الربط» بدل المسح</summary><div style="display:grid;gap:8px;margin-top:8px"><textarea class="u-in" data-jdw-code placeholder="NBJZ:… أو NBJ1:…"></textarea><button type="button" class="u-btn g" data-jdw="paste">✔️ استخدام الرمز</button></div></details>'+
+    '</div>'+(p?'<button type="button" class="u-btn g" data-jdw="tab" data-t="today">↩️ العودة إلى جدولي</button>':'');
+}
+
+/* ---------- المسح ---------- */
+function loadJsQR(){ if(typeof window.jsQR==='function') return true; try{ var js=document.getElementById('nbJsQrSrc'); if(js) (0,eval)(js.textContent); }catch(e){} return typeof window.jsQR==='function'; }
+function scanMsg(t,err){ var b=OV&&OV.querySelector('[data-scanbox]'); if(!b) return; var m=b.querySelector('.msg'); if(m){ m.textContent=t; return; } b.innerHTML='<div class="u-msg '+(err?'e':'i')+'">'+esc(t)+'</div>'; }
+function stopScan(){ var s=ST.scan; ST.scan=null; if(s){ s.stop=true; try{ s.stream.getTracks().forEach(function(t){ t.stop(); }); }catch(e){} } }
+function startCam(box){
+  stopScan();
+  var n=N();
+  if(n&&typeof n.scanAttachmentQr==='function'){
+    try{ Promise.resolve(n.scanAttachmentQr()).then(function(raw){ if(raw) got(String(raw)); else webCam(box); },function(){ webCam(box); }); return; }catch(e){}
+  }
+  webCam(box);
+}
+function webCam(box){
+  var md=navigator.mediaDevices;
+  if(!md||!md.getUserMedia){ box.innerHTML='<div class="u-msg e">الكاميرا غير متاحة هنا. استخدم «🖼️ من صورة» (صوّر الباركود أو اختر صورته) أو الصق «رمز الربط».</div>'; return; }
+  var useBD=typeof BarcodeDetector!=='undefined', det=null;
+  if(useBD){ try{ det=new BarcodeDetector({formats:['qr_code']}); }catch(e){ det=null; } }
+  if(!det&&!loadJsQR()){ box.innerHTML='<div class="u-msg e">قارئ الباركود غير متاح. استخدم «رمز الربط».</div>'; return; }
+  box.innerHTML='<div class="jd-scan"><video playsinline muted></video><div class="fr"><i class="cn c1"></i><i class="cn c2"></i><i class="cn c3"></i><i class="cn c4"></i></div><div class="msg">جارٍ تشغيل الكاميرا…</div></div>';
+  var v=box.querySelector('video'), s={stop:false}; ST.scan=s;
+  md.getUserMedia({video:{facingMode:{ideal:'environment'},width:{ideal:1280},height:{ideal:1280}},audio:false}).then(function(stream){
+    s.stream=stream; if(s.stop){ stream.getTracks().forEach(function(t){ t.stop(); }); return; }
+    v.srcObject=stream; var pl=v.play(); if(pl&&pl.catch) pl.catch(function(){});
+    scanMsg('وجّه الكاميرا نحو باركود الجدول…');
+    var cv=document.createElement('canvas'), cx=cv.getContext('2d',{willReadFrequently:true});
+    (function loop(){
+      if(s.stop) return;
+      var done=function(txt){ if(s.stop) return; if(txt){ stopScan(); got(txt); return; } setTimeout(loop,200); };
+      try{
+        if(!v.videoWidth){ setTimeout(loop,200); return; }
+        if(det){ det.detect(v).then(function(r){ done(r&&r.length?r[0].rawValue:null); },function(){ done(null); }); return; }
+        var W=v.videoWidth, H=v.videoHeight, k=Math.min(1,1000/Math.max(W,H)); cv.width=Math.round(W*k); cv.height=Math.round(H*k); cx.drawImage(v,0,0,cv.width,cv.height);
+        var im=cx.getImageData(0,0,cv.width,cv.height), z=window.jsQR(im.data,im.width,im.height,{inversionAttempts:'dontInvert'}); done(z&&z.data);
+      }catch(e){ setTimeout(loop,250); }
+    })();
+  },function(){ box.innerHTML='<div class="u-msg e">لم يُسمح باستخدام الكاميرا داخل التطبيق. اضغط «🖼️ من صورة» لتصوير الباركود أو اختيار صورته، أو الصق «رمز الربط».</div>'; ST.scan=null; });
+}
+function fromImage(){
+  var inp=document.createElement('input'); inp.type='file'; inp.accept='image/*'; inp.style.display='none';
+  inp.onchange=function(){ var f=inp.files&&inp.files[0]; inp.remove(); if(!f) return; scanMsg('جارٍ قراءة الصورة…');
+    var url=URL.createObjectURL(f), img=new Image();
+    img.onload=function(){ readImg(img).then(function(t){ URL.revokeObjectURL(url); if(t) got(t); else scanMsg('لم يُعثر على باركود واضح في الصورة. قرّب الصورة من الباركود وتأكد من وضوحه.',true); }); };
+    img.onerror=function(){ scanMsg('تعذر فتح الصورة.',true); };
+    img.src=url; };
+  (root()||document.body).appendChild(inp); inp.click();
+}
+function readImg(img){
+  var sizes=[1600,1100,800,2200], cv=document.createElement('canvas'), cx=cv.getContext('2d',{willReadFrequently:true});
+  var bd=null; if(typeof BarcodeDetector!=='undefined'){ try{ bd=new BarcodeDetector({formats:['qr_code']}); }catch(e){} }
+  var p0=bd?bd.detect(img).then(function(r){ return r&&r.length?r[0].rawValue:null; },function(){ return null; }):Promise.resolve(null);
+  return p0.then(function(t){ if(t) return t; if(!loadJsQR()) return null;
+    for(var i=0;i<sizes.length;i++){ var k=Math.min(1,sizes[i]/Math.max(img.naturalWidth,img.naturalHeight)); cv.width=Math.max(1,Math.round(img.naturalWidth*k)); cv.height=Math.max(1,Math.round(img.naturalHeight*k)); cx.fillStyle='#fff'; cx.fillRect(0,0,cv.width,cv.height); cx.drawImage(img,0,0,cv.width,cv.height);
+      var d=cx.getImageData(0,0,cv.width,cv.height), z=window.jsQR(d.data,d.width,d.height,{inversionAttempts:'attemptBoth'}); if(z&&z.data) return z.data; }
+    return null; });
+}
+function got(text){
+  decode(text).then(function(o){
+    var old=P(), same=old&&old.i===o.i&&old.s===o.s;
+    var nL=(o.l||[]).length/4;
+    var msg=(old&&!same?'سيُستبدل جدول «'+old.n+'» بهذا الجدول.\n\n':'')+'المعلم: '+o.n+'\nالمدرسة: '+(o.s||'—')+'\nعدد الحصص الأسبوعية: '+nL+(o.mg?'\n+ جدول المدرسة كاملاً (جهاز المدير)':'')+'\n\nاعتماد هذا الجدول؟';
+    if(!confirm(msg)){ draw(); return; }
+    S.p=o; S.at=Date.now(); S.fired={}; save(); ST.tab='today'; ST.day=null; ST.mgCls=0; draw(); injectCard(); toastJ('✅ تم ربط جدولك — '+ar(nL)+' حصة أسبوعياً'); syncNative(); unlockAudio();
+  },function(e){ toastJ(e&&e.message==='nozip'?'هذا الجهاز لا يدعم فك ضغط الرمز؛ حدّث متصفح النظام (WebView).':'هذا الباركود ليس باركود جدول معلم من تطبيق الجدول الأكاديمي.',true); if(OV) draw(); });
+}
+function toastJ(t,err){ var r=root()||document.body, o=r.querySelector('.u-toast'); if(o) o.remove(); var d=document.createElement('div'); d.className='u-toast'+(err?' e':''); d.textContent=t; r.appendChild(d); setTimeout(function(){ try{ d.remove(); }catch(e){} },3800); }
+
+/* ---------- الأحداث ---------- */
+function onClick(e){
+  var b=e.target.closest&&e.target.closest('[data-jdw]'); if(!b) return; var a=b.getAttribute('data-jdw'); unlockAudio();
+  if(a==='back'){ if(ST.tab==='scan'&&P()){ ST.tab='today'; draw(); } else close(); return; }
+  if(a==='tab'){ ST.tab=b.getAttribute('data-t'); if(ST.tab==='scan') ST.autoCam=false; draw(); return; }
+  if(a==='day'){ ST.day=+b.getAttribute('data-d'); draw(); return; }
+  if(a==='mgc'){ ST.mgCls=+b.getAttribute('data-i'); draw(); return; }
+  if(a==='cam'){ var box=OV.querySelector('[data-scanbox]'); if(box) startCam(box); return; }
+  if(a==='img'){ stopScan(); fromImage(); return; }
+  if(a==='paste'){ var t=OV.querySelector('[data-jdw-code]'); if(!t||!t.value.trim()){ toastJ('الصق رمز الربط أولاً',true); return; } got(t.value); return; }
+  if(a==='al'){ var k=b.getAttribute('data-k'), cur=AL()[k]; S.al[k]=!cur; save(); draw(); syncNative(); return; }
+  if(a==='before'){ S.al.before=+b.getAttribute('data-v'); save(); draw(); syncNative(); return; }
+  if(a==='perm'){ try{ Notification.requestPermission().then(function(){ draw(); }); }catch(x){} return; }
+  if(a==='test'){ var p=P(), st=p?status(p):null, L=st&&(st.r||st.nx), sub=L&&L.L?L.L.sub:'الرياضيات', cl=L&&L.L?L.L.cls.join('، '):'';
+    fire({type:'start', title:'🔔 بدأت الحصة الآن — '+sub, body:(cl?cl+' · ':'')+'تجربة التنبيه', key:'test'+Date.now()}, true); return; }
+  if(a==='del'){ if(!confirm('حذف الجدول من هذا الجهاز؟ يمكنك مسح الباركود مرة أخرى في أي وقت.')) return; delete S.p; S.fired={}; save(); syncNative(); close(); toastJ('حُذف الجدول'); return; }
+}
+function onChange(){}
+document.addEventListener('click',function(e){ var c=e.target.closest&&e.target.closest('#ustApp .jd-card'); if(!c) return; e.preventDefault(); e.stopPropagation(); unlockAudio(); ST.autoCam=!P(); open(P()?'today':'scan'); },true);
+
+/* ---------- التنبيهات ---------- */
+function unlockAudio(){ try{ if(!AC){ var C=window.AudioContext||window.webkitAudioContext; if(C) AC=new C(); } if(AC&&AC.state==='suspended') AC.resume(); }catch(e){} }
+function bell(kind){
+  try{ unlockAudio(); if(!AC) return; var t0=AC.currentTime+.02, notes=kind==='end'?[784,659,523]:kind==='pre'?[660,660]:[523,659,784,1047];
+    notes.forEach(function(f,i){ var o=AC.createOscillator(), g=AC.createGain(); o.type='sine'; o.frequency.value=f; o.connect(g); g.connect(AC.destination); var t=t0+i*.22; g.gain.setValueAtTime(0,t); g.gain.linearRampToValueAtTime(.35,t+.02); g.gain.exponentialRampToValueAtTime(.001,t+.6); o.start(t); o.stop(t+.65); });
+  }catch(e){}
+}
+function banner(ev){
+  var r=root()||document.body, o=document.querySelector('.jd-ban'); if(o) o.remove();
+  var d=document.createElement('div'); d.className='jd-ban '+(ev.type==='start'?'st':ev.type==='end'?'en':'');
+  d.innerHTML='<span class="i">'+(ev.type==='end'?'✅':ev.type==='pre'?'⏰':'🔔')+'</span><div class="t"><b>'+esc(ev.title)+'</b><small>'+esc(ev.body||'')+'</small></div><button type="button">حسناً</button>';
+  d.querySelector('button').onclick=function(){ d.remove(); };
+  d.addEventListener('click',function(e){ if(e.target.tagName!=='BUTTON'){ d.remove(); open('today'); } });
+  r.appendChild(d); setTimeout(function(){ try{ d.remove(); }catch(e){} },ev.type==='end'?12000:20000);
+}
+function fire(ev,force){
+  var a=AL(); if(!force&&!a.on) return;
+  var hidden=document.visibilityState==='hidden', n=N(), sent=false;
+  if(n&&typeof n.bgNotify==='function'&&hidden){ try{ n.bgNotify(JSON.stringify({title:ev.title, body:ev.body||'', tag:'jdw-'+(ev.type||'x'), open:'jdw:today'})); sent=true; }catch(e){} }
+  if(!sent&&hidden&&'Notification' in window&&Notification.permission==='granted'){
+    try{ if(navigator.serviceWorker&&navigator.serviceWorker.getRegistration){ navigator.serviceWorker.getRegistration().then(function(reg){ if(reg&&reg.showNotification) reg.showNotification(ev.title,{body:ev.body||'',tag:'jdw',renotify:true,dir:'rtl',lang:'ar'}); else new Notification(ev.title,{body:ev.body||'',tag:'jdw'}); }); } else new Notification(ev.title,{body:ev.body||'',tag:'jdw'}); sent=true; }catch(e){}
+  }
+  if(!hidden||force){ banner(ev); if(a.sound) bell(ev.type); }
+  if(a.vib){ try{ navigator.vibrate&&navigator.vibrate(ev.type==='start'?[300,120,300,120,500]:[250,120,250]); }catch(e){} }
+}
+function events(p,date){
+  var d=todayIdx(p,date); if(d<0||excluded(p,d)) return [];
+  var a=AL(), out=[], rows=dayRows(p,d), mine=rows.filter(function(r){ return r.L; });
+  mine.forEach(function(r,i){
+    var nx=mine[i+1], what=r.L.sub+' — '+r.L.cls.join('، ');
+    if(a.before>0) out.push({t:r.s-a.before, type:'pre', key:'pre'+r.p, title:'⏰ بعد '+ar(a.before)+' دقائق: الحصة '+ar(r.p+1)+' — '+r.L.sub, body:r.L.cls.join('، ')+' · تبدأ '+hm(r.s)});
+    if(a.start) out.push({t:r.s, type:'start', key:'st'+r.p, title:'🔔 بدأت الحصة '+ar(r.p+1)+' — '+r.L.sub, body:r.L.cls.join('، ')+' · حتى '+hm(r.e)});
+    if(a.end) out.push({t:r.e, type:'end', key:'en'+r.p, title:'✅ انتهت الحصة '+ar(r.p+1)+' — '+r.L.sub, body:nx?('التالية: الحصة '+ar(nx.p+1)+' — '+nx.L.sub+' ('+nx.L.cls.join('، ')+') '+hm(nx.s)):'هذه آخر حصة لك اليوم 👏'});
+  });
+  return out;
+}
+function tick(){
+  var p=P(); if(p&&AL().on){
+    var k=dKey(), f=S.fired[k]||(S.fired[k]={}), m=nowMin(), ch=false;
+    Object.keys(S.fired).forEach(function(x){ if(x!==k){ delete S.fired[x]; ch=true; } });
+    var due=[]; events(p).forEach(function(ev){ if(f[ev.key]) return; if(m>=ev.t&&m<ev.t+4){ f[ev.key]=1; ch=true; due.push(ev); } else if(m>=ev.t+4){ f[ev.key]=1; ch=true; } });
+    /* أكثر من تنبيه في اللحظة نفسها (نهاية حصة + قرب التالية): نُظهر الأهم فقط، ونص «الانتهاء» يذكر الحصة التالية أصلاً */
+    if(due.length){ var pr={start:3,end:2,pre:1}; due.sort(function(x,y){ return (pr[y.type]||0)-(pr[x.type]||0)||y.t-x.t; }); fire(due[0]); }
+    if(ch) save();
+  }
+  injectCard();
+  if(isOpen()&&ST.tab!=='scan'&&ST.tab!=='alerts'&&!ST.scan){ var y=OV.querySelector('.jd-main'); if(!(document.activeElement&&OV.contains(document.activeElement)&&/INPUT|TEXTAREA/.test(document.activeElement.tagName))) draw(); }
+}
+/* للأغلفة الأحدث (اختياري): جدولة تنبيهات أصلية دقيقة للأيام السبعة القادمة إن وُجدت الدالة؛ وإلا لا شيء */
+function syncNative(){
+  var n=N(); if(!n||typeof n.scheduleLessonAlarms!=='function') return;
+  try{ var p=P(), list=[]; if(p&&AL().on){ var t=new Date(); t.setHours(0,0,0,0);
+      for(var k=0;k<7;k++){ var dt=new Date(t.getTime()+k*864e5); events(p,dt).forEach(function(ev){ var at=dt.getTime()+Math.round(ev.t*60000); if(at>Date.now()) list.push({at:at, title:ev.title, body:ev.body, tag:'jdw-'+ev.type, open:'jdw:today'}); }); } }
+    n.scheduleLessonAlarms(JSON.stringify(list)); }catch(e){}
+}
+
+/* ---------- الربط مع تطبيق الأستاذ ---------- */
+function hook(){
+  var r=root(); if(!r) return false;
+  css();
+  if(!r.__jdwMo){ r.__jdwMo=1; try{ new MutationObserver(function(){ if(OV&&OV.parentNode!==r&&OV.style.display!=='none') r.appendChild(OV); injectCard(); }).observe(r,{childList:true}); }catch(e){} }
+  if(typeof window.appGoBack==='function'&&!window.appGoBack.__jdw){ var ob=window.appGoBack; window.appGoBack=function(){ if(isOpen()){ if(ST.tab==='scan'&&P()){ ST.tab='today'; draw(); } else close(); return true; } return ob.apply(this,arguments); }; window.appGoBack.__jdw=1; }
+  if(!window.__nbOpen||!window.__nbOpen.__jdw){ var o2=window.__nbOpen; window.__nbOpen=function(t){ if(/^jdw:/.test(String(t||''))){ open('today'); return true; } return o2?o2.apply(this,arguments):false; }; window.__nbOpen.__jdw=1; }
+  injectCard(); return true;
+}
+window.nbJdw={open:open, decode:decode, got:got, state:function(){ return S; }, status:function(){ return P()?status(P()):null; }, events:function(){ return P()?events(P()):[]; }, tick:tick};
+var tries=0; (function wait(){ if(hook()){ setInterval(hook,3000); return; } if(++tries<120) setTimeout(wait,250); })();
+TICK=setInterval(tick,15000); setTimeout(tick,2500); setTimeout(syncNative,5000);
+document.addEventListener('visibilitychange',function(){ if(document.visibilityState==='visible') setTimeout(tick,300); });
+['pointerdown','keydown'].forEach(function(t){ document.addEventListener(t,function(){ if(!AC) unlockAudio(); },{capture:true,passive:true}); });
 })();
 </script>
 </body>
