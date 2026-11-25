@@ -18827,7 +18827,7 @@ if(document.readyState==='loading'){
 <!-- ===== AUTO UPDATE NOTIFICATION (small icon in topbar) ===== -->
 <script>
 (function(){
-  const APP_VERSION = "1.99.0";
+  const APP_VERSION = "1.99.1";
   try{ window.__nbAppVersion=APP_VERSION; }catch(e){}
   const CHECK_EVERY_MINUTES = 30;
   const LS_ACCEPTED = "daragat_accepted_version";
@@ -19807,7 +19807,8 @@ window.ABOUT_SUPPORT_PHONE = ABOUT_SUPPORT_PHONE;
   var METRICS = {}, metricCtx = null;
   function fontDescent(st, fontPx){
     var key = st.fontStyle + ' ' + st.fontWeight + ' ' + st.fontSize + ' ' + st.fontFamily;
-    if(METRICS[key] != null) return METRICS[key];
+    var zk = (parseFloat(st.fontSize) > 0 && fontPx > parseFloat(st.fontSize) * 1.001) ? fontPx / parseFloat(st.fontSize) : 1; /* 1.99.1: نص داخل عنصر مكبَّر */
+    if(METRICS[key] != null) return METRICS[key] * zk;
     var d = fontPx * 0.22;
     try{
       if(!metricCtx) metricCtx = document.createElement('canvas').getContext('2d');
@@ -19816,7 +19817,7 @@ window.ABOUT_SUPPORT_PHONE = ABOUT_SUPPORT_PHONE;
       if(m && typeof m.fontBoundingBoxDescent === 'number' && m.fontBoundingBoxDescent > 0) d = m.fontBoundingBoxDescent;
     }catch(e){}
     METRICS[key] = d;
-    return d;
+    return d * zk;
   }
   function radiusPx(st, w, h){
     var keys = ['borderTopLeftRadius', 'borderTopRightRadius', 'borderBottomRightRadius', 'borderBottomLeftRadius'];
@@ -19971,10 +19972,11 @@ window.ABOUT_SUPPORT_PHONE = ABOUT_SUPPORT_PHONE;
     function addBoxRec(ctx, el, st, r, angle, op, pseudo){
       var q = rel(r);
       if(q.w <= 0 || q.h <= 0) return;
+      var zb = zUp(el);
       var bg = cssColor(st.backgroundColor);
       if(!bg && st.backgroundImage && /gradient/i.test(st.backgroundImage)) bg = gradientColor(st.backgroundImage);
       var sides = ['Top', 'Right', 'Bottom', 'Left'].map(function(sd){
-        var w = parseFloat(st['border' + sd + 'Width'] || '0') || 0, s = st['border' + sd + 'Style'] || 'none';
+        var w = (parseFloat(st['border' + sd + 'Width'] || '0') || 0) * zb, s = st['border' + sd + 'Style'] || 'none';
         var c = cssColor(st['border' + sd + 'Color']);
         return (w > 0 && s !== 'none' && s !== 'hidden' && c) ? {w: w, style: s, color: c} : null;
       });
@@ -19982,7 +19984,7 @@ window.ABOUT_SUPPORT_PHONE = ABOUT_SUPPORT_PHONE;
       var mu = String(st.backgroundImage || '').match(/url\((["']?)(data:image\/[^"')]+)\1\)/i);
       if(mu) bgUrl = mu[2];
       if(!bg && !bgUrl && !sides.some(Boolean)) return;
-      var rec = {x: q.x, y: q.y, w: q.w, h: q.h, bg: bg, sides: sides, radius: radiusPx(st, q.w, q.h), angle: angle, op: op};
+      var rec = {x: q.x, y: q.y, w: q.w, h: q.h, bg: bg, sides: sides, radius: zb > 1 ? Math.min(radiusPx(st, q.w, q.h) * zb, Math.min(q.w, q.h) / 2) : radiusPx(st, q.w, q.h), angle: angle, op: op};
       if(!angle && st.backgroundImage && /linear-gradient/i.test(st.backgroundImage)) rec.grad = parseGradient(st.backgroundImage);
       if(!angle && st.clipPath && /polygon/i.test(st.clipPath)) rec.poly = parseClipPolygon(st.clipPath, q.w, q.h);
       if(angle){ rec.ow = pseudo ? q.w : (el.offsetWidth || q.w); rec.oh = pseudo ? q.h : (el.offsetHeight || q.h); }
@@ -20051,8 +20053,15 @@ window.ABOUT_SUPPORT_PHONE = ABOUT_SUPPORT_PHONE;
       if(visible) addPseudo(cctx, el, '::after', a2, eop);
     }
 
-    function baseText(st){
-      var fontPx = parseFloat(st.fontSize) || 12;
+    /* 1.99.1: CSS zoom أكبر من 1 (بطاقة مكبَّرة لتملأ ورقة A4) — الخط والحدود تُرسم بالمقاس الظاهر. التصغير يبقى كما كان */
+    var ZK = typeof Map === 'function' ? new Map() : null;
+    function zUp(el){
+      if(!el || el.nodeType !== 1) return 1; if(ZK && ZK.has(el)) return ZK.get(el);
+      var z = 1; for(var n = el; n && n.nodeType === 1; n = n.parentElement){ var v = parseFloat(win.getComputedStyle(n).zoom); if(v > 0 && isFinite(v)) z *= v; }
+      z = z > 1.001 ? z : 1; if(ZK) ZK.set(el, z); return z;
+    }
+    function baseText(st, el){
+      var fontPx = (parseFloat(st.fontSize) || 12) * zUp(el);
       var color = cssColor(st.color) || [0, 0, 0, 1];
       var align = st.textAlign || '', dir = st.direction || 'rtl';
       var anchor;
@@ -20064,7 +20073,7 @@ window.ABOUT_SUPPORT_PHONE = ABOUT_SUPPORT_PHONE;
       return {fontPx: fontPx, color: color, anchor: anchor, dir: dir, font: pickFont(st), underline: /underline/.test(st.textDecorationLine || st.textDecoration || '')};
     }
     function addText(ctx, node, el, st, angle, op){
-      var b = baseText(st), rec = {fontPx: b.fontPx, color: b.color, anchor: b.anchor, dir: b.dir, font: b.font, underline: b.underline, op: op, angle: 0, lines: []};
+      var b = baseText(st, el), rec = {fontPx: b.fontPx, color: b.color, anchor: b.anchor, dir: b.dir, font: b.font, underline: b.underline, op: op, angle: 0, lines: []};
       if(angle){
         // rotated text (e.g. corner ribbons): keep it as one rotated string centred on its box
         var rg = node.ownerDocument.createRange(); rg.selectNodeContents(node);
@@ -20085,7 +20094,7 @@ window.ABOUT_SUPPORT_PHONE = ABOUT_SUPPORT_PHONE;
     }
     function addInputText(ctx, el, st, r, op, angle){
       if(angle) return;
-      var b = baseText(st), fontPx = b.fontPx, desc = fontDescent(st, fontPx);
+      var b = baseText(st, el), fontPx = b.fontPx, desc = fontDescent(st, fontPx);
       var pl = parseFloat(st.paddingLeft) || 0, pr = parseFloat(st.paddingRight) || 0;
       var text = String(el.value || '');
       var left = r.left + pl, right = r.right - pr;
@@ -24437,7 +24446,7 @@ function fitCards(doc){
     return;
   }
   pages.forEach(function(pg){
-    if(!pg.querySelector('.card')) return; /* 1.73: صفحات A5 للبطاقات فقط — لا تُقصّ واجهات السجلات والمخاطبات (A4) */
+    if(!pg.querySelector('.card')||pg.classList.contains('nbpo')) return; /* 1.99.1: أوراق الاتجاه المختار في المعاينة لها مقاسها */ /* 1.73: صفحات A5 للبطاقات فقط — لا تُقصّ واجهات السجلات والمخاطبات (A4) */
     pg.style.height='209.5mm'; pg.style.maxHeight='209.5mm'; pg.style.overflow='hidden'; // صفحة واحدة بالضبط بلا صفحة فارغة إضافية
     pg.querySelectorAll('.card').forEach(function(card){
       card.style.zoom='';
@@ -28239,8 +28248,83 @@ function flipHtml(html,toL){
   if(!had) html=html.replace(/<\/head>/i,'<style>@page{size:A4 '+o+'}</style></head>');
   return html;
 }
-function curLand(){ try{ return pageSize(PV.frame.contentDocument).land; }catch(e){ return false; } }
+/* 1.99.1: بطاقات النتائج — عمودي/أفقي داخل المعاينة: البطاقات نفسها تُنقل إلى أوراق A4 بالاتجاه المختار وتُكبَّر/تُصغَّر بنسبة ثابتة لتملأ الورقة
+   (A5 على ورقة عمودية = بطاقة واحدة تملأ الورقة، وعلى ورقة أفقية = بطاقتان كما في الأصل). التعديلات داخل البطاقات تبقى كما هي. */
+function nbpoMm(mm){ return mm*96/25.4; }
+function cardDoc(d){ try{ return !!(d&&d.body&&d.querySelector('#pages > .page > .card-slot > .card, #pages > .page.nbpo > .nbpo-z > .card-slot > .card')); }catch(e){ return false; } }
+function cardState(d){ var st=d&&d.getElementById('nbpoCss'); if(!st) return null; var o={}; try{ o=JSON.parse(st.getAttribute('data-o')||'{}')||{}; }catch(e){} o.mode=st.getAttribute('data-mode')||''; return o; }
+function cardPageLand(d){ /* اتجاه ورقة البطاقات الأصلية من قاعدة @page (آخر قاعدة هي المعتمدة) */
+  var w=0,h=0;
+  try{ [].forEach.call(d.styleSheets,function(sh){ var rs; try{ rs=sh.cssRules||[]; }catch(e){ return; } [].forEach.call(rs,function(r){ if(r.type!==6) return; var m=String(r.cssText||'').match(/size\s*:\s*([^;}]+)/i); if(!m) return; var v=m[1].trim(), mm=v.match(/([\d.]+)mm\s+([\d.]+)mm/i);
+      if(mm){ w=+mm[1]; h=+mm[2]; } else if(/A4/i.test(v)){ if(/landscape/i.test(v)){ w=297; h=210; } else { w=210; h=297; } } }); }); }catch(e){}
+  return w>h;
+}
+function cardLandNow(d){ var o=cardState(d); if(o&&o.mode) return o.mode==='L'; return cardPageLand(d); }
+function cardUnits(d){
+  var z=[].slice.call(d.querySelectorAll('#pages > .page.nbpo .nbpo-z'));
+  if(z.length) return z.map(function(w){ return {el:w.firstElementChild,o:+w.getAttribute('data-o')||0}; }).filter(function(u){ return u.el; });
+  var out=[], pages=[].slice.call(d.querySelectorAll('#pages > .page'));
+  if(pages.length){ pages.forEach(function(pg,i){ [].forEach.call(pg.children,function(ch){ if(ch.querySelector('.card')||ch.classList.contains('card')) out.push({el:ch,o:i}); }); }); return out; }
+  [].forEach.call(d.body.querySelectorAll(':scope > .card'),function(c){ out.push({el:c,o:0}); });
+  return out;
+}
+function cardFlip(toL){
+  var d=PV&&PV.frame&&PV.frame.contentDocument; if(!d||!cardDoc(d)) return;
+  if(toL===cardLandNow(d)) return;
+  if(PV.edit) toggleEdit();
+  snap();
+  try{
+    var st=d.getElementById('nbpoCss'), o=cardState(d), units=cardUnits(d); if(!units.length) return;
+    if(!st){ /* أول تبديل: نحفظ شكل الأوراق الأصلية لنعود إليه */
+      var pages=[].slice.call(d.querySelectorAll('#pages > .page'));
+      o={origin:pages.length?'pages':'body',land:cardPageLand(d),pages:pages.map(function(pg){ return {c:pg.className.replace(/\bnbpv-page\b/g,'').trim(),s:pg.getAttribute('style')||''}; })};
+      st=d.createElement('style'); st.id='nbpoCss'; d.body.insertBefore(st,d.body.firstChild);
+    }
+    /* المقاس الطبيعي للبطاقة (قبل أي تكبير) */
+    var uw=0,uh=0; units.forEach(function(u){ uw=Math.max(uw,u.el.offsetWidth||0); uh=Math.max(uh,u.el.offsetHeight||0); });
+    if(!(uw>0&&uh>0)){ uw=nbpoMm(148.5); uh=nbpoMm(210); }
+    var host=d.getElementById('pages');
+    units.forEach(function(u){ if(u.el.parentNode) u.el.parentNode.removeChild(u.el); });
+    if(toL===o.land){
+      /* الرجوع إلى الأوراق الأصلية كما بناها البرنامج */
+      if(o.origin==='pages'&&host){
+        host.innerHTML=''; var made=o.pages.map(function(pp){ var pg=d.createElement('div'); pg.className=pp.c||'page'; if(pp.s) pg.setAttribute('style',pp.s); host.appendChild(pg); return pg; });
+        units.forEach(function(u){ (made[u.o]||made[made.length-1]).appendChild(u.el); });
+      } else {
+        var sc=d.getElementById('pagesScale'); units.forEach(function(u){ d.body.appendChild(u.el); }); if(sc&&sc.hasAttribute('data-nbpo')) sc.remove();
+      }
+      st.remove();
+    } else {
+      if(!host){ var sc2=d.createElement('div'); sc2.id='pagesScale'; sc2.setAttribute('data-nbpo','1'); host=d.createElement('div'); host.id='pages'; sc2.appendChild(host); d.body.appendChild(sc2); }
+      host.innerHTML='';
+      var W=nbpoMm(toL?297:210), H=nbpoMm(toL?209.5:296.5), best=null;
+      for(var k=1;k<=4;k++){ ['row','column'].forEach(function(dir){ var s=dir==='row'?Math.min(W/(k*uw),H/uh):Math.min(W/uw,H/(k*uh)), sc=k*s*s; if(!best||sc>best.sc+1e-6) best={k:k,dir:dir,s:s,sc:sc}; }); }
+      var z=Math.floor(best.s*1000)/1000, pg=null;
+      units.forEach(function(u,i){
+        if(i%best.k===0){ pg=d.createElement('div'); pg.className='page nbpo'; pg.style.cssText='width:'+(toL?'297mm':'210mm')+';height:'+(toL?'209.5mm':'296.5mm')+';max-height:'+(toL?'209.5mm':'296.5mm')+';overflow:hidden;display:flex;flex-direction:'+best.dir+';align-items:center;justify-content:center;box-sizing:border-box;background:#fff'; host.appendChild(pg); }
+        var w=d.createElement('div'); w.className='nbpo-z'; w.setAttribute('data-o',String(u.o)); w.style.zoom=String(z); w.style.flex='0 0 auto'; w.appendChild(u.el); pg.appendChild(w);
+      });
+      st.setAttribute('data-mode',toL?'L':'P'); st.setAttribute('data-o',JSON.stringify({origin:o.origin,land:o.land,pages:o.pages}));
+      st.textContent='@page{size:'+(toL?'297mm 210mm':'210mm 297mm')+';margin:0}'+
+        '#pages{display:flex;flex-direction:column;align-items:center}'+
+        '.page.nbpo{position:relative}.page.nbpo::after{display:none!important}'+
+        '@media print{html,body{margin:0!important;padding:0!important;height:auto!important;overflow:visible!important}#pagesScale{transform:none!important;width:auto!important;height:auto!important}#pages{gap:0!important;margin:0!important;padding:0!important}'+
+        '.page.nbpo{margin:0!important;box-shadow:none!important;page-break-after:always!important;break-after:page}.page.nbpo:last-child{page-break-after:auto!important;break-after:auto}}';
+    }
+  }catch(e){ try{console.warn('nb-card-orient',e);}catch(_){} }
+  try{ markPages(d); }catch(e){}
+  PV.sel=null; try{ paintSel(); }catch(e){} renderBar(); try{ renderSide(); }catch(e){}
+  setTimeout(function(){ fitZoom(); syncHeight(); },40);
+  toast(toL?'الورقة أفقية — البطاقات بمقاس الورقة':'الورقة عمودية — البطاقة تملأ الورقة');
+}
+/* إطار الطباعة/التصدير يأخذ مقاس الاتجاه المختار */
+function cardFrameStyle(css){
+  try{ var d=PV&&PV.frame&&PV.frame.contentDocument, o=d&&cardState(d); if(!o||!o.mode) return css;
+    var L=o.mode==='L'; return String(css||'').replace(/width\s*:\s*[^;]+/i,'width:'+(L?'297mm':'210mm')).replace(/height\s*:\s*[^;]+/i,'height:'+(L?'210mm':'297mm')); }catch(e){ return css; }
+}
+function curLand(){ try{ var d=PV.frame.contentDocument; if(cardDoc(d)) return cardLandNow(d); return pageSize(d).land; }catch(e){ return false; } }
 function flipOrient(){
+  try{ if(PV&&PV.frame&&cardDoc(PV.frame.contentDocument)){ cardFlip(!curLand()); return; } }catch(e){}
   if(!PV||!PV.frame||!PV.srcHtml) return;
   if(PV.textEdited&&!confirm('عند تبديل الاتجاه تُبنى الورقة من جديد وتضيع تعديلات النص وعرض الأعمدة، وتبقى الألوان والإطار والخط. هل تريد المتابعة؟')) return;
   if(PV.edit) toggleEdit();
@@ -28288,7 +28372,7 @@ function act(kind,orient,auto){
 }
 function makeClone(html){
   var f=document.createElement('iframe');
-  f.style.cssText=PV&&PV.srcStyle?PV.srcStyle:'position:fixed;left:-10000px;top:0;width:210mm;height:297mm;border:0;background:#fff';
+  f.style.cssText=cardFrameStyle(PV&&PV.srcStyle?PV.srcStyle:'position:fixed;left:-10000px;top:0;width:210mm;height:297mm;border:0;background:#fff');
   f.style.left='-10000px'; f.style.visibility='';
   f.__nbPvPass=true; document.body.appendChild(f);
   var d=f.contentDocument||f.contentWindow.document; d.open(); d.write(html); d.close();
@@ -48688,6 +48772,9 @@ function addGroup(){
 if(window.__nb175) return; window.__nb175=1;
 var SEEN='nbWhatsNewSeen';
 var CH=[
+ ['1.99.1','25 تشرين الثاني 2026',[
+  ['🔄','عمودي / أفقي لبطاقات النتائج','في معاينة طباعة النتائج صار زر «الاتجاه» يعمل: «عمودي» يضع كل بطاقة على ورقة A4 عمودية ويكبّرها لتملأ الورقة، و«أفقي» يعيدها بطاقتين في الورقة كما كانت. الطباعة وملف PDF يخرجان بالاتجاه المختار، والتعديلات داخل البطاقات تبقى.']
+ ]],
  ['1.99.0','25 تشرين الثاني 2026',[
   ['📄','تصدير النتائج إلى PDF','على الأجهزة ذات المتصفح الأقدم (ويندوز 7 وبعض أجهزة أندرويد) كانت البطاقات في ملف PDF مقصوصة: الجدول يتداخل مع التواقيع وينزاح في الصفحات التالية حتى يختفي. صار القياس موحّداً فتخرج كل البطاقات كاملة كما في الطباعة.']
  ]],
