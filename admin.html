@@ -1526,7 +1526,7 @@ body.jd-mode #jdWrap{display:block}
     var k=r.key, jk=J(k), ph=normIraqPhone(r.phone||''), wa=waTo(ph,'السلام عليكم، بخصوص تفعيل برنامج الجدول الأسبوعي الذكي'+(r.schoolName?' — '+r.schoolName:''));
     var isA=r.status==='approved'&&!stopped(r), isT=r.status==='device_transfer_pending', cur=PL[r.plan]?r.plan:'monthly';
     var d=r.lastSeenDevice||{};
-    var school='<div class="at-school">'+E(r.schoolName||'—')+'</div><div class="at-sub"><span class="at-num">#'+(i+1)+'</span> <span class="badge-status s-'+stClass(r)+'">'+E(stLabel(r))+'</span>'+(r.legacy?'<span class="jd-tag leg">مفعّل سابقًا</span>':'<span class="jd-tag onl">أونلاين</span>')+'</div>'
+    var school='<div class="at-school">'+E(r.schoolName||'—')+'</div><div class="at-sub"><span class="at-num">#'+(i+1)+'</span> <span class="badge-status s-'+stClass(r)+'">'+E(stLabel(r))+'</span>'+(r.source==='manual'?'<span class="jd-tag leg">تفعيل يدوي</span>':r.legacy?'<span class="jd-tag leg">مفعّل سابقًا</span>':'<span class="jd-tag onl">أونلاين</span>')+'</div>'
       +'<div class="at-sub">📅 التسجيل: '+E(fmtDate(toTs(r.registeredAt)||toTs(r.legacyRegisteredAt)))+(r.approvedAt?' · التفعيل: '+E(fmtDate(toTs(r.approvedAt))):'')+'</div>';
     var prin='<div class="at-strong">'+E(r.principalName||r.name||'—')+'</div>';
     var em='<span class="code at-ltr">'+E(r.email)+'</span>';
@@ -1592,7 +1592,7 @@ body.jd-mode #jdWrap{display:block}
   };
   window.jdCSV=function(){
     var rows=[['#','email','schoolName','principalName','phone','deviceCode','status','source','plan','expiresAt','registeredAt','approvedAt','paidAmount','licKey','companion']];
-    list().forEach(function(r,i){ rows.push([i+1,r.email,r.schoolName||'',r.principalName||'',normIraqPhone(r.phone||''),fmtDev(r.deviceCode),stLabel(r),r.legacy?'مفعّل سابقًا':'أونلاين',plab(r.plan),r.expiresAt?fmtDate(toTs(r.expiresAt)):'',fmtDate(toTs(r.registeredAt)),fmtDate(toTs(r.approvedAt)),r.paidAmount||'',fmtKey(r.licKey||''),r.qrlActive?'مفعّل':'']); });
+    list().forEach(function(r,i){ rows.push([i+1,r.email,r.schoolName||'',r.principalName||'',normIraqPhone(r.phone||''),fmtDev(r.deviceCode),stLabel(r),r.source==='manual'?'تفعيل يدوي':r.legacy?'مفعّل سابقًا':'أونلاين',plab(r.plan),r.expiresAt?fmtDate(toTs(r.expiresAt)):'',fmtDate(toTs(r.registeredAt)),fmtDate(toTs(r.approvedAt)),r.paidAmount||'',fmtKey(r.licKey||''),r.qrlActive?'مفعّل':'']); });
     var csv=rows.map(function(r){ return r.map(function(c){ return '"'+String(c).replace(/"/g,'""')+'"'; }).join(','); }).join('\n');
     var a=document.createElement('a'); a.href=URL.createObjectURL(new Blob(['﻿'+csv],{type:'text/csv;charset=utf-8'})); a.download='jadwal-accounts-'+new Date().toISOString().slice(0,10)+'.csv'; a.click();
   };
@@ -1605,13 +1605,21 @@ body.jd-mode #jdWrap{display:block}
         app=all.filter(function(r){ return r.status==='approved'&&!stopped(r)&&!r.legacy; }),
         leg=all.filter(function(r){ return r.legacy&&r.status==='approved'&&!stopped(r); }),
         stp=all.filter(function(r){ return stopped(r)||r.status==='rejected'; });
+    /* ملخص التفعيل حسب المدة: الحسابات المفعّلة الآن (أونلاين + الموثّقون) دون الموقوفة */
+    var actv=all.filter(function(r){ return r.status==='approved'&&!stopped(r); }),
+        perm=actv.filter(function(r){ return r.plan==='permanent'; }),
+        tmd=actv.filter(function(r){ return r.plan!=='permanent'&&!expired(r); }),
+        exd=actv.filter(function(r){ return expired(r); });
     var C={all:all.length,pending:pen.length,transfers:tra.length,approved:app.length,legacy:leg.length,stopped:stp.length};
     Object.keys(C).forEach(function(k){ var b=$('jdB-'+k); if(b) b.textContent=C[k]; });
     $('jdStats').innerHTML='<div class="stat info"><div class="ic">🗓️</div><div class="num">'+all.length+'</div><div class="lbl">إجمالي حسابات الجدول</div></div>'
       +'<div class="stat warn"><div class="ic">📞</div><div class="num">'+pen.length+'</div><div class="lbl">بانتظار الموافقة</div></div>'
       +'<div class="stat tr"><div class="ic">🔄</div><div class="num">'+tra.length+'</div><div class="lbl">نقل أجهزة</div></div>'
       +'<div class="stat ok"><div class="ic">✅</div><div class="num">'+app.length+'</div><div class="lbl">مفعّلة أونلاين</div></div>'
-      +'<div class="stat vio"><div class="ic">🛡️</div><div class="num">'+leg.length+'</div><div class="lbl">مفعّلون سابقًا (موثّقون)</div></div>';
+      +'<div class="stat vio"><div class="ic">🛡️</div><div class="num">'+leg.length+'</div><div class="lbl">مفعّلون سابقًا (موثّقون)</div></div>'
+      +'<div class="stat ok"><div class="ic">♾️</div><div class="num">'+perm.length+'</div><div class="lbl">مفعّل دائم</div></div>'
+      +'<div class="stat info"><div class="ic">⏱️</div><div class="num">'+tmd.length+'</div><div class="lbl">مفعّل مؤقت'+(tmd.length?' <small style="display:block;font-size:11px;opacity:.85">'+['daily','monthly','yearly'].map(function(p){ var n=tmd.filter(function(r){ return r.plan===p; }).length; return n?plab(p)+' '+n:''; }).filter(Boolean).join(' · ')+'</small>':'')+'</div></div>'
+      +'<div class="stat warn"><div class="ic">⌛</div><div class="num">'+exd.length+'</div><div class="lbl">مؤقت منتهي</div></div>';
     var html;
     if(tab==='keygen'){ if(!$('jdKgDev')) box.innerHTML=renderKeygen(); return; }
     var src={all:all,pending:pen,transfers:tra,approved:app,legacy:leg,stopped:stp}[tab]||all;
