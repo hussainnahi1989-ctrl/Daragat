@@ -18827,7 +18827,7 @@ if(document.readyState==='loading'){
 <!-- ===== AUTO UPDATE NOTIFICATION (small icon in topbar) ===== -->
 <script>
 (function(){
-  const APP_VERSION = "1.99.1";
+  const APP_VERSION = "1.99.2";
   try{ window.__nbAppVersion=APP_VERSION; }catch(e){}
   const CHECK_EVERY_MINUTES = 30;
   const LS_ACCEPTED = "daragat_accepted_version";
@@ -20409,7 +20409,8 @@ window.ABOUT_SUPPORT_PHONE = ABOUT_SUPPORT_PHONE;
   }
 
   // ---------------------------------------------------------------- PDF from a print snapshot
-  async function buildPdfFromSnapshot(snap, filename){
+  async function buildPdfFromSnapshot(snap, filename, opts){
+    opts = opts || {};
     var jsp = window.jspdf && window.jspdf.jsPDF;
     if(!jsp) throw new Error('مولّد PDF الحقيقي غير متاح');
     var rf = makeRenderFrame(snap.html, snap.widthPx, snap.heightPx);
@@ -20426,7 +20427,10 @@ window.ABOUT_SUPPORT_PHONE = ABOUT_SUPPORT_PHONE;
         await sleep(40);
       }
       await frameReady(rf);
-      var pdf = new jsp({unit: 'mm', format: [pwMm, phMm], orientation: pwMm > phMm ? 'landscape' : 'portrait', putOnlyUsedFonts: true, compress: true});
+      /* 1.99.2: تطبيق الأندرويد يطبع ملف PDF على ورقة A4 عمودية ثابتة — الصفحة الأفقية تُوضع مدوّرة داخل صفحة عمودية بنفس مقاس الورقة، فتُطبع كاملة بلا قص ولا تصغير */
+      var ROT = !!(opts.portraitMedia && pwMm > phMm + 1);
+      var fmt = ROT ? [phMm, pwMm] : [pwMm, phMm], ori = ROT ? 'portrait' : (pwMm > phMm ? 'landscape' : 'portrait');
+      var pdf = new jsp({unit: 'mm', format: fmt, orientation: ori, putOnlyUsedFonts: true, compress: true});
       registerFonts(pdf);
       pdf.setProperties({title: filename || 'Daragat PDF', subject: 'School print export', author: 'Daragat'});
       var targets = pageTargets(doc); if(!targets.length) targets = [doc.body];
@@ -20436,7 +20440,7 @@ window.ABOUT_SUPPORT_PHONE = ABOUT_SUPPORT_PHONE;
         var model = await collectTarget(target, win);
         var slices = makeSlices(model.height, innerHpx, model.breaks);
         for(var si = 0; si < slices.length; si++){
-          if(pageIndex > 0) pdf.addPage([pwMm, phMm], pwMm > phMm ? 'landscape' : 'portrait');
+          if(pageIndex > 0) pdf.addPage(fmt, ori);
           pageIndex++;
           var topShift = (targets.length === 1 && target !== doc.body && si === 0) ? Math.max(0, model.base.top) * MM : 0;
           var S = {pdf: pdf, y0: slices[si][0], y1: slices[si][1], curOp: 1,
@@ -20444,7 +20448,9 @@ window.ABOUT_SUPPORT_PHONE = ABOUT_SUPPORT_PHONE;
           S.X = function(x){ return S.ox + x * MM; };
           S.Y = function(y){ return S.oy + (y - S.y0) * MM; };
           var clip = (mar[0] > 0 || mar[2] > 0 || slices.length > 1) ? {x: 0, y: mar[0], w: pwMm, h: phMm - mar[0] - mar[2], r: 0, ellipse: false} : null;
+          if(ROT){ var kk = 72 / 25.4; pdf.internal.write('q 0 -1 1 0 ' + (-(pwMm - phMm) * kk).toFixed(3) + ' ' + (pwMm * kk).toFixed(3) + ' cm'); }
           withClip(S, clip, function(){ drawCtx(model.root, S); });
+          if(ROT) pdf.internal.write('Q');
         }
       }
       if(!pageIndex) throw new Error('لم يتم العثور على محتوى للطباعة');
@@ -20649,7 +20655,7 @@ window.ABOUT_SUPPORT_PHONE = ABOUT_SUPPORT_PHONE;
     if(snap && nativeHas('printPdf')){
       try{
         pdfToast('جاري تجهيز الملف للطباعة…');
-        var blob = await buildPdfFromSnapshot(snap, 'Daragat-print.pdf');
+        var blob = await buildPdfFromSnapshot(snap, 'Daragat-print.pdf', {portraitMedia: !!(window.AndroidDaragat && window.__daragatShell)});
         var o2 = nativeOutcome(await nativeInvoke('printPdf', await blobToBase64(blob), pdfSafeName(snap.title || 'طباعة')));
         pdfToast('');
         if(o2 === 'ok' || o2 === 'cancel') return;
@@ -48772,6 +48778,9 @@ function addGroup(){
 if(window.__nb175) return; window.__nb175=1;
 var SEEN='nbWhatsNewSeen';
 var CH=[
+ ['1.99.2','25 تشرين الثاني 2026',[
+  ['🖨️','طباعة النتائج من تطبيق الأندرويد','تطبيق الأندرويد يرسل ملف الطباعة على ورقة A4 عمودية دائماً، فكانت البطاقات الأفقية تُقص في شاشة الطباعة. صار البرنامج يضع الورقة الأفقية مدوّرة داخل ورقة A4 عمودية بنفس المقاس، فتُطبع البطاقتان كاملتين بلا قص ولا تصغير. زر PDF يبقى يحفظ الملف أفقياً كما هو.']
+ ]],
  ['1.99.1','25 تشرين الثاني 2026',[
   ['🔄','عمودي / أفقي لبطاقات النتائج','في معاينة طباعة النتائج صار زر «الاتجاه» يعمل: «عمودي» يضع كل بطاقة على ورقة A4 عمودية ويكبّرها لتملأ الورقة، و«أفقي» يعيدها بطاقتين في الورقة كما كانت. الطباعة وملف PDF يخرجان بالاتجاه المختار، والتعديلات داخل البطاقات تبقى.']
  ]],
