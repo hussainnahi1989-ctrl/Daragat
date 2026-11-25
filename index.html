@@ -18827,7 +18827,7 @@ if(document.readyState==='loading'){
 <!-- ===== AUTO UPDATE NOTIFICATION (small icon in topbar) ===== -->
 <script>
 (function(){
-  const APP_VERSION = "1.96.0";
+  const APP_VERSION = "1.97.0";
   try{ window.__nbAppVersion=APP_VERSION; }catch(e){}
   const CHECK_EVERY_MINUTES = 30;
   const LS_ACCEPTED = "daragat_accepted_version";
@@ -45588,7 +45588,7 @@ function syncOn(){ try{ return localStorage.getItem(SYNC_KEY)!=='0'; }catch(e){ 
 function pagesEl(){ return document.getElementById('pages'); }
 function cards(){ var p=pagesEl(); return p?[].slice.call(p.querySelectorAll('.card')):[]; }
 function cardType(card){ var slot=card&&card.closest('.card-slot'), s=slot&&slot.querySelector('.slot-bar select'); return (s&&s.value)||'lower'; }
-function kids(el){ return [].filter.call(el.children,function(k){ return !(k.classList&&(k.classList.contains('nbd-bg')||k.classList.contains('nbd-sel'))); }); }
+function kids(el){ return [].filter.call(el.children,function(k){ return !(k.classList&&(k.classList.contains('nbd-bg')||k.classList.contains('nbd-sel')||k.classList.contains('nb192-cw')||k.classList.contains('nb189-cn'))); }); } /* 1.97: العناصر التي تظهر لبعض الطلاب فقط لا تُحسب في مسار العنصر، فيتطابق التعديل في كل البطاقات */
 function pathOf(el,card){ var p=[]; while(el&&el!==card){ var par=el.parentElement; if(!par) return null; p.unshift(kids(par).indexOf(el)); el=par; } return el===card?p.join('.'):null; }
 function byPath(card,path){ if(path==='') return card; var el=card; String(path).split('.').forEach(function(i){ if(!el) return; el=kids(el)[+i]||null; }); return el; }
 function store(){ try{ if(!APP.school.cardDesign||typeof APP.school.cardDesign!=='object') APP.school.cardDesign={}; return APP.school.cardDesign; }catch(e){ return {}; } }
@@ -48664,6 +48664,13 @@ function addGroup(){
 if(window.__nb175) return; window.__nb175=1;
 var SEEN='nbWhatsNewSeen';
 var CH=[
+ ['1.97.0','25 تشرين الثاني 2026',[
+  ['🖨️','طباعة النتائج: خياران من أول ضغطة','عند الضغط على «طباعة وتصدير» أو «طباعة هذه البطاقة فقط» يظهر فوراً: طباعة بالدرجات أو طباعة بدون درجات، وتُعرض المعاينة بالشكل المختار.','إصدار النتائج'],
+  ['📋','القائمة الجانبية هي الشكل الافتراضي','عادت القائمة الجانبية شكلاً افتراضياً، ويمكن اختيار قائمة الأيقونات من الإعدادات ← المظهر.','القائمة'],
+  ['✅','النتيجة بعد اكتمال الدرجات','لا تظهر «ناجح» أو غيرها إلا بعد إدخال الدرجة النهائية لكل المواد، وفي الصفوف الوزارية (الثالث المتوسط والسادس الإعدادي) بعد كتابة السعي السنوي.','النتائج'],
+  ['🪪','المواليد ورقم القيد في كل البطاقات','كل قوالب بطاقات النتائج تعرض المواليد ورقم القيد تلقائياً من بيانات الطالب، دون تغيير موضع الجدول أو التواقيع في أي قالب.','بطاقات النتائج'],
+  ['✨','تصميم البطاقة يُعمَّم على الكل','أي تعديل على عنصر في بطاقة (حجم، لون، عريض، تحريك، إخفاء، نص مشترك) يتغير في كل بطاقات الشعبة دفعة واحدة، حتى لو اختلفت ملاحظات الطلاب.','بطاقات النتائج']
+ ]],
  ['1.96.0','25 تشرين الثاني 2026',[
   ['📊','الموجز العام أدق وأجمل','نسبة النجاح ونتائج كل صف تُحسب من آخر درجات مُدخلة (الشهر الأول، ثم الثاني، ثم معدل الفصل، ثم نصف السنة… حتى النهائية) مع شارة توضح المرحلة المعتمدة، ومن لا درجات له لا يُحسب. مؤشرات دائرية صغيرة داخل ملخص الناجحين والمكملين والراسبين والغياب والحضور، والبطاقات تترتب حسب عرض الشاشة وحجم الخط فلا تتقطع الكلمات.','الموجز العام'],
   ['🗂️','عدد السجلات بدقة','سجلات الدرجات (١١ سجلاً) وسجلات الإدارة (الصادرة والواردة، الكتب، الأسئلة، الوثائق، الإنذارات، الأوامر، المخاطبات، القيود، الممتلكات، الحسابات، الملاحظات، الملاك، الرعاية…) وسجلات الغياب، مع عدد ما أُدخل في كل منها.','الموجز العام']
@@ -51856,7 +51863,9 @@ if(typeof window.nbBlankPrep==='function'){
   window.nbBlankPrep=function(doc){ var r=oBP.apply(this,arguments); try{ useDoc(doc); }catch(e){} return r; };
 }
 var INPV=false;
-if(typeof window.nbPreviewPrep==='function'){ var oPP=window.nbPreviewPrep; window.nbPreviewPrep=function(){ INPV=true; try{ return oPP.apply(this,arguments); } finally { INPV=false; } }; }
+var PVMODE=null, PVT=0, PVSEEN=false;
+if(typeof window.nbPreviewPrep==='function'){ var oPP=window.nbPreviewPrep; window.nbPreviewPrep=function(d){ var r; INPV=true; try{ r=oPP.apply(this,arguments); } finally { INPV=false; } try{ if(PVMODE==='blank'&&d) blankCards(d); }catch(e){} return r; }; }
+setInterval(function(){ if(!PVMODE) return; var pv=document.getElementById('nbPv'), vis=!!(pv&&getComputedStyle(pv).display!=='none'&&pv.getClientRects().length); if(vis){ PVSEEN=true; return; } if(PVSEEN||Date.now()-PVT>15000){ PVMODE=null; PVSEEN=false; } },500);
 function useDoc(d){ if(INPV||MODE!=='blank'||Date.now()-MODE_T>45000||!d) return; try{ if(d===pvDoc()) return; }catch(e){} blankCards(d); }
 function closeMenu(){ var m=document.getElementById('nb194Menu'); if(m) m.remove(); }
 var MCSS='#nb194Menu{position:fixed;z-index:2147483600;min-width:270px;max-width:calc(100vw - 16px);background:#fff;color:#1d2a3a;border-radius:18px;box-shadow:0 22px 60px rgba(10,20,50,.35);border:1px solid rgba(20,40,90,.12);padding:8px;direction:rtl;font-family:inherit}'+
@@ -51866,7 +51875,7 @@ var MCSS='#nb194Menu{position:fixed;z-index:2147483600;min-width:270px;max-width
  '#nb194Menu button i{font-style:normal;width:40px;height:40px;border-radius:12px;display:grid;place-items:center;font-size:20px;color:#fff;flex:0 0 auto}'+
  '#nb194Menu button b{display:block;font-size:14.5px;font-weight:900;color:#13213a}#nb194Menu button small{display:block;font-size:11.5px;font-weight:700;color:#5b6474;margin-top:2px}'+
  'html[data-ui-skin^="night"] #nb194Menu,body.theme-dark #nb194Menu{background:#1b2430;color:#e7edf2;border-color:rgba(255,255,255,.12)}html[data-ui-skin^="night"] #nb194Menu button b,body.theme-dark #nb194Menu button b{color:#fff}html[data-ui-skin^="night"] #nb194Menu button small,body.theme-dark #nb194Menu button small{color:rgba(235,240,255,.7)}html[data-ui-skin^="night"] #nb194Menu button:hover,body.theme-dark #nb194Menu button:hover{background:rgba(255,255,255,.08)}';
-function showMenu(b,pdf){
+function showMenu(b,pdf,onPick){
   closeMenu();
   if(!document.getElementById('nb194Css')){ var s=document.createElement('style'); s.id='nb194Css'; s.textContent=MCSS; document.head.appendChild(s); }
   var m=document.createElement('div'); m.id='nb194Menu'; m.setAttribute('role','menu');
@@ -51878,7 +51887,7 @@ function showMenu(b,pdf){
   var x=Math.min(Math.max(8,r.right-W),window.innerWidth-W-8), y=r.bottom+6; if(y+H>window.innerHeight-8) y=Math.max(8,r.top-H-6);
   m.style.left=x+'px'; m.style.top=y+'px';
   m.addEventListener('click',function(ev){ var c=ev.target.closest('button[data-m]'); if(!c) return; closeMenu();
-    MODE=c.getAttribute('data-m'); MODE_T=Date.now(); b.__nb194ok=true; b.click(); });
+    MODE=c.getAttribute('data-m'); MODE_T=Date.now(); if(onPick){ try{ onPick(MODE); }catch(x){} } b.__nb194ok=true; b.click(); });
   function off(ev){ if(!m.parentNode){ document.removeEventListener('mousedown',off,true); document.removeEventListener('touchstart',off,true); return; } if(!m.contains(ev.target)){ closeMenu(); document.removeEventListener('mousedown',off,true); document.removeEventListener('touchstart',off,true); } }
   setTimeout(function(){ document.addEventListener('mousedown',off,true); document.addEventListener('touchstart',off,true); },0);
   try{ m.querySelector('button').focus(); }catch(e){}
@@ -51888,10 +51897,22 @@ window.addEventListener('click',function(e){
   var t=(b.textContent||'').replace(/\s+/g,' ').trim(); var pr=/^🖨️ ?طباعة$/.test(t), pdf=/^📄 ?PDF$/.test(t); if(!pr&&!pdf) return;
   if(b.__nb194ok){ b.__nb194ok=false; return; }
   if(!isCardsPv()){ MODE=null; return; }
+  if(PVMODE){ MODE=PVMODE; MODE_T=Date.now(); return; }
   e.preventDefault(); e.stopImmediatePropagation(); e.stopPropagation();
   showMenu(b,pdf);
 },true);
 document.addEventListener('keydown',function(e){ if(e.key==='Escape') closeMenu(); });
+/* 1.97: الخياران يظهران من أول ضغطة على «طباعة» في صفحة النتائج (قبل المعاينة)، والمعاينة تُعرض بالشكل المختار */
+var OUTSEL='#view-output .txe-menu-btn,#view-output .txe-menu-item,#view-output [onclick*="printCurrentCards"],#view-output [onclick*="exportResultsPDF"],#pages .slot-bar > button';
+window.addEventListener('click',function(e){
+  var b=e.target&&e.target.closest&&e.target.closest(OUTSEL); if(!b||b.closest('#nbPv')) return;
+  var t=(b.textContent||'').replace(/\s+/g,' ').trim(); if(!/طباعة|PDF|🖶/.test(t)) return;
+  if(b.__nb194ok){ b.__nb194ok=false; return; }
+  if(PVMODE&&!PVSEEN&&Date.now()-PVT<4000) return;
+  if(!document.querySelector('#pages .card')) return;
+  e.preventDefault(); e.stopImmediatePropagation(); e.stopPropagation();
+  showMenu(b,/PDF/.test(t)&&!/طباعة/.test(t),function(m){ PVMODE=m; PVT=Date.now(); PVSEEN=false; });
+},true);
 
 
 /* =================== حارس التباين: أي نص يصبح غير مقروء بسبب الثيم يُصحَّح تلقائياً (الشاشة فقط) =================== */
@@ -52073,7 +52094,7 @@ document.addEventListener('visibilitychange',kick);
 /* القائمة بالأيقونات تصبح الشكل الرئيسي (مرة واحدة) — يبقى بإمكان المدرسة اختيار شكل آخر من الإعدادات ← المظهر */
 function menuMigrate(){
   try{ if(!APP||!APP.school||isT()) return; if(APP.school.nbMenu195) return;
-    if(!APP.school.mainMenu||APP.school.mainMenu==='sidebar'){ APP.school.mainMenu='icons'; }
+    /* 1.97: القائمة الجانبية تبقى الشكل الافتراضي — لا تحويل تلقائي */
     APP.school.nbMenu195=1; saveApp();
     try{ if(typeof window.nbFixNavOrder==='function') window.nbFixNavOrder(); }catch(e){}
   }catch(e){}
@@ -52386,6 +52407,112 @@ if(typeof window.slogRenameBookCol==='function'){
         else if(Array.isArray(st.extra)){ var j=st.extra.indexOf(old); if(j>=0) st.extra[j]=nv; }
         saveSlog(); } } }catch(e){}
     return r; };
+}
+})();
+</script>
+<script>
+/* ===== nb-v1.97 ===== */
+(function(){
+'use strict';
+function ar(v){ try{ return toArabicDigits(String(v)); }catch(e){ return String(v); } }
+function norm(t){ return String(t==null?'':t).replace(/\s+/g,' ').trim(); }
+function has(v){ if(v===''||v==null) return false; var n=Number(String(v).replace(/[٠-٩]/g,function(d){ return '٠١٢٣٤٥٦٧٨٩'.indexOf(d); })); return isFinite(n); }
+function numv(v){ return Number(String(v).replace(/[٠-٩]/g,function(d){ return '٠١٢٣٤٥٦٧٨٩'.indexOf(d); })); }
+function isT(){ try{ return typeof authRole==='function'&&authRole()==='teacher'; }catch(e){ return false; } }
+
+/* =================== (1) القائمة الجانبية هي الشكل الافتراضي =================== */
+(function(){
+  try{ if(!APP||!APP.school||isT()||APP.school.nbMenu197) return;
+    /* من نُقل تلقائياً إلى قائمة الأيقونات في 1.95 يعود إلى القائمة الجانبية (مرة واحدة) */
+    if(APP.school.nbMenu195&&APP.school.mainMenu==='icons') APP.school.mainMenu='sidebar';
+    APP.school.nbMenu195=1; APP.school.nbMenu197=1; saveApp();
+    setTimeout(function(){ try{ if(window.__nbNav&&window.__nbNav.apply) window.__nbNav.apply(); if(typeof window.renderDashboard==='function'&&document.getElementById('view-dashboard')&&getComputedStyle(document.getElementById('view-dashboard')).display!=='none') window.renderDashboard(); }catch(e){} },300);
+  }catch(e){}
+})();
+
+/* =================== (2) «ناجح» لا تظهر قبل الدرجة النهائية =================== */
+function minNoFinal(g){ try{ return !!(window.nbMinNoFinal&&window.nbMinNoFinal(g)); }catch(e){ return false; } }
+function subjOf(g){ try{ return (gbSubjects(g)||[]).filter(function(x){ return String(x||'').trim(); }); }catch(e){ return []; } }
+function rowSt(g,sid,sub,stId){ try{ var rec=gbRecord(g,sid,sub,false), r=rec&&rec.rows&&rec.rows[stId]; return r?String(r.resultSt||r.finalExamSt||''):''; }catch(e){ return ''; } }
+function readiness(g,sid,stId){
+  var subs=subjOf(g); if(!subs.length) return {ok:false};
+  var min=minNoFinal(g), vals=[], ok=true;
+  subs.forEach(function(sub){
+    var o={}; try{ o=window.nbStageVals?window.nbStageVals(g,sid,sub,stId)||{}:{}; }catch(e){}
+    var st=rowSt(g,sid,sub,stId);
+    if(st==='def'||st==='abs'){ return; }               /* مؤجل/غائب في المادة: له حكمه الخاص */
+    var v=min?(has(o.official)?o.official:(has(o.cw)?o.cw:'')):(has(o.official)?o.official:o.final);
+    if(min&&!has(o.cw)&&!has(o.official)) ok=false;      /* الوزاري: بعد كتابة السعي السنوي */
+    if(!min&&!has(v)) ok=false;                          /* غير الوزاري: بعد الدرجة النهائية */
+    if(has(v)) vals.push(numv(v));
+  });
+  return {ok:ok,min:min,vals:vals};
+}
+if(typeof window.studentOfficialResult==='function'){
+  var oSR=window.studentOfficialResult;
+  window.studentOfficialResult=function(g,sid,stId){
+    var r=oSR.apply(this,arguments);
+    try{
+      var R=readiness(g,sid,stId);
+      if(!R.ok) return {key:'pending',label:'—'};
+      if(R.min&&r&&r.key==='pending'&&R.vals.length){
+        var pass=50; try{ pass=resultPassMark(g); }catch(e){}
+        var cmax=2,fmin=3; try{ cmax=Math.max(1,+APP.school.completeMax||2); fmin=Math.max(cmax+1,+APP.school.failMin||3); }catch(e){}
+        var below=R.vals.filter(function(v){ return v<pass; }).length;
+        if(below===0) return {key:'passed',label:'ناجح'};
+        if(below>=fmin) return {key:'failed',label:'راسب'};
+        if(below<=cmax) return {key:'complete',label:'مكمل'};
+        return {key:'failed',label:'راسب'};
+      }
+    }catch(e){}
+    return r;
+  };
+}
+/* البطاقة: النتيجة نفسها المعتمدة (فارغة إذا لم تكتمل الدرجات) */
+function cardResult(card,g,sid,stId){
+  var res=null; try{ res=window.studentOfficialResult(g,sid,stId); }catch(e){} if(!res) return;
+  var el=card.querySelector('.box.result .val');
+  if(el){ if(res.key==='pending'){ if(norm(el.textContent)) el.textContent=''; } return; }
+  var td=card.querySelector('td.notes-cell'); if(!td) return;
+  if(res.key==='pending'){ [].slice.call(td.childNodes).forEach(function(n){ if(n.nodeType===3&&/ناجح|راسب|مكمل|مؤهل/.test(n.textContent)) n.textContent=''; }); return; }
+  var first=null; [].some.call(td.childNodes,function(n){ if(n.nodeType===3&&norm(n.textContent)){ first=n; return true; } return n.nodeType===1&&!n.classList.contains('nb192-cw')&&!n.classList.contains('nb189-cn')&&norm(n.textContent)?(first=n,true):false; });
+  if(!first){ td.insertBefore(document.createTextNode(res.label),td.firstChild); }
+}
+
+/* =================== (3) المواليد ورقم القيد في كل قوالب النتائج =================== */
+function findSt(g,sid,stId){ try{ var sec=(gbSectionsForGrade(g)||[]).filter(function(s){ return String(s.id)===String(sid); })[0]; return sec?(sec.students||[]).filter(function(s){ return s.id===stId; })[0]||null:null; }catch(e){ return null; } }
+function birthTxt(st){ var b=norm(st&&st.birthDate); if(!b) return ''; var m=b.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/); if(m) b=m[3].padStart(2,'0')+'/'+m[2].padStart(2,'0')+'/'+m[1]; return ar(b); }
+function regTxt(st){ var r=st&&(st.registrationNo||st.recordNo||st.regNo||st.qaydNo)||''; return r?ar(r):''; }
+function infoLine(card,g,sid,stId){
+  var box=card.querySelector('.name-box'); if(!box) return;
+  if(card.classList.contains('nbk')) return;   /* قوالب 2026 فيها السطران أصلاً */
+  var st=findSt(g,sid,stId);
+  var l=box.querySelector(':scope > .nb197-xl');
+  if(!l){ l=document.createElement('div'); l.className='line nb197-xl'; l.innerHTML='<span>المواليد:</span><span class="fill nb197-b" contenteditable="true"></span>'; box.appendChild(l);
+    var l2=document.createElement('div'); l2.className='line nb197-xl nb197-x2'; l2.innerHTML='<span>رقم القيد:</span><span class="fill nb197-r" contenteditable="true"></span>'; box.appendChild(l2); box.classList.add('nb197-nb'); }
+  var b=box.querySelector('.nb197-b'), r=box.querySelector('.nb197-r'); if(!b||!r) return;
+  if(st){ if(!b.dataset.man) b.textContent=birthTxt(st); if(!r.dataset.man) r.textContent=regTxt(st); }
+}
+var ICSS=
+'.card .name-box.nb197-nb{padding-top:1.6mm;padding-bottom:1.6mm}'+
+'.card .name-box.nb197-nb .line{margin-bottom:.7mm}.card .name-box.nb197-nb .line:last-child{margin-bottom:0}'+
+'.card .name-box .nb197-xl{font-size:.9em}.card .name-box .nb197-xl .fill{white-space:nowrap;overflow:hidden}'+
+'.card.secondary .name-box.nb197-nb{font-size:7.3pt;padding-top:1.2mm;padding-bottom:1.2mm}.card.secondary .name-box.nb197-nb .line{margin-bottom:.3mm}'+
+'.card.theme-crest .name-box.nb197-nb,.card.theme-banner .name-box.nb197-nb{font-size:7.9pt;padding-top:1.2mm;padding-bottom:1.2mm}.card.theme-crest .name-box.nb197-nb .line,.card.theme-banner .name-box.nb197-nb .line{margin-bottom:.35mm}'+
+'.card.nbk .nb197-xl{display:none!important}';
+(function(){ var main=document.getElementById('mainStyles'); if(main&&main.textContent.indexOf('/*nb197*/')<0) main.textContent+='\n/*nb197*/'+ICSS; if(!document.getElementById('nb197Css')){ var s=document.createElement('style'); s.id='nb197Css'; s.textContent=ICSS; document.head.appendChild(s); } })();
+/* المستخدم إذا كتب بنفسه في الحقل يبقى ما كتبه */
+document.addEventListener('input',function(e){ var t=e.target; if(t&&t.classList&&(t.classList.contains('nb197-b')||t.classList.contains('nb197-r'))) t.dataset.man='1'; },true);
+
+if(typeof window.fillResultCardFromGradebook==='function'){
+  var oF=window.fillResultCardFromGradebook;
+  window.fillResultCardFromGradebook=function(card,grade,sid,stId){
+    var r=oF.apply(this,arguments);
+    try{ infoLine(card,grade,sid,stId); }catch(e){ try{console.warn('nb197 info',e);}catch(_){} }
+    try{ cardResult(card,grade,sid,stId); }catch(e){ try{console.warn('nb197 res',e);}catch(_){} }
+    try{ if(window.refreshCardQR) window.refreshCardQR(card); }catch(e){}
+    return r;
+  };
 }
 })();
 </script>
