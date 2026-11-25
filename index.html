@@ -18827,7 +18827,7 @@ if(document.readyState==='loading'){
 <!-- ===== AUTO UPDATE NOTIFICATION (small icon in topbar) ===== -->
 <script>
 (function(){
-  const APP_VERSION = "1.99.2";
+  const APP_VERSION = "1.99.3";
   try{ window.__nbAppVersion=APP_VERSION; }catch(e){}
   const CHECK_EVERY_MINUTES = 30;
   const LS_ACCEPTED = "daragat_accepted_version";
@@ -19713,6 +19713,9 @@ window.ABOUT_SUPPORT_PHONE = ABOUT_SUPPORT_PHONE;
   window.nbZoomShim = function(win){
     try{
       if(!win || win.__nbZS) return; var d = win.document; if(!d || !d.body) return;
+      /* 1.99.3: التصحيح لتطبيق الويندوز فقط (محرك Electron 22). على الأندرويد والمتصفحات تبقى الطباعة كما في 1.97 تماماً */
+      var ua = String(navigator.userAgent || ''), nat = window.DaragatNative;
+      if(!(/Electron\//i.test(ua) || (nat && nat.platform === 'windows'))) return;
       var a = d.createElement('div'); a.style.cssText = 'position:absolute;left:0;top:0;zoom:0.5;visibility:hidden;pointer-events:none';
       var b = d.createElement('div'); b.style.cssText = 'width:100px;height:10px'; a.appendChild(b); d.body.appendChild(a);
       var w = b.getBoundingClientRect().width; a.parentNode.removeChild(a);
@@ -20655,7 +20658,7 @@ window.ABOUT_SUPPORT_PHONE = ABOUT_SUPPORT_PHONE;
     if(snap && nativeHas('printPdf')){
       try{
         pdfToast('جاري تجهيز الملف للطباعة…');
-        var blob = await buildPdfFromSnapshot(snap, 'Daragat-print.pdf', {portraitMedia: !!(window.AndroidDaragat && window.__daragatShell)});
+        var blob = await buildPdfFromSnapshot(snap, 'Daragat-print.pdf', {portraitMedia: false} /* 1.99.3: الملف يبقى أفقياً كما في 1.97 */);
         var o2 = nativeOutcome(await nativeInvoke('printPdf', await blobToBase64(blob), pdfSafeName(snap.title || 'طباعة')));
         pdfToast('');
         if(o2 === 'ok' || o2 === 'cancel') return;
@@ -48778,6 +48781,9 @@ function addGroup(){
 if(window.__nb175) return; window.__nb175=1;
 var SEEN='nbWhatsNewSeen';
 var CH=[
+ ['1.99.3','25 تشرين الثاني 2026',[
+  ['🖨️','طباعة النتائج في تطبيق الأندرويد كما في 1.97','أُرجعت طباعة النتائج وملف PDF في تطبيق الأندرويد إلى طريقة الإصدار 1.97 تماماً (أوراق أفقية معتدلة بلا تدوير). تصحيح القياس للمحرك القديم صار لتطبيق الويندوز فقط.']
+ ]],
  ['1.99.2','25 تشرين الثاني 2026',[
   ['🖨️','طباعة النتائج من تطبيق الأندرويد','تطبيق الأندرويد يرسل ملف الطباعة على ورقة A4 عمودية دائماً، فكانت البطاقات الأفقية تُقص في شاشة الطباعة. صار البرنامج يضع الورقة الأفقية مدوّرة داخل ورقة A4 عمودية بنفس المقاس، فتُطبع البطاقتان كاملتين بلا قص ولا تصغير. زر PDF يبقى يحفظ الملف أفقياً كما هو.']
  ]],
