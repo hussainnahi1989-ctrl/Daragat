@@ -18827,7 +18827,7 @@ if(document.readyState==='loading'){
 <!-- ===== AUTO UPDATE NOTIFICATION (small icon in topbar) ===== -->
 <script>
 (function(){
-  const APP_VERSION = "1.98.0";
+  const APP_VERSION = "1.99.0";
   try{ window.__nbAppVersion=APP_VERSION; }catch(e){}
   const CHECK_EVERY_MINUTES = 30;
   const LS_ACCEPTED = "daragat_accepted_version";
@@ -19708,6 +19708,28 @@ window.ABOUT_SUPPORT_PHONE = ABOUT_SUPPORT_PHONE;
     var v = lenToMm(str);
     return v == null ? 0 : v * PX;
   }
+  /* nb-v1.99: محرّكات كروم القديمة (ويندوز 7 / WebView أندرويد قبل كروم 128) تعيد مقاسات العناصر داخل CSS zoom
+     مقسومة على التكبير، فينزاح الجدول وينقص في ملف PDF. داخل إطارات الطباعة والتصدير فقط نوحّد القياس كما في المحرّكات الحديثة */
+  window.nbZoomShim = function(win){
+    try{
+      if(!win || win.__nbZS) return; var d = win.document; if(!d || !d.body) return;
+      var a = d.createElement('div'); a.style.cssText = 'position:absolute;left:0;top:0;zoom:0.5;visibility:hidden;pointer-events:none';
+      var b = d.createElement('div'); b.style.cssText = 'width:100px;height:10px'; a.appendChild(b); d.body.appendChild(a);
+      var w = b.getBoundingClientRect().width; a.parentNode.removeChild(a);
+      win.__nbZS = 1; if(!(w > 75)) return; win.__nbZS = 2;
+      var EP = win.Element.prototype, RP = win.Range && win.Range.prototype;
+      function Z(n){ while(n && n.nodeType !== 1) n = n.parentNode; var z = 1;
+        for(; n && n.nodeType === 1; n = n.parentElement){ var v = parseFloat(win.getComputedStyle(n).zoom); if(v > 0 && isFinite(v)) z *= v; } return z; }
+      function sc(r, z){ var o = {left: r.left * z, top: r.top * z, right: r.right * z, bottom: r.bottom * z, width: r.width * z, height: r.height * z}; o.x = o.left; o.y = o.top; o.toJSON = function(){ return o; }; return o; }
+      function list(rs, z){ var out = [].map.call(rs, function(r){ return sc(r, z); }); out.item = function(i){ return out[i] || null; }; return out; }
+      var gb = EP.getBoundingClientRect, gc = EP.getClientRects;
+      EP.getBoundingClientRect = function(){ var r = gb.call(this), z = Z(this); return z === 1 ? r : sc(r, z); };
+      EP.getClientRects = function(){ var r = gc.call(this), z = Z(this); return z === 1 ? r : list(r, z); };
+      if(RP){ var rb = RP.getBoundingClientRect, rc = RP.getClientRects;
+        RP.getBoundingClientRect = function(){ var r = rb.call(this), z = Z(this.commonAncestorContainer); return z === 1 ? r : sc(r, z); };
+        RP.getClientRects = function(){ var r = rc.call(this), z = Z(this.commonAncestorContainer); return z === 1 ? r : list(r, z); }; }
+    }catch(e){}
+  };
   function frameSnapshot(frame){
     var doc = frame.contentDocument;
     var rect = {width: 0, height: 0};
@@ -20384,6 +20406,7 @@ window.ABOUT_SUPPORT_PHONE = ABOUT_SUPPORT_PHONE;
     var rf = makeRenderFrame(snap.html, snap.widthPx, snap.heightPx);
     try{
       var doc = rf.contentDocument, win = rf.contentWindow;
+      try{ window.nbZoomShim(win); }catch(e){}
       try{ if(typeof applyDigitsToPrintDoc === 'function') applyDigitsToPrintDoc(doc); }catch(e){}
       await sleep(60);
       var rules = readPageRules(doc), size = parsePageSize(rules.size), mar = parsePageMargin(rules.margin);
@@ -24764,6 +24787,7 @@ function sheetPagesFix(doc){
 }
 function prep(frame,isPdf){
   try{ var d=frame&&(frame.contentDocument||(frame.contentWindow&&frame.contentWindow.document)); if(!d||!d.body) return;
+    try{ if(window.nbZoomShim) window.nbZoomShim(d.defaultView); }catch(e){}
     if(d.body.hasAttribute('data-nb-raw')){ glyphImages(d); fixBidi(d); return; } /* 1.73: أوراق مصمَّمة بالكامل (واجهات السجلات والمخاطبات) لا تمر بتعديلات الجداول والأسماء */
     if(window.nbStageWords) window.nbStageWords(d);
     if(window.nbEl56PrintFix) window.nbEl56PrintFix(d);
@@ -25296,7 +25320,7 @@ function fitCardContent(card){
     });
   }catch(e){}
 }
-window.nbFitCardContent=function(doc){ try{ (doc||document).querySelectorAll('.card').forEach(fitCardContent); }catch(e){} };
+window.nbFitCardContent=function(doc){ try{ if(doc&&doc!==document&&window.nbZoomShim) window.nbZoomShim(doc.defaultView); }catch(e){} try{ (doc||document).querySelectorAll('.card').forEach(fitCardContent); }catch(e){} };
 function wrap(){
   ['printIframeNow','downloadPdfFromPrintFrame'].forEach(function(n){
     var f=window[n]; if(typeof f!=='function'||f.__nbCardFit) return;
@@ -48664,6 +48688,9 @@ function addGroup(){
 if(window.__nb175) return; window.__nb175=1;
 var SEEN='nbWhatsNewSeen';
 var CH=[
+ ['1.99.0','25 تشرين الثاني 2026',[
+  ['📄','تصدير النتائج إلى PDF','على الأجهزة ذات المتصفح الأقدم (ويندوز 7 وبعض أجهزة أندرويد) كانت البطاقات في ملف PDF مقصوصة: الجدول يتداخل مع التواقيع وينزاح في الصفحات التالية حتى يختفي. صار القياس موحّداً فتخرج كل البطاقات كاملة كما في الطباعة.']
+ ]],
  ['1.98.0','25 تشرين الثاني 2026',[
   ['🧾','باركود البطاقات بدون درجات','عند طباعة النتائج بدون درجات يحمل الباركود البيانات فقط: اسم المدرسة، مرشد الصف، اسم الطالب، الصف، الشعبة، المواليد، رقم القيد — بلا درجات ولا نتيجة. الطباعة بالدرجات كما هي.','إصدار النتائج']
  ]],
