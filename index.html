@@ -18827,7 +18827,7 @@ if(document.readyState==='loading'){
 <!-- ===== AUTO UPDATE NOTIFICATION (small icon in topbar) ===== -->
 <script>
 (function(){
-  const APP_VERSION = "1.99.3";
+  const APP_VERSION = "1.99.4";
   try{ window.__nbAppVersion=APP_VERSION; }catch(e){}
   const CHECK_EVERY_MINUTES = 30;
   const LS_ACCEPTED = "daragat_accepted_version";
@@ -19754,9 +19754,12 @@ window.ABOUT_SUPPORT_PHONE = ABOUT_SUPPORT_PHONE;
     return new Promise(function(resolve){
       var doc = f.contentDocument, done = false;
       function fin(){ if(!done){ done = true; resolve(); } }
-      setTimeout(fin, 3500);
+      var isCards = false; try{ isCards = !!doc.querySelector('#pages .page .card'); }catch(e){}
+      setTimeout(fin, isCards ? 15000 : 3500);
       try{
         void doc.body.offsetHeight;
+        /* 1.99.4: بطاقات النتائج — لا يُقاس شيء قبل اكتمال الخطوط والصور وثبات التخطيط (الأجهزة اللوحية أبطأ) */
+        if(isCards && window.nbFrameReady){ window.nbFrameReady(f, 14000).then(function(){ setTimeout(fin, 60); }, fin); return; }
         var waits = [];
         if(doc.fonts && doc.fonts.ready) waits.push(doc.fonts.ready);
         Array.prototype.slice.call(doc.images || []).forEach(function(img){
@@ -20694,7 +20697,9 @@ window.ABOUT_SUPPORT_PHONE = ABOUT_SUPPORT_PHONE;
   }
   function printCurrentCards(){
     var built = createCardsPrintFrame(); if(!built) return;
-    setTimeout(function(){ try{ window.printIframeNow(built.frame); }catch(e){ pdfToast('تعذرت الطباعة. حاول مرة أخرى.', true); } }, 450);
+    if(window.nbFrameReady){ try{ window.nbBusyShow('جاري تجهيز بطاقات النتائج…','يتم ضبط القياسات قبل الطباعة — لا تغلق الشاشة'); }catch(e){}
+      window.nbFrameReady(built.frame, 15000).then(function(){ try{ window.printIframeNow(built.frame); }catch(e){ try{ window.nbBusyHide(); }catch(_){} pdfToast('تعذرت الطباعة. حاول مرة أخرى.', true); return; } try{ if(built.frame.__nbPvSeen) window.nbBusyHide(); else window.nbBusyWatch(); }catch(e){} });
+    } else setTimeout(function(){ try{ window.printIframeNow(built.frame); }catch(e){ pdfToast('تعذرت الطباعة. حاول مرة أخرى.', true); } }, 450);
     setTimeout(function(){ if(built.frame.parentNode) built.frame.remove(); }, 180000);
   }
   function examHostHtml(host){
@@ -25275,7 +25280,10 @@ function patch(){
   var ph=n.printHtml;
   n.printHtml=function(html,opt){
     var mode=''; try{ mode=localStorage.getItem('nbAndroidPrintMode')||''; }catch(e){}
-    if((mode==='html'||(mode!=='pdf'&&!/class="[^"]*\bcard\b/.test(String(html||''))))&&typeof ph==='function') return ph.call(n,html,opt);
+    /* 1.99.4: تطبيق الأندرويد 3 (جسر v3) يطبع ملفات PDF على A4 عمودي ثابت فيقص الأوراق الأفقية؛ أما printHtml فيه فيضبط ورقة A4 أفقية بالمليمتر.
+       لذلك بطاقات النتائج تُطبع فيه بـ printHtml (ورقتان A5 في كل A4 أفقية كما في المعاينة)، وزر PDF يبقى يصنع الملف بالبرنامج نفسه. */
+    var v3=false; try{ v3=(+window.__daragatShell||0)>=3&&n.printUnits==='mm'; }catch(e){}
+    if((mode==='html'||(mode!=='pdf'&&(v3||!/class="[^"]*\bcard\b/.test(String(html||'')))))&&typeof ph==='function') return ph.call(n,html,opt);
     sticky('🖨️ جاري تجهيز ملف الطباعة… قد يستغرق ذلك حتى دقيقة عند طباعة عدد كبير من الطلاب');
     return Promise.reject(new Error('use-pdf-print')); // البرنامج ينتقل تلقائياً إلى printPdf
   };
@@ -28389,7 +28397,13 @@ function makeClone(html){
   return f;
 }
 var PENDING_HTML=null;
-function printClone(html){ var f=makeClone(html); setTimeout(function(){ try{ window.printIframeNow(f); }catch(e){ alert('تعذرت الطباعة.'); } },350); }
+function printClone(html){ var f=makeClone(html);
+  var cards=/class="[^"]*\bcard-slot\b/.test(String(html||''));
+  if(cards&&window.nbFrameReady){ /* 1.99.4: بطاقات النتائج تُرسل بعد اكتمال تجهيزها، مع بطاقة «جاري التجهيز» */
+    try{ window.nbBusyShow('جاري تجهيز بطاقات النتائج…','يتم ضبط القياسات قبل الطباعة — لا تغلق الشاشة'); }catch(e){}
+    window.nbFrameReady(f,15000).then(function(){ try{ window.printIframeNow(f); }catch(e){ try{ window.nbBusyHide(); }catch(_){} alert('تعذرت الطباعة.'); return; } try{ window.nbBusyWatch(); }catch(e){} });
+    return; }
+  setTimeout(function(){ try{ window.printIframeNow(f); }catch(e){ alert('تعذرت الطباعة.'); } },350); }
 window.nbPvPrintPending=function(){ var h=PENDING_HTML; PENDING_HTML=null; if(!h) return; printClone(h); };
 function pdfClone(html){
   PENDING_HTML=html;
@@ -48781,6 +48795,9 @@ function addGroup(){
 if(window.__nb175) return; window.__nb175=1;
 var SEEN='nbWhatsNewSeen';
 var CH=[
+ ['1.99.4','25 تشرين الثاني 2026',[
+  ['⏳','«جاري التجهيز» وطباعة النتائج بعد اكتمالها','عند طباعة النتائج أو تصديرها PDF تظهر بطاقة «جاري التجهيز» بدائرة متحركة، ولا تُرسل الأوراق حتى تكتمل الخطوط والصور ويثبت تخطيط البطاقات (كانت الأجهزة اللوحية ترسلها قبل اكتمالها فتخرج مبعثرة). وتظهر البطاقة نفسها عند فتح بطاقات أي شعبة.']
+ ]],
  ['1.99.3','25 تشرين الثاني 2026',[
   ['🖨️','طباعة النتائج في تطبيق الأندرويد كما في 1.97','أُرجعت طباعة النتائج وملف PDF في تطبيق الأندرويد إلى طريقة الإصدار 1.97 تماماً (أوراق أفقية معتدلة بلا تدوير). تصحيح القياس للمحرك القديم صار لتطبيق الويندوز فقط.']
  ]],
@@ -52671,6 +52688,76 @@ if(typeof window.fillResultCardFromGradebook==='function'){
     try{ if(window.refreshCardQR) window.refreshCardQR(card); }catch(e){}
     return r;
   };
+}
+})();
+</script>
+<script>
+/* ===== nb-v1.99.4: «جاري التجهيز» + انتظار اكتمال ورقة النتائج قبل الطباعة/PDF ===== */
+(function(){
+'use strict';
+var BUSY=null, WT=0, T0=0;
+function css(){ if(document.getElementById('nbBusyCss')) return; var st=document.createElement('style'); st.id='nbBusyCss';
+  st.textContent='#nbBusy{position:fixed;inset:0;z-index:2147483600;display:flex;align-items:center;justify-content:center;background:rgba(15,23,42,.45);-webkit-backdrop-filter:blur(2px);backdrop-filter:blur(2px);direction:rtl}'+
+  '#nbBusy .bx{background:#fff;color:#0f172a;border-radius:18px;box-shadow:0 18px 50px rgba(0,0,0,.35);padding:22px 26px;min-width:240px;max-width:min(88vw,380px);text-align:center;font-family:Tahoma,"Segoe UI",Arial,sans-serif}'+
+  '#nbBusy .sp{width:54px;height:54px;margin:2px auto 14px;border-radius:50%;border:5px solid #e2e8f0;border-top-color:#2563eb;border-right-color:#2563eb;animation:nbBusySpin .9s linear infinite}'+
+  '#nbBusy .t{font-weight:800;font-size:16px;margin:0 0 6px}#nbBusy .s{font-size:12.5px;color:#475569;line-height:1.6}'+
+  '@keyframes nbBusySpin{to{transform:rotate(360deg)}}'+
+  'html[data-ui-skin^="night"] #nbBusy .bx{background:#1e293b;color:#f1f5f9}html[data-ui-skin^="night"] #nbBusy .s{color:#cbd5e1}html[data-ui-skin^="night"] #nbBusy .sp{border-color:#334155;border-top-color:#60a5fa;border-right-color:#60a5fa}';
+  document.head.appendChild(st); }
+window.nbBusyShow=function(title,sub){
+  try{ css(); if(!BUSY){ BUSY=document.createElement('div'); BUSY.id='nbBusy'; BUSY.setAttribute('role','status'); BUSY.setAttribute('aria-live','polite'); BUSY.innerHTML='<div class="bx"><div class="sp"></div><div class="t"></div><div class="s"></div></div>'; }
+    BUSY.querySelector('.t').textContent=title||'جاري التجهيز…'; BUSY.querySelector('.s').textContent=sub||'';
+    if(!BUSY.parentNode) document.body.appendChild(BUSY); T0=Date.now();
+    clearTimeout(BUSY.__t); BUSY.__t=setTimeout(window.nbBusyHide,120000);
+  }catch(e){}
+};
+window.nbBusyHide=function(){ try{ clearInterval(WT); WT=0; if(BUSY&&BUSY.parentNode) BUSY.parentNode.removeChild(BUSY); }catch(e){} };
+/* إطار جاهز: المستند اكتمل، الخطوط والصور حُمِّلت، والتخطيط ثابت لعدة قياسات متتالية */
+window.nbFrameReady=function(f,maxMs){
+  return new Promise(function(resolve){
+    var done=false; function fin(){ if(done) return; done=true; resolve(); }
+    setTimeout(fin,maxMs||15000);
+    function doc(){ try{ return f.contentDocument||(f.contentWindow&&f.contentWindow.document); }catch(e){ return null; } }
+    function stable(){ var last='',same=0; (function chk(){ if(done) return; var d=doc(); if(!d||!d.body) return fin();
+        var k=''; try{ k=d.body.scrollHeight+'x'+d.body.scrollWidth+':'+d.images.length; }catch(e){ return fin(); }
+        if(k===last) same++; else { same=0; last=k; }
+        if(same>=3){ var w=f.contentWindow; try{ w.requestAnimationFrame(function(){ w.requestAnimationFrame(function(){ setTimeout(fin,40); }); }); }catch(e){ fin(); } return; }
+        setTimeout(chk,120); })(); }
+    (function step(){ if(done) return; var d=doc(); if(!d||!d.body||d.readyState!=='complete'){ setTimeout(step,80); return; }
+      try{ void d.body.offsetHeight; }catch(e){}
+      var ws=[]; try{ if(d.fonts&&d.fonts.ready) ws.push(d.fonts.ready); }catch(e){}
+      try{ [].forEach.call(d.images||[],function(im){ if(!im.complete) ws.push(new Promise(function(r){ im.addEventListener('load',r); im.addEventListener('error',r); })); }); }catch(e){}
+      Promise.all(ws).then(stable,stable);
+    })();
+  });
+};
+/* إخفاء البطاقة عندما يصل الملف للتطبيق / تفتح نافذة الطباعة / يظهر الملف الجاهز */
+function hook(){ var n=window.DaragatNative; if(!n) return;
+  ['printPdf','savePdf','printHtml','saveFile','openFile'].forEach(function(k){ var f=n[k]; if(typeof f!=='function'||f.__nbBusy) return;
+    var w=function(){ var r=f.apply(n,arguments); try{ if(k!=='printHtml') setTimeout(window.nbBusyHide,300); else Promise.resolve(r).then(function(){ setTimeout(window.nbBusyHide,300); },function(){}); }catch(e){} return r; };
+    for(var x in f){ try{ w[x]=f[x]; }catch(e){} } w.__nbBusy=true; n[k]=w; }); }
+window.nbBusyWatch=function(){
+  hook(); clearInterval(WT); var t1=Date.now();
+  WT=setInterval(function(){ try{
+    if(!BUSY||!BUSY.parentNode){ clearInterval(WT); return; }
+    if(document.hidden) return window.nbBusyHide();
+    if(document.getElementById('daragatReadyPrint')) return window.nbBusyHide();
+    var tt=document.getElementById('daragatPdfToast'); if(tt&&tt.style.display!=='none'&&/تم|تعذر|إلغاء|ألغ/.test(tt.textContent||'')) return window.nbBusyHide();
+    var nat=window.DaragatNative; if(!nat&&Date.now()-t1>2500) return window.nbBusyHide(); /* المتصفح: نافذة الطباعة فُتحت */
+  }catch(e){} },300);
+};
+window.addEventListener('beforeprint',function(){ setTimeout(window.nbBusyHide,100); });
+/* فتح بطاقات شعبة: «جاري التجهيز» حتى تُبنى البطاقات */
+if(typeof window.issueResults==='function'&&!window.issueResults.__nbBusy){
+  var oI=window.issueResults;
+  var wI=function(){ var self=this, args=arguments;
+    window.nbBusyShow('جاري تجهيز بطاقات الشعبة…','يتم بناء بطاقات النتائج وضبطها');
+    requestAnimationFrame(function(){ requestAnimationFrame(function(){ setTimeout(function(){
+      try{ oI.apply(self,args); }catch(e){ window.nbBusyHide(); throw e; }
+      setTimeout(function(){ requestAnimationFrame(function(){ window.nbBusyHide(); }); },250);
+    },20); }); });
+  };
+  wI.__nbBusy=true; window.issueResults=wI;
 }
 })();
 </script>
