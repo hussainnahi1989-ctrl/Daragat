@@ -18827,7 +18827,7 @@ if(document.readyState==='loading'){
 <!-- ===== AUTO UPDATE NOTIFICATION (small icon in topbar) ===== -->
 <script>
 (function(){
-  const APP_VERSION = "1.97.0";
+  const APP_VERSION = "1.98.0";
   try{ window.__nbAppVersion=APP_VERSION; }catch(e){}
   const CHECK_EVERY_MINUTES = 30;
   const LS_ACCEPTED = "daragat_accepted_version";
@@ -48664,6 +48664,9 @@ function addGroup(){
 if(window.__nb175) return; window.__nb175=1;
 var SEEN='nbWhatsNewSeen';
 var CH=[
+ ['1.98.0','25 تشرين الثاني 2026',[
+  ['🧾','باركود البطاقات بدون درجات','عند طباعة النتائج بدون درجات يحمل الباركود البيانات فقط: اسم المدرسة، مرشد الصف، اسم الطالب، الصف، الشعبة، المواليد، رقم القيد — بلا درجات ولا نتيجة. الطباعة بالدرجات كما هي.','إصدار النتائج']
+ ]],
  ['1.97.0','25 تشرين الثاني 2026',[
   ['🖨️','طباعة النتائج: خياران من أول ضغطة','عند الضغط على «طباعة وتصدير» أو «طباعة هذه البطاقة فقط» يظهر فوراً: طباعة بالدرجات أو طباعة بدون درجات، وتُعرض المعاينة بالشكل المختار.','إصدار النتائج'],
   ['📋','القائمة الجانبية هي الشكل الافتراضي','عادت القائمة الجانبية شكلاً افتراضياً، ويمكن اختيار قائمة الأيقونات من الإعدادات ← المظهر.','القائمة'],
@@ -51850,10 +51853,35 @@ function blankCards(doc){
       [].forEach.call(c.querySelectorAll('.box.result .val'),function(v){ v.innerHTML='&nbsp;'; });
       try{ delete c.dataset.nbCw; }catch(e){} [].forEach.call(c.querySelectorAll('.nb192-cw'),function(x){ x.remove(); });
       [].forEach.call(c.querySelectorAll('td.notes-cell'),function(td){ [].slice.call(td.childNodes).forEach(function(n){ if(n.nodeType===3) n.textContent=''; else if(n.nodeType===1&&!n.classList.contains('nb189-cn')) n.remove(); }); });
-      /* الباركود يحمل الدرجات: يُخفى في النسخة بلا درجات */
-      [].forEach.call(c.querySelectorAll('.qr, .nb190-bc, [class*="qr"]'),function(q){ q.style.setProperty('visibility','hidden','important'); });
+      /* 1.98: الباركود في النسخة بلا درجات يحمل البيانات فقط (المدرسة، المرشد، الاسم، الصف، الشعبة، المواليد، رقم القيد) */
+      if(!infoQR(c)) [].forEach.call(c.querySelectorAll('.qr, .nb190-bc, [class*="qr"]'),function(q){ q.style.setProperty('visibility','hidden','important'); });
     });
   }catch(e){ try{console.warn('nb194 blank',e);}catch(_){} }
+}
+function tx(el){ return String(el&&el.textContent||'').replace(/\s+/g,' ').trim(); }
+function infoQR(c){
+  try{
+    var q=c.querySelector('.qr'); if(!q||typeof QRCodeLib==='undefined') return false;
+    var g=c.getAttribute('data-nb-g')||'', sid=c.getAttribute('data-nb-sid')||'', stId=c.getAttribute('data-nb-st')||'';
+    var sec=null, st=null; try{ sec=(gbSectionsForGrade(g)||[]).filter(function(x){ return String(x.id)===String(sid); })[0]; st=sec?(sec.students||[]).filter(function(x){ return x.id===stId; })[0]:null; }catch(e){}
+    var school=tx(c.querySelector('.school-name,.sec-school-name'))||((APP.school&&APP.school.name)||'');
+    var guide=''; try{ guide=(sec&&sec.guide)||(typeof gradeGuideName==='function'?gradeGuideName(g):'')||(APP.school&&APP.school.guide)||''; }catch(e){}
+    if(!guide){ var gl=c.querySelector('.left-col .box.small .lbl, .side-row .box.small .lbl'); guide=tx(gl).replace(/^مرشد(ة)?\s*الصف\s*:\s*/,''); }
+    var name=tx(c.querySelector('.sec-student-name,.student-name'))||(st&&st.name)||'';
+    var cls=tx(c.querySelector('.sec-class-name'))||tx((c.querySelectorAll('.name-box .line .fill:not(.student-name):not(.student-seq)')||[])[0]);
+    var secn=tx(c.querySelector('.sec-section-name'))||tx((c.querySelectorAll('.name-box .line .fill:not(.student-name):not(.student-seq)')||[])[1]);
+    var birth=tx(c.querySelector('.nb197-b'))||tx(c.querySelector('.nbk-birth')), reg=tx(c.querySelector('.nb197-r'))||tx(c.querySelector('.nbk-reg'));
+    function w(v){ try{ return toWesternDigits(String(v)); }catch(e){ return String(v); } }
+    var L=[]; if(school) L.push('المدرسة: '+school); if(guide) L.push('مرشد الصف: '+guide); L.push('الاسم: '+name); if(cls) L.push('الصف: '+cls); if(secn) L.push('الشعبة: '+secn);
+    L.push('المواليد: '+(birth?w(birth):'-')); L.push('رقم القيد: '+(reg?w(reg):'-'));
+    var qr=new QRCodeLib(-1,1); qr.addData(unescape(encodeURIComponent(L.join('\n')))); qr.make();
+    var n=qr.getModuleCount(), sc=8, qz=2, size=(n+qz*2)*sc, d=c.ownerDocument||document;
+    var cv=document.createElement('canvas'); cv.width=size; cv.height=size; var x=cv.getContext('2d'); x.fillStyle='#fff'; x.fillRect(0,0,size,size); x.fillStyle='#000';
+    for(var r=0;r<n;r++) for(var k=0;k<n;k++) if(qr.isDark(r,k)) x.fillRect((k+qz)*sc,(r+qz)*sc,sc,sc);
+    var img=d.createElement('img'); img.src=cv.toDataURL('image/png'); img.alt='QR'; img.style.cssText='width:100%;height:100%;image-rendering:pixelated;display:block';
+    q.innerHTML=''; q.appendChild(img); q.style.removeProperty('visibility'); q.setAttribute('data-nb-info','1');
+    return true;
+  }catch(e){ try{console.warn('nb198 qr',e);}catch(_){} return false; }
 }
 window.nbBlankCards=blankCards;
 var MODE=null, MODE_T=0;
@@ -52508,6 +52536,7 @@ if(typeof window.fillResultCardFromGradebook==='function'){
   var oF=window.fillResultCardFromGradebook;
   window.fillResultCardFromGradebook=function(card,grade,sid,stId){
     var r=oF.apply(this,arguments);
+    try{ card.setAttribute('data-nb-g',grade); card.setAttribute('data-nb-sid',sid); card.setAttribute('data-nb-st',stId); }catch(e){}
     try{ infoLine(card,grade,sid,stId); }catch(e){ try{console.warn('nb197 info',e);}catch(_){} }
     try{ cardResult(card,grade,sid,stId); }catch(e){ try{console.warn('nb197 res',e);}catch(_){} }
     try{ if(window.refreshCardQR) window.refreshCardQR(card); }catch(e){}
