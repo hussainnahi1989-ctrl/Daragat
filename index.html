@@ -18827,7 +18827,7 @@ if(document.readyState==='loading'){
 <!-- ===== AUTO UPDATE NOTIFICATION (small icon in topbar) ===== -->
 <script>
 (function(){
-  const APP_VERSION = "1.99.4";
+  const APP_VERSION = "1.99.5";
   try{ window.__nbAppVersion=APP_VERSION; }catch(e){}
   const CHECK_EVERY_MINUTES = 30;
   const LS_ACCEPTED = "daragat_accepted_version";
@@ -25283,7 +25283,12 @@ function patch(){
     /* 1.99.4: تطبيق الأندرويد 3 (جسر v3) يطبع ملفات PDF على A4 عمودي ثابت فيقص الأوراق الأفقية؛ أما printHtml فيه فيضبط ورقة A4 أفقية بالمليمتر.
        لذلك بطاقات النتائج تُطبع فيه بـ printHtml (ورقتان A5 في كل A4 أفقية كما في المعاينة)، وزر PDF يبقى يصنع الملف بالبرنامج نفسه. */
     var v3=false; try{ v3=(+window.__daragatShell||0)>=3&&n.printUnits==='mm'; }catch(e){}
-    if((mode==='html'||(mode!=='pdf'&&(v3||!/class="[^"]*\bcard\b/.test(String(html||'')))))&&typeof ph==='function') return ph.call(n,html,opt);
+    var isCard=/class="[^"]*\bcard\b/.test(String(html||''));
+    /* 1.99.5: بطاقات النتائج في تطبيق الأندرويد 3: الصفحة كانت كبيرة جداً (كل أنماط البرنامج + الشعار مكرر في كل بطاقة) فيطبعها التطبيق فارغة.
+       تُرسل الآن نسخة مضغوطة: الأنماط المستعملة فقط، والصورة المكررة مرة واحدة — والشكل نفسه تماماً */
+    if(v3&&isCard&&mode!=='pdf'&&typeof ph==='function'&&window.nbCompactPrintHtml){
+      return window.nbCompactPrintHtml(html).then(function(h2){ return ph.call(n,h2,opt); },function(){ return ph.call(n,html,opt); }); }
+    if((mode==='html'||(mode!=='pdf'&&(v3||!isCard)))&&typeof ph==='function') return ph.call(n,html,opt);
     sticky('🖨️ جاري تجهيز ملف الطباعة… قد يستغرق ذلك حتى دقيقة عند طباعة عدد كبير من الطلاب');
     return Promise.reject(new Error('use-pdf-print')); // البرنامج ينتقل تلقائياً إلى printPdf
   };
@@ -48795,6 +48800,9 @@ function addGroup(){
 if(window.__nb175) return; window.__nb175=1;
 var SEEN='nbWhatsNewSeen';
 var CH=[
+ ['1.99.5','25 تشرين الثاني 2026',[
+  ['🖨️','ورقة فارغة عند طباعة النتائج في الأندرويد','صفحة الطباعة التي تُرسل لتطبيق الأندرويد كانت كبيرة جداً (كل أنماط البرنامج وشعار المدرسة مكرر في كل بطاقة) فيطبعها التطبيق فارغة. صارت تُرسل مضغوطة بالأنماط المستعملة فقط والشعار مرة واحدة، والشكل نفسه.']
+ ]],
  ['1.99.4','25 تشرين الثاني 2026',[
   ['⏳','«جاري التجهيز» وطباعة النتائج بعد اكتمالها','عند طباعة النتائج أو تصديرها PDF تظهر بطاقة «جاري التجهيز» بدائرة متحركة، ولا تُرسل الأوراق حتى تكتمل الخطوط والصور ويثبت تخطيط البطاقات (كانت الأجهزة اللوحية ترسلها قبل اكتمالها فتخرج مبعثرة). وتظهر البطاقة نفسها عند فتح بطاقات أي شعبة.']
  ]],
@@ -52759,6 +52767,45 @@ if(typeof window.issueResults==='function'&&!window.issueResults.__nbBusy){
   };
   wI.__nbBusy=true; window.issueResults=wI;
 }
+})();
+</script>
+<script>
+/* ===== nb-v1.99.5: صفحة طباعة مضغوطة لبطاقات النتائج (تطبيق الأندرويد) ===== */
+(function(){
+'use strict';
+var PSEUDO=/::?(before|after|first-letter|first-line|marker|placeholder|selection|backdrop|-webkit-[a-z-]+|-moz-[a-z-]+)(\([^)]*\))?/gi;
+var STATE=/:(hover|focus|active|visited|focus-within|focus-visible|checked|disabled|enabled|link|target|empty)\b/gi;
+window.nbCompactPrintHtml=function(html){
+  return new Promise(function(resolve,reject){
+    var f=document.createElement('iframe');
+    f.style.cssText='position:fixed;left:-30000px;top:0;width:297mm;height:210mm;border:0;visibility:hidden';
+    document.body.appendChild(f);
+    try{
+      var d=f.contentDocument||f.contentWindow.document; d.open(); d.write(String(html||'')); d.close();
+      function used(sel){ try{ var t=String(sel||'').replace(PSEUDO,'').replace(STATE,'').trim(); if(!t) return true; return !!d.querySelector(t); }catch(e){ return true; } }
+      function walk(rules){ var out=''; [].forEach.call(rules||[],function(r){ try{
+          if(r.type===1){ if(used(r.selectorText)) out+=r.cssText+'\n'; }
+          else if(r.type===4){ var a=walk(r.cssRules); if(a) out+='@media '+r.media.mediaText+'{\n'+a+'}\n'; }
+          else if(r.type===12){ var b=walk(r.cssRules); if(b) out+='@supports '+r.conditionText+'{\n'+b+'}\n'; }
+          else out+=r.cssText+'\n';
+        }catch(e){ try{ out+=r.cssText+'\n'; }catch(_){} } }); return out; }
+      var css=''; [].forEach.call(d.styleSheets,function(sh){ try{ if(sh.ownerNode&&d.body&&d.body.contains(sh.ownerNode)) return; css+=walk(sh.cssRules); }catch(e){ try{ css+=sh.ownerNode?sh.ownerNode.textContent:''; }catch(_){} } });
+      /* الصور المتكررة (شعار المدرسة في كل بطاقة) تُكتب مرة واحدة */
+      var cnt={}; [].forEach.call(d.body.querySelectorAll('img'),function(im){ var s=im.getAttribute('src')||''; if(s.indexOf('data:')===0&&s.length>2000) cnt[s]=(cnt[s]||0)+1; });
+      var k=0, extra='';
+      Object.keys(cnt).forEach(function(src){ if(cnt[src]<2) return; var cls='nbimg'+(k++);
+        extra+='img.'+cls+'{content:url("'+src+'")}\n';
+        [].forEach.call(d.body.querySelectorAll('img'),function(im){ if(im.getAttribute('src')===src){ im.classList.add(cls); im.setAttribute('src','data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw=='); } }); });
+      var root=d.documentElement, ra='', ba='';
+      [].forEach.call(root.attributes,function(a){ ra+=' '+a.name+'="'+String(a.value).replace(/&/g,'&amp;').replace(/"/g,'&quot;')+'"'; });
+      [].forEach.call(d.body.attributes,function(a){ ba+=' '+a.name+'="'+String(a.value).replace(/&/g,'&amp;').replace(/"/g,'&quot;')+'"'; });
+      var out='<!DOCTYPE html><html'+ra+'><head><meta charset="UTF-8"><title>'+(d.title||'').replace(/</g,'&lt;')+'</title><style>'+css+extra+'</style></head><body'+ba+'>'+d.body.innerHTML+'</body></html>';
+      f.remove();
+      try{ console.info('nb-compact',String(html).length,'→',out.length); }catch(e){}
+      resolve(out);
+    }catch(e){ try{ f.remove(); }catch(_){} reject(e); }
+  });
+};
 })();
 </script>
 </body>
