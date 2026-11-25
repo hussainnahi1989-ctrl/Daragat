@@ -1505,17 +1505,32 @@ body.jd-mode #jdWrap{display:block}
     var r=acc[k]||{}, nd=r.pendingDeviceCode;
     if(!nd){ alert('لا يوجد جهاز جديد في الطلب'); return; }
     var was=r.statusBeforeTransfer==='approved'||!!r.approvedAt||!!r.legacy;
+    var same=nk(nd)===nk(r.deviceCode);
     var plan=PL[r.plan]?r.plan:'monthly';
     if(!was && !confirm('⚠️ هذا الحساب لم يُفعَّل من قبل.\nالموافقة على النقل ستجعله مفعّلًا ('+plab(plan)+').\nمتابعة؟')) return;
-    if(was && !confirm('✅ الموافقة على نقل الاشتراك للجهاز الجديد؟\nيتوقف الجهاز القديم عند اتصاله بالإنترنت.')) return;
+    if(was && !confirm(same?'✅ الموافقة على تسجيل الدخول على الجهاز نفسه؟':'✅ الموافقة على '+(r.loginRequest?'تسجيل الدخول ونقل':'نقل')+' الاشتراك للجهاز الجديد؟\nيتوقف الجهاز القديم عند اتصاله بالإنترنت.')) return;
     var exp=plan==='permanent'?0:(toTs(r.expiresAt)>Date.now()?toTs(r.expiresAt):expFor(plan));
     R(k).update({status:'approved',accountDisabled:false,disabledReason:null,plan:plan,expiresAt:exp,licKey:keyFor(nd,plan,exp),
       previousDeviceCode:r.deviceCode||null,deviceCode:nd,lastSeenDevice:r.pendingDeviceInfo||r.lastSeenDevice||null,
       pendingDeviceCode:null,pendingDeviceInfo:null,statusBeforeTransfer:null,transferApprovedAt:TS(),approvedAt:r.approvedAt||TS(),
-      qrlKey:r.qrlActive?qrlKey(nd):null})
+      qrlKey:r.qrlActive?qrlKey(nd):null,
+      pwHash:r.pendingPwHash||r.pwHash||null, pendingPwHash:null, loginRequest:null})
       .then(function(){ alert('✅ تم نقل الاشتراك'); }).catch(function(e){ alert(e.message); });
   };
-  window.jdTransferNo=function(k){ var r=acc[k]||{}; if(!confirm('رفض طلب النقل؟')) return; R(k).update({status:r.statusBeforeTransfer||'pending',pendingDeviceCode:null,pendingDeviceInfo:null,statusBeforeTransfer:null}); };
+  window.jdTransferNo=function(k){ var r=acc[k]||{}; if(!confirm(r.loginRequest?'رفض طلب تسجيل الدخول؟':'رفض طلب النقل؟')) return; R(k).update({status:r.statusBeforeTransfer||'pending',pendingDeviceCode:null,pendingDeviceInfo:null,statusBeforeTransfer:null,pendingPwHash:null,loginRequest:null}); };
+  /* كلمة سر الحساب: تُحفظ مشفّرة فقط (لا تُخزَّن كما هي حمايةً للزبائن)، والإدارة تعيّن كلمة جديدة وترسلها للزبون */
+  function pwHashFor(email,pw){ return wide(SEC+'#PW#'+String(email||'').trim().toLowerCase()+'#'+String(pw||''),6); }
+  window.jdSetPw=function(k){
+    var r=acc[k]||{}, em=r.email||k.replace(/,/g,'.');
+    var pw=prompt('🔑 كلمة سر جديدة لحساب:\n'+em+'\n(6 أحرف على الأقل — أرسلها للزبون بعد الحفظ)','');
+    if(pw==null) return; pw=String(pw).trim();
+    if(pw.length<6){ alert('كلمة السر 6 أحرف على الأقل'); return; }
+    R(k).update({pwHash:pwHashFor(em,pw),pwSetAt:TS(),pwSetByAdmin:true,pendingPwHash:null}).then(function(){
+      var wa=waTo(r.phone,'السلام عليكم — بيانات الدخول لبرنامج الجدول الأسبوعي الذكي:\nالبريد: '+em+'\nكلمة السر: '+pw+'\n\nمن نافذة التفعيل: «تفعيل أونلاين» ← «لدي حساب — تسجيل الدخول».');
+      if(wa && confirm('✅ تم حفظ كلمة السر: '+pw+'\n\nإرسالها للزبون على واتساب الآن؟')) window.open(wa,'_blank');
+      else if(!wa) alert('✅ تم حفظ كلمة السر: '+pw+'\n(لا يوجد رقم واتساب صحيح لإرسالها)');
+    }).catch(function(e){ alert('❌ تعذر الحفظ: '+e.message); });
+  };
   window.jdPaid=function(k,v){ R(k).update({paidAmount:String(v||'').trim()}); };
   window.jdPhone=function(k,v){ R(k).update({phone:normIraqPhone(v)}); };
   window.jdCopy=function(t,el){ try{ navigator.clipboard.writeText(t).then(function(){ var o=el.textContent; el.textContent='✅ نُسخ'; setTimeout(function(){ el.textContent=o; },1200); }); }catch(e){ prompt('انسخ:',t); } };
@@ -1529,11 +1544,13 @@ body.jd-mode #jdWrap{display:block}
     var school='<div class="at-school">'+E(r.schoolName||'—')+'</div><div class="at-sub"><span class="at-num">#'+(i+1)+'</span> <span class="badge-status s-'+stClass(r)+'">'+E(stLabel(r))+'</span>'+(r.source==='manual'?'<span class="jd-tag leg">تفعيل يدوي</span>':r.legacy?'<span class="jd-tag leg">مفعّل سابقًا</span>':'<span class="jd-tag onl">أونلاين</span>')+'</div>'
       +'<div class="at-sub">📅 التسجيل: '+E(fmtDate(toTs(r.registeredAt)||toTs(r.legacyRegisteredAt)))+(r.approvedAt?' · التفعيل: '+E(fmtDate(toTs(r.approvedAt))):'')+'</div>';
     var prin='<div class="at-strong">'+E(r.principalName||r.name||'—')+'</div>';
-    var em='<span class="code at-ltr">'+E(r.email)+'</span>';
+    var em='<span class="code at-ltr">'+E(r.email)+'</span>'
+      +'<div class="at-sub">'+(r.pwHash?'🔒 كلمة السر: مُعيّنة'+(r.pwSetByAdmin?' (من الإدارة)':''):'<span style="color:var(--warnB);font-weight:800">⚠️ بلا كلمة سر</span>')+'</div>'
+      +'<button class="btn ghost small" style="margin-top:4px" onclick="jdSetPw('+jk+')">🔑 تعيين كلمة سر</button>';
     var phone=(wa?'<a href="'+E(wa)+'" target="_blank" rel="noopener" class="btn whatsapp small">💬 '+E(ph)+'</a>':'<div class="at-warn">⚠️ لا يوجد هاتف</div>')
       +'<input type="tel" value="'+E(ph||r.phone||'')+'" placeholder="07xxxxxxxxx" class="inline at-ltr at-in" maxlength="11" onchange="jdPhone('+jk+',this.value)">';
     var dev='<div class="jd-dev">'+E(fmtDev(r.deviceCode))+'</div><div class="at-sub">'+E([d.type,d.os,d.browser].filter(Boolean).join(' · '))+'</div>'
-      +(isT?'<div class="at-sub" style="color:var(--warnB);font-weight:900">⬅ الجهاز الجديد: <span class="jd-dev">'+E(fmtDev(r.pendingDeviceCode))+'</span></div>':'')
+      +(isT?'<div class="at-sub" style="color:var(--warnB);font-weight:900">'+(r.loginRequest?(nk(r.pendingDeviceCode)===nk(r.deviceCode)?'🔐 طلب تسجيل دخول على الجهاز نفسه':'🔐 طلب تسجيل دخول من جهاز آخر: '):'⬅ الجهاز الجديد: ')+(nk(r.pendingDeviceCode)!==nk(r.deviceCode)?'<span class="jd-dev">'+E(fmtDev(r.pendingDeviceCode))+'</span>':'')+'</div>'+(r.pendingPwHash?'<div class="at-sub" style="color:var(--warnB)">🔑 كتب كلمة سر جديدة لحسابه — تُعتمد عند الموافقة</div>':''):'')
       +(r.lastSeenAt?'<div class="at-sub">آخر ظهور: '+E(fmtDate(toTs(r.lastSeenAt)))+'</div>':'');
     var plan;
     if(isA){
@@ -1544,7 +1561,7 @@ body.jd-mode #jdWrap{display:block}
     if(isA) plan+='<div style="margin-top:6px">'+(r.qrlActive?'<span class="jd-tag qrl-on">📲 الملحق مفعّل</span>'+(r.qrlKey?' <span class="jd-key" title="مفتاح الجهاز الملحق — اضغط للنسخ" onclick="jdCopy('+J(fmtQrl(r.qrlKey))+',this)">'+E(fmtQrl(r.qrlKey))+'</span>':''):'<span class="jd-tag qrl-off">📲 الملحق غير مفعّل</span>')+'</div>';
     plan+='<div class="at-plan"><select class="inline" id="jdpl-'+E(k)+'">'+planOpts(isA?cur:'permanent')+'</select><input type="text" id="jdpa-'+E(k)+'" value="'+E(r.paidAmount||'')+'" placeholder="المبلغ" class="inline at-ltr at-amt" onchange="jdPaid('+jk+',this.value)"></div>';
     var act='<div class="actions at-actions">'
-      +(isT?'<button class="btn success small" onclick="jdTransferOk('+jk+')">✔ موافقة النقل</button><button class="btn danger small" onclick="jdTransferNo('+jk+')">✖ رفض النقل</button>'
+      +(isT?'<button class="btn success small" onclick="jdTransferOk('+jk+')">✔ '+(r.loginRequest?'موافقة الدخول':'موافقة النقل')+'</button><button class="btn danger small" onclick="jdTransferNo('+jk+')">✖ رفض</button>'
         :isA?'<button class="btn warn small" onclick="jdChange(this,'+jk+')">⏱ تغيير المدة</button>'+(r.qrlActive?'<button class="btn ghost small" onclick="jdQrl('+jk+',false)">📲 إلغاء الملحق</button>':'<button class="btn violet small" onclick="jdQrl('+jk+',true)">📲 فعّل الجهاز الملحق</button>')
         :'<button class="btn success small" onclick="jdApprove(this,'+jk+')">✔ فعّل</button>'+(r.status==='pending'?'<button class="btn ghost small" onclick="jdReject('+jk+')">رفض</button>':''))
       +(!stopped(r)&&(isA||isT)?'<button class="btn warn small" onclick="jdStop('+jk+')">⏹ إيقاف</button>':'')
@@ -1614,7 +1631,7 @@ body.jd-mode #jdWrap{display:block}
     Object.keys(C).forEach(function(k){ var b=$('jdB-'+k); if(b) b.textContent=C[k]; });
     $('jdStats').innerHTML='<div class="stat info"><div class="ic">🗓️</div><div class="num">'+all.length+'</div><div class="lbl">إجمالي حسابات الجدول</div></div>'
       +'<div class="stat warn"><div class="ic">📞</div><div class="num">'+pen.length+'</div><div class="lbl">بانتظار الموافقة</div></div>'
-      +'<div class="stat tr"><div class="ic">🔄</div><div class="num">'+tra.length+'</div><div class="lbl">نقل أجهزة</div></div>'
+      +'<div class="stat tr"><div class="ic">🔄</div><div class="num">'+tra.length+'</div><div class="lbl">طلبات دخول/نقل</div></div>'
       +'<div class="stat ok"><div class="ic">✅</div><div class="num">'+app.length+'</div><div class="lbl">مفعّلة أونلاين</div></div>'
       +'<div class="stat vio"><div class="ic">🛡️</div><div class="num">'+leg.length+'</div><div class="lbl">مفعّلون سابقًا (موثّقون)</div></div>'
       +'<div class="stat ok"><div class="ic">♾️</div><div class="num">'+perm.length+'</div><div class="lbl">مفعّل دائم</div></div>'
@@ -1623,7 +1640,7 @@ body.jd-mode #jdWrap{display:block}
     var html;
     if(tab==='keygen'){ if(!$('jdKgDev')) box.innerHTML=renderKeygen(); return; }
     var src={all:all,pending:pen,transfers:tra,approved:app,legacy:leg,stopped:stp}[tab]||all;
-    var titles={all:'كل حسابات الجدول',pending:'طلبات التفعيل',transfers:'طلبات نقل الأجهزة',approved:'المفعّلة أونلاين',legacy:'المفعّلون سابقًا — سُجّلوا تلقائيًا',stopped:'الموقوفة والمرفوضة'};
+    var titles={all:'كل حسابات الجدول',pending:'طلبات التفعيل',transfers:'طلبات تسجيل الدخول ونقل الأجهزة',approved:'المفعّلة أونلاين',legacy:'المفعّلون سابقًا — سُجّلوا تلقائيًا',stopped:'الموقوفة والمرفوضة'};
     var L=src.filter(match);
     html=(q?'<p class="srch-why">نتائج البحث عن «<b>'+E(q)+'</b>»: '+L.length+'</p>':'')+table(L,titles[tab]||'');
     box.innerHTML=html;
@@ -1643,7 +1660,7 @@ body.jd-mode #jdWrap{display:block}
     w.innerHTML='<nav class="tabs jd-tabs" id="jdTabs">'
       +'<button data-jd="all" class="active">📋 الكل <span class="badge info" id="jdB-all">0</span></button>'
       +'<button data-jd="pending">📞 بانتظار الموافقة <span class="badge warn" id="jdB-pending">0</span></button>'
-      +'<button data-jd="transfers">🔄 نقل جهاز <span class="badge warn" id="jdB-transfers">0</span></button>'
+      +'<button data-jd="transfers">🔐 دخول ونقل جهاز <span class="badge warn" id="jdB-transfers">0</span></button>'
       +'<button data-jd="approved">✅ المفعّلة <span class="badge ok" id="jdB-approved">0</span></button>'
       +'<button data-jd="legacy">🛡️ المفعّلون سابقًا <span class="badge vio" id="jdB-legacy">0</span></button>'
       +'<button data-jd="stopped">⛔ الموقوفة <span class="badge" id="jdB-stopped">0</span></button>'
