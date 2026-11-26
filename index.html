@@ -7033,27 +7033,27 @@ const DEFAULT_SUBJECT_SETS = {
   elementary: {
     title: 'المرحلة الابتدائية',
     stages: ['elementary','basic'],
-    items: ['التربية الإسلامية','اللغة العربية','اللغة الانكليزية','الرياضيات','الاجتماعيات','العلوم','التربية الفنية والنشيد','التربية الأخلاقية','التربية الرياضية']
+    items: ['التربية الإسلامية','اللغة العربية','اللغة الانكليزية','الرياضيات','الاجتماعيات','العلوم','التربية الأخلاقية','التربية الفنية والنشيد','التربية الرياضية']
   },
   intermediate12: {
     title: 'الأول والثاني متوسط',
     stages: ['intermediate','basic'],
-    items: ['الاسلامية','العربي','الانكليزي','الرياضيات','الاجتماعيات','العلوم','الحاسوب','الفنية','التربية الأخلاقية','الرياضة','فرنسي']
+    items: ['الاسلامية','العربي','الانكليزي','الرياضيات','الاجتماعيات','العلوم','الحاسوب','التربية الأخلاقية','الفنية','الرياضة','فرنسي']
   },
   intermediate3: {
     title: 'الثالث متوسط',
     stages: ['intermediate','basic'],
-    items: ['الاسلامية','العربي','الانكليزي','الرياضيات','الاجتماعيات','الفيزياء','الكيمياء','الاحياء','الحاسوب','الفنية','التربية الأخلاقية','الرياضة','فرنسي']
+    items: ['الاسلامية','العربي','الانكليزي','الرياضيات','الاجتماعيات','الفيزياء','الكيمياء','الاحياء','الحاسوب','التربية الأخلاقية','الفنية','الرياضة','فرنسي']
   },
   scientific: {
     title: 'الإعدادي العلمي',
     stages: ['prep','secondary'],
-    items: ['الاسلامية','العربي','الانكليزي','الرياضيات','الاجتماعيات','الفيزياء','الكيمياء','الاحياء','الحاسوب','الفنية','التربية الأخلاقية','الرياضة','فرنسي']
+    items: ['الاسلامية','العربي','الانكليزي','الرياضيات','الاجتماعيات','الفيزياء','الكيمياء','الاحياء','الحاسوب','التربية الأخلاقية','الفنية','الرياضة','فرنسي']
   },
   literary: {
     title: 'الإعدادي الأدبي',
     stages: ['prep','secondary'],
-    items: ['الاسلامية','العربي','الانكليزي','الرياضيات','التاريخ','الجغرافية','الاقتصاد','علم الاجتماع','الحاسوب','الفنية','التربية الأخلاقية','الرياضة','فرنسي']
+    items: ['الاسلامية','العربي','الانكليزي','الرياضيات','التاريخ','الجغرافية','الاقتصاد','علم الاجتماع','الحاسوب','التربية الأخلاقية','الفنية','الرياضة','فرنسي']
   }
 };
 function ensureSubjects(){
@@ -11151,8 +11151,8 @@ function renderGradebookTable(sectionEl){
     head='<tr><th rowspan="3">ت</th><th rowspan="3" class="student-head">اسم الطالب</th><th colspan="7" class="group">الفصل الأول</th><th rowspan="3">نصف السنة</th><th colspan="7" class="group">الفصل الثاني</th><th rowspan="3">السعي السنوي</th><th rowspan="3">النتيجة</th></tr><tr><th colspan="3">الشهر الأول</th><th colspan="3">الشهر الثاني</th><th rowspan="2">معدل الفصل الأول</th><th colspan="3">الشهر الأول</th><th colspan="3">الشهر الثاني</th><th rowspan="2">معدل الفصل الثاني</th></tr><tr><th>الشهر الأول</th><th>مجموع اليومي</th><th>معدل الشهر الأول</th><th>الشهر الثاني</th><th>مجموع اليومي</th><th>معدل الشهر الثاني</th><th>الشهر الأول</th><th>مجموع اليومي</th><th>معدل الشهر الأول</th><th>الشهر الثاني</th><th>مجموع اليومي</th><th>معدل الشهر الثاني</th></tr>';
     (section.students||[]).forEach(function(st,i){ const r=record.rows[st.id]; gbPrepareMonthlyRow(r); gbCompute56(r,record); rows+='<tr data-student="'+st.id+'"><td>'+(i+1)+'</td><td class="student-col">'+wrapStudentNameHtml(st.name)+'</td>'+gbInput(st.id,'t1m1',r.t1m1)+gbInput(st.id,'t1m1Daily',r.t1m1Daily)+'<td class="calc-cell" data-calc="t1m1Avg">'+showGrade(r.t1m1Avg)+'</td>'+gbInput(st.id,'t1m2',r.t1m2)+gbInput(st.id,'t1m2Daily',r.t1m2Daily)+'<td class="calc-cell" data-calc="t1m2Avg">'+showGrade(r.t1m2Avg)+'</td><td class="calc-cell" data-calc="term1">'+showGrade(r.term1)+'</td>'+gbInput(st.id,'mid',r.mid)+gbInput(st.id,'t2m1',r.t2m1)+gbInput(st.id,'t2m1Daily',r.t2m1Daily)+'<td class="calc-cell" data-calc="t2m1Avg">'+showGrade(r.t2m1Avg)+'</td>'+gbInput(st.id,'t2m2',r.t2m2)+gbInput(st.id,'t2m2Daily',r.t2m2Daily)+'<td class="calc-cell" data-calc="t2m2Avg">'+showGrade(r.t2m2Avg)+'</td><td class="calc-cell" data-calc="term2">'+showGrade(r.term2)+'</td><td class="calc-cell" data-calc="coursework">'+showGrade(r.coursework)+'</td>'+gbInput(st.id,'result',r.result)+'</tr>'; });
   }else{
-    head='<tr><th rowspan="2">ت</th><th rowspan="2" class="student-head">اسم الطالب</th><th colspan="2" class="group">امتحان نصف السنة</th><th colspan="2" class="group">امتحان نهاية السنة</th><th rowspan="2">الملاحظات</th></tr><tr><th>الدرجة</th><th>كتابةً</th><th>الدرجة</th><th>كتابةً</th></tr>';
-    (section.students||[]).forEach(function(st,i){ const r=record.rows[st.id]; rows+='<tr data-student="'+st.id+'"><td>'+(i+1)+'</td><td class="student-col">'+wrapStudentNameHtml(st.name)+'</td>'+gbInput(st.id,'mid',r.mid)+'<td class="written-cell" data-written="mid">'+escapeHtml(gradeWords(r.mid))+'</td>'+gradebookDecisionInput(st.id,'finalExam',r.finalExam,decisionAllocations[st.id])+'<td class="written-cell" data-written="finalExam">'+escapeHtml(gradeWords(r.finalExam))+'</td><td><input class="remark-input" value="'+escapeHtml(r.remarks||'')+'" oninput="gbUpdate(\''+st.id+'\',\'remarks\',this.value)"></td></tr>'; });
+    head='<tr><th rowspan="2">ت</th><th rowspan="2" class="student-head">اسم الطالب</th><th colspan="2" class="group">امتحان نصف السنة</th><th colspan="2" class="group">امتحان نهاية السنة</th>'+(isPrimaryTenMarkGrade(grade)?'<th colspan="2" class="group gb-r2-head">امتحان الدور الثاني</th>':'')+'<th rowspan="2">الملاحظات</th></tr><tr><th>الدرجة</th><th>كتابةً</th><th>الدرجة</th><th>كتابةً</th>'+(isPrimaryTenMarkGrade(grade)?'<th>الدرجة</th><th>كتابةً</th>':'')+'</tr>';
+    (section.students||[]).forEach(function(st,i){ const r=record.rows[st.id]; rows+='<tr data-student="'+st.id+'"><td>'+(i+1)+'</td><td class="student-col">'+wrapStudentNameHtml(st.name)+'</td>'+gbInput(st.id,'mid',r.mid)+'<td class="written-cell" data-written="mid">'+escapeHtml(gradeWords(r.mid))+'</td>'+gradebookDecisionInput(st.id,'finalExam',r.finalExam,decisionAllocations[st.id])+'<td class="written-cell" data-written="finalExam">'+escapeHtml(gradeWords(r.finalExam))+'</td>'+(isPrimaryTenMarkGrade(grade)?gbInput(st.id,'completion',r.completion).replace('<td>','<td class="gb-r2-cell">')+'<td class="written-cell" data-written="completion">'+escapeHtml(gradeWords(r.completion))+'</td>':'')+'<td><input class="remark-input" value="'+escapeHtml(r.remarks||'')+'" oninput="gbUpdate(\''+st.id+'\',\'remarks\',this.value)"></td></tr>'; });
   }
   const decisionPoints=gradebookDecisionNumber(record.decisionPoints);
   const decisionRemaining=decisionAllocations.__remaining==null?decisionPoints:decisionAllocations.__remaining;
@@ -18827,7 +18827,7 @@ if(document.readyState==='loading'){
 <!-- ===== AUTO UPDATE NOTIFICATION (small icon in topbar) ===== -->
 <script>
 (function(){
-  const APP_VERSION = "1.99.5";
+  const APP_VERSION = "1.99.7";
   try{ window.__nbAppVersion=APP_VERSION; }catch(e){}
   const CHECK_EVERY_MINUTES = 30;
   const LS_ACCEPTED = "daragat_accepted_version";
@@ -24381,7 +24381,7 @@ var SR_CSS='<style id="nbsrCss">.nbsr-sel{display:grid;grid-template-columns:rep
 function opt(list,sel,ph){ return '<option value="">'+ph+'</option>'+list.map(function(o){ return '<option value="'+esc(o[0])+'"'+(o[0]===sel?' selected':'')+'>'+esc(o[1])+'</option>'; }).join(''); }
 function render(){
   var el=document.getElementById('view-semester'); if(!el) return;
-  var grades=(typeof gradebookGradeLabels==='function'?gradebookGradeLabels():[]).filter(function(g){ return gbSectionsForGrade(g).length; });
+  var grades=(typeof gradebookGradeLabels==='function'?gradebookGradeLabels():[]).filter(function(g){ return gbSectionsForGrade(g).length&&!(typeof isPrimaryTenMarkGrade==='function'&&isPrimaryTenMarkGrade(g)); }); /* 1.99.7: الأول إلى الرابع الابتدائي لا سجل فصلي لها */
   if(SR.grade&&grades.indexOf(SR.grade)<0){ SR.grade='';SR.sid='';SR.subject=''; }
   var secs=SR.grade?gbSectionsForGrade(SR.grade):[]; if(SR.sid&&!secs.some(function(s){return s.id===SR.sid;})) SR.sid='';
   var subs=SR.grade?gbSubjects(SR.grade):[]; if(SR.subject&&subs.indexOf(SR.subject)<0) SR.subject='';
@@ -26633,6 +26633,8 @@ function effective(grade,sid,subject,stId){
   if(upper){ gbCompute56(row,rec); after=row.finalGrade; raw=has(row.finalGradeRaw)?row.finalGradeRaw:after; applied=Number(row.decisionApplied)||0; if(!applied) raw=after; }
   else{ raw=vs(row.finalExam); var a=allocationsFor(rec,grade)[stId]; after=a?a.effective:raw; applied=a?a.applied:0; }
   var exk=rulesOn()&&row.nbExempt?row.nbExempt:'', comp=exk?'':vs(row.finalAfterCompletion);
+  /* 1.99.7: الأول إلى الرابع الابتدائي — درجة «الدور الثاني» للمكمل تُصبح هي الدرجة النهائية */
+  if(!upper&&!exk&&!has(comp)&&isPrimaryTenMarkGrade(grade)){ if(row.completionSt==='abs') comp=0; else if(has(row.completion)) comp=vs(row.completion); }
   if(has(after)&&Number(after)>=resultPassMark(grade)) comp=''; /* ناجح من الدور الأول: لا إكمال */
   if(minNoFinal(grade)) comp=''; /* الوزاري: درجة نهاية السنة وحدها */
   return {exempt:exk,completion:has(row.completion)?Number(row.completion):'',decision2:Number(row.decision2Applied)||0,raw:has(raw)?Number(raw):'',applied:applied,afterDecision:has(after)?Number(after):'',afterCompletion:has(comp)?Number(comp):'',official:has(comp)?Number(comp):(has(after)?Number(after):'')};
@@ -29280,7 +29282,7 @@ window.renderHomeView=function(){
 (function(){
   'use strict';
   var KEY = 'daragat_ustath_teachers_v1';
-  var EDIT = {el56: ['oct', 'nov', 'dec', 'jan', 'mid', 'mar', 'apr', 'result', 'completion'], monthly: ['t1m1', 't1m1Daily', 't1m2', 't1m2Daily', 'mid', 't2m1', 't2m1Daily', 't2m2', 't2m2Daily', 'result'], basic: ['mid', 'finalExam']};
+  var EDIT = {el56: ['oct', 'nov', 'dec', 'jan', 'mid', 'mar', 'apr', 'result', 'completion'], monthly: ['t1m1', 't1m1Daily', 't1m2', 't1m2Daily', 'mid', 't2m1', 't2m1Daily', 't2m2', 't2m2Daily', 'result'], basic: ['mid', 'finalExam', 'completion']}; /* 1.99.7: الدور الثاني للأول إلى الرابع */
   var LEVELS = ['', 'ضعيف', 'متوسط', 'جيد', 'ممتاز', 'مقبول', 'جيد جداً'];
   function now(){ return Date.now(); }
   function rnd(n){ var a = 'abcdefghijkmnpqrstuvwxyz23456789', s = ''; for(var i = 0; i < n; i++) s += a[Math.floor(Math.random() * a.length)]; return s; }
@@ -30130,7 +30132,10 @@ window.renderHomeView=function(){
     (a.students || []).forEach(function(s){ var v = (a.rows[s.id] || {})[f]; if(v !== '' && v != null) n++; });
     return {n: n, tot: tot, p: Math.round(n * 100 / tot), lbl: fieldLabel(a, f)};
   }
-  function fields(a){ return a.layout === 'el56' ? EL56 : a.layout === 'monthly' ? MONTHLY : BASIC; }
+  var BASIC10 = [{g: 'الامتحانات', f: [['mid', 'امتحان نصف السنة'], ['finalExam', 'امتحان نهاية السنة'], ['completion', 'امتحان الدور الثاني']]}];
+  function fields(a){ return a.layout === 'el56' ? EL56 : a.layout === 'monthly' ? MONTHLY : (maxOf(a) === 10 ? BASIC10 : BASIC); }
+  /* الدور الثاني (الأول إلى الرابع): يُكتب للمكمل فقط — الراسب في امتحان نهاية السنة */
+  function r2Closed(a, f, r){ return f === 'completion' && a.layout !== 'el56' && a.layout !== 'monthly' && !low(a, (r || {}).finalExam); }
   function fieldLabel(a, f){ var out = ''; fields(a).forEach(function(g){ g.f.forEach(function(x){ if(x[0] === f) out = (g.f.length > 1 && g.g !== 'الامتحانات' && g.g !== 'نهاية السنة' ? g.g + ' — ' : '') + x[1]; }); }); return out; }
 
   function renderHome(){
@@ -30183,9 +30188,10 @@ window.renderHomeView=function(){
     html += '<div class="u-card"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px"><b>' + esc(fieldLabel(a, f)) + ' <span class="u-note">(من ' + ar(maxOf(a)) + ')</span></b><span class="u-note">' + ar(p.n) + ' من ' + ar(p.tot) + '</span></div>' +
       (LKF ? '<div class="u-msg i u-lkmsg">🔒 هذا الحقل مقفل من الإدارة بعد اعتماد الدرجات — للعرض فقط. للتعديل راجع إدارة المدرسة.</div>' : '');
     html += (a.students || []).map(function(s, i){
-      var r = a.rows[s.id] || {}, v = r[f], dirty = a.dirty[s.id] && a.dirty[s.id][f] != null, info = infoLine(a, s.id, f);
+      var r = a.rows[s.id] || {}, v = r[f], dirty = a.dirty[s.id] && a.dirty[s.id][f] != null, info = infoLine(a, s.id, f), R2X = r2Closed(a, f, r);
+      if(R2X) info = 'ناجح في نهاية السنة (أو لم تُكتب درجتها) — لا دور ثانٍ';
       return '<div class="u-st"><span class="n">' + ar(i + 1) + '</span><div><div class="nm">' + esc(s.name) + '</div>' + (info ? '<div class="cp" data-cp="' + esc(s.id) + '">' + info + '</div>' : '') + '</div>' +
-        '<input' + (LKF ? ' readonly tabindex="-1"' : '') + ' class="u-sin' + (LKF ? ' lk' : '') + (dirty ? ' dirty' : '') + (low(a, v) ? ' low' : '') + '" inputmode="numeric" enterkeyhint="next" autocomplete="off" maxlength="' + (maxOf(a) === 10 ? 2 : 3) + '" data-s="' + esc(s.id) + '" value="' + esc(v == null ? '' : v) + '"></div>';
+        '<input' + ((LKF || R2X) ? ' readonly tabindex="-1"' : '') + (R2X ? ' placeholder="—"' : '') + ' class="u-sin' + ((LKF || R2X) ? ' lk' : '') + (dirty ? ' dirty' : '') + (low(a, v) ? ' low' : '') + '" inputmode="numeric" enterkeyhint="next" autocomplete="off" maxlength="' + (maxOf(a) === 10 ? 2 : 3) + '" data-s="' + esc(s.id) + '" value="' + esc(v == null ? '' : v) + '"></div>';
     }).join('') || '<div class="u-empty">لا طلاب في هذه الشعبة.</div>';
     return html + '</div>';
   }
@@ -30197,9 +30203,9 @@ window.renderHomeView=function(){
       var eb = (a.students || []).map(function(s, i){ var r = computed(a, s.id); return '<tr><td>' + ar(i + 1) + '</td><td class="nm">' + esc(s.name) + '</td>' + ec.map(function(c){ var v = r[c[0]]; return '<td class="' + (c[2] ? 'c' : '') + (low(a, v) ? ' low' : '') + '">' + dash(v) + '</td>'; }).join('') + '</tr>'; }).join('');
       return '<div class="u-card" style="padding:8px"><div class="u-tbl"><table><thead>' + eh + '</thead><tbody>' + eb + '</tbody></table></div><p class="u-note" style="margin:8px 4px 0">الخانات الصفراء تُحسب تلقائياً بنفس طريقة ' + esc((cur() && cur().sc.recordName) || 'السجل') + ' في البرنامج.</p></div>';
     }
-    var mon = a.layout === 'monthly', cols = mon ? [['t1m1','ش١'],['t1m1Daily','يومي'],['t1m1Avg','معدل',1],['t1m2','ش٢'],['t1m2Daily','يومي'],['t1m2Avg','معدل',1],['term1','الفصل الأول',1],['mid','نصف السنة'],['t2m1','ش١'],['t2m1Daily','يومي'],['t2m1Avg','معدل',1],['t2m2','ش٢'],['t2m2Daily','يومي'],['t2m2Avg','معدل',1],['term2','الفصل الثاني',1],['coursework','السعي',1],['result','النتيجة']] : [['mid','نصف السنة'],['finalExam','الامتحان النهائي']];
+    var mon = a.layout === 'monthly', cols = mon ? [['t1m1','ش١'],['t1m1Daily','يومي'],['t1m1Avg','معدل',1],['t1m2','ش٢'],['t1m2Daily','يومي'],['t1m2Avg','معدل',1],['term1','الفصل الأول',1],['mid','نصف السنة'],['t2m1','ش١'],['t2m1Daily','يومي'],['t2m1Avg','معدل',1],['t2m2','ش٢'],['t2m2Daily','يومي'],['t2m2Avg','معدل',1],['term2','الفصل الثاني',1],['coursework','السعي',1],['result','النتيجة']] : [['mid','نصف السنة'],['finalExam','الامتحان النهائي']].concat(maxOf(a) === 10 ? [['completion','الدور الثاني']] : []);
     var head = mon ? '<tr><th rowspan="2">ت</th><th rowspan="2" class="nm">الاسم</th><th colspan="7">الفصل الأول</th><th rowspan="2">نصف السنة</th><th colspan="7">الفصل الثاني</th><th rowspan="2">السعي</th><th rowspan="2">النتيجة</th></tr><tr><th>ش١</th><th>يومي</th><th>معدل</th><th>ش٢</th><th>يومي</th><th>معدل</th><th>المعدل</th><th>ش١</th><th>يومي</th><th>معدل</th><th>ش٢</th><th>يومي</th><th>معدل</th><th>المعدل</th></tr>'
-      : '<tr><th>ت</th><th class="nm">الاسم</th><th>نصف السنة</th><th>الامتحان النهائي</th></tr>';
+      : '<tr><th>ت</th><th class="nm">الاسم</th><th>نصف السنة</th><th>الامتحان النهائي</th>' + (maxOf(a) === 10 ? '<th>الدور الثاني</th>' : '') + '</tr>';
     var body = (a.students || []).map(function(s, i){ var r = computed(a, s.id); return '<tr><td>' + ar(i + 1) + '</td><td class="nm">' + esc(s.name) + '</td>' + cols.map(function(c){ var v = r[c[0]]; return '<td class="' + (c[2] ? 'c' : '') + (low(a, v) ? ' low' : '') + '">' + dash(v) + '</td>'; }).join('') + '</tr>'; }).join('');
     return '<div class="u-card" style="padding:8px"><div class="u-tbl"><table><thead>' + head + '</thead><tbody>' + body + '</tbody></table></div><p class="u-note" style="margin:8px 4px 0">الخانات الصفراء تُحسب تلقائياً بنفس طريقة ' + esc((cur() && cur().sc.recordName) || 'السجل') + ' في البرنامج.</p></div>';
   }
@@ -48702,7 +48708,8 @@ function analyse(card){
     [].forEach.call(boxes,function(b){ var v=num(b); b.classList.toggle('nbk-fail',!isNaN(v)&&v<pm); });
     if(!sub||sub==='المجموع'||!boxes.length) return;
     var f=num(boxes[finalBoxIdx(card,boxes.length)]); if(isNaN(f)) return; any=true;
-    if(f<pm){ fails.push(sub); var ai=afterIdx(card,boxes.length); if(ai>=0){ var a=num(boxes[ai]); if(!isNaN(a)){ anyAfter=true; afterHas[sub]=1; if(a<pm) afterFails.push(sub); } } }
+    if(f<pm){ fails.push(sub); var ai=afterIdx(card,boxes.length); if(ai>=0){ var a=num(boxes[ai]); if(!isNaN(a)){ anyAfter=true; afterHas[sub]=1; if(a<pm) afterFails.push(sub); } }
+      else if(card.dataset.nbR2){ /* 1.99.7: الأول إلى الرابع — درجات الدور الثاني من سجل المعلم */ try{ var m2=JSON.parse(card.dataset.nbR2); if(Object.prototype.hasOwnProperty.call(m2,sub)){ var a2=Number(m2[sub]); anyAfter=true; afterHas[sub]=1; if(!(a2>=pm)) afterFails.push(sub); } }catch(_e){} } }
   });
   if(!any) return null;
   var R=rules(), n=fails.length;
@@ -48800,6 +48807,16 @@ function addGroup(){
 if(window.__nb175) return; window.__nb175=1;
 var SEEN='nbWhatsNewSeen';
 var CH=[
+ ['1.99.7','26 تشرين الثاني 2026',[
+  ['🔁','الدور الثاني للأول إلى الرابع الابتدائي','حقل «امتحان الدور الثاني» في سجل المعلم والسجل الوسطي وسجل النسب. يُفتح للمكمل في المادة فقط (الناجح لا يُكتب له)، وإذا نجح فيه تصبح درجته هي الدرجة النهائية وتتغير النتيجة تلقائياً. بطاقة النتائج تذكر درجات الدور الثاني بسطر صغير بلا تغيير في تخطيطها.'],
+  ['🗂️','السجل الفصلي','لا يظهر للصفوف الأول إلى الرابع الابتدائي لأنها بلا سجل فصلي.']
+ ]],
+ ['1.99.6','26 تشرين الثاني 2026',[
+  ['📚','ترتيب المواد','التربية الأخلاقية ثم الفنية ثم الرياضية في كل الأقسام والبطاقات والسجلات.'],
+  ['🎓','الإعفاء في بطاقة النتائج','المادة المعفى منها يُكتب فيها «معفى» في خانة الامتحان النهائي ودرجتها النهائية هي السعي، والمعفى من كل المواد نتيجته «إعفاء عام».'],
+  ['📌','تثبيت أعمدة الملاك','في معلومات الملاك والموظفين يبقى التسلسل والاسم ثابتين عند التمرير.'],
+  ['🔳','باركود أكبر','باركود بطاقة النتائج يكبر بقدر المساحة الفارغة حوله فيُقرأ بسهولة، بدون أن يغطي شيئاً.']
+ ]],
  ['1.99.5','25 تشرين الثاني 2026',[
   ['🖨️','ورقة فارغة عند طباعة النتائج في الأندرويد','صفحة الطباعة التي تُرسل لتطبيق الأندرويد كانت كبيرة جداً (كل أنماط البرنامج وشعار المدرسة مكرر في كل بطاقة) فيطبعها التطبيق فارغة. صارت تُرسل مضغوطة بالأنماط المستعملة فقط والشعار مرة واحدة، والشكل نفسه.']
  ]],
@@ -50156,9 +50173,11 @@ function cell(v,pass,extra,cls){
 function wcell(v,s){ return '<td class="nbcr-w">'+(s?'':esc(words(v)))+'</td>'; }
 
 function head14(){
-  return '<tr><th rowspan="2" class="subject-head nbcr-sub">المادة</th><th colspan="2" class="nbcr-grp">امتحان نصف السنة</th><th colspan="2" class="nbcr-grp">امتحان نهاية السنة</th><th rowspan="2" class="remarks-head nbcr-rm">الملاحظات</th></tr>'+
-    '<tr><th class="nbcr-s">الدرجة</th><th class="nbcr-s">كتابةً</th><th class="nbcr-s">الدرجة</th><th class="nbcr-s">كتابةً</th></tr>';
+  return '<tr><th rowspan="2" class="subject-head nbcr-sub">المادة</th><th colspan="2" class="nbcr-grp">امتحان نصف السنة</th><th colspan="2" class="nbcr-grp">امتحان نهاية السنة</th><th colspan="2" class="nbcr-grp nbcr-r2">امتحان الدور الثاني</th><th rowspan="2" class="remarks-head nbcr-rm">الملاحظات</th></tr>'+
+    '<tr><th class="nbcr-s">الدرجة</th><th class="nbcr-s">كتابةً</th><th class="nbcr-s">الدرجة</th><th class="nbcr-s">كتابةً</th><th class="nbcr-s">الدرجة</th><th class="nbcr-s">كتابةً</th></tr>';
 }
+/* 1.99.7: درجة الدور الثاني تظهر فقط لمن كان مكملاً في المادة */
+function r2Of(o,pass){ var e=o.eff||{}, r=o.r||{}; if(!has(r.completion)&&r.completionSt!=='abs') return ''; var a=num(e.afterDecision); if(a!=null&&a>=pass&&!(r.resultSt==='def'||r.finalExamSt==='def')) return ''; return r.completionSt==='abs'?'':r.completion; }
 function body14(g,sid,id,subs){
   var pass=resultPassMark(g);
   return subs.map(function(sub){
@@ -50169,6 +50188,7 @@ function body14(g,sid,id,subs){
     return '<tr><td class="subject">'+esc(sub)+'</td>'+
       cell(r.mid,pass,midS?st(midS):null)+wcell(r.mid,midS)+
       cell(fe,pass,feH,'nbcr-key')+wcell(fe,finS)+
+      (function(){ var c=r2Of(o,pass), cs=r.completionSt; return cell(c,pass,cs?st(cs):null,'nbcr-key')+wcell(c,cs); })()+
       '<td class="remarks">'+esc(r.remarks||'')+'</td></tr>';
   }).join('');
 }
@@ -50262,7 +50282,7 @@ function vals(g,sid,sub,id){
   if(is14(g)){
     var fe=has(r.finalExam)?r.finalExam:r.result;
     var fin=(Number(e.applied)>0&&has(e.afterDecision))?e.afterDecision:fe;
-    return {mid:r.midSt?'':r.mid, final:finS?'':fin};
+    return {mid:r.midSt?'':r.mid, final:finS?'':fin, r2:(r.completionSt==='abs'?0:r2Of(o,pass))};
   }
   var res=has(r.result)?r.result:r.finalExam;
   var cwE=r.coursework; if(isMin(g)){ try{ var pl=window.nbStudentDecisionPlan&&window.nbStudentDecisionPlan(g,sid,id), pp=pl&&pl[sub]; if(pp&&pp.cw&&Number(pp.applied)>0) cwE=pp.effective; }catch(_e){} }
@@ -50278,8 +50298,8 @@ function vals(g,sid,sub,id){
 var PRCSS='table.nbr-prim th{font-size:9.5px!important;line-height:1.15!important;padding:1mm .3mm!important;word-break:keep-all;overflow-wrap:break-word}table.nbr-prim td{font-size:11px!important;padding:1.4mm .2mm!important}'+
   'table.nbr-prim th.nbr-g{font-size:11px!important}table.nbr-prim.nbr-p56 th.c-s{width:34mm!important}';
 window.nbPrimaryRates=function(g){
-  if(is14(g)) return {cls:'nbr-p14',printCss:PRCSS,cols:[['mid','امتحان نصف السنة'],['final','امتحان نهاية السنة']],
-    head:function(a,b){ return '<tr><th '+(a||'')+'>ت</th><th '+(b||'')+'>المادة</th><th class="nbr-g">امتحان نصف السنة</th><th class="nbr-g">امتحان نهاية السنة</th></tr>'; }};
+  if(is14(g)) return {cls:'nbr-p14',printCss:PRCSS,cols:[['mid','امتحان نصف السنة'],['final','امتحان نهاية السنة'],['r2','امتحان الدور الثاني']],
+    head:function(a,b){ return '<tr><th '+(a||'')+'>ت</th><th '+(b||'')+'>المادة</th><th class="nbr-g">امتحان نصف السنة</th><th class="nbr-g">امتحان نهاية السنة</th><th class="nbr-g">امتحان الدور الثاني</th></tr>'; }};
   if(!is56(g)) return null;
   var min=isMin(g);
   var cols=[['oct','تشرين الأول'],['nov','تشرين الثاني'],['dec','كانون الأول'],['jan','كانون الثاني'],['term1','معدل الفصل الأول'],['mid','نصف السنة'],['mar','آذار'],['apr','نيسان'],['term2','معدل الفصل الثاني'],['coursework','السعي السنوي']];
@@ -51283,7 +51303,7 @@ function grow(card,q){
     var pxmm=cr.width/148.5, base=q.getBoundingClientRect().width/pxmm, best=0;
     var others=[].filter.call(card.querySelectorAll('.signatures,.sig,.box,.content,table,.name-box,.left-col,.footer>*:not(.qr)'),function(el){ return !el.contains(q)&&!q.contains(el); });
     var ow=q.style.width, oh=q.style.height;
-    [24,23,22,21,20,19,18].some(function(mm){ if(mm<=base-0.2) return true; q.style.width=q.style.height=mm+'mm';
+    [29,28,27,26,25,24,23,22,21,20,19,18].some(function(mm){ if(mm<=base-0.2) return true; q.style.width=q.style.height=mm+'mm';
       var r=q.getBoundingClientRect(); if(r.bottom>cr.bottom-1||r.left<cr.left+1||r.right>cr.right-1||r.top<cr.top) return false;
       if(others.some(function(el){ var b=el.getBoundingClientRect(); return b.width&&b.height&&overlaps(r,b); })) return false;
       best=mm; return true; });
@@ -52806,6 +52826,167 @@ window.nbCompactPrintHtml=function(html){
     }catch(e){ try{ f.remove(); }catch(_){} reject(e); }
   });
 };
+})();
+</script>
+<script>
+/* ===== nb-v1.99.6: ترتيب المواد + المعفى في البطاقة + «إعفاء عام» + تثبيت أعمدة الملاك ===== */
+(function(){
+'use strict';
+/* ---------- (1) ترتيب: الأخلاقية ثم الفنية ثم الرياضة (في مواضعها نفسها من القائمة) ---------- */
+function kindOf(x){ var t=String(x||'').replace(/[إأآ]/g,'ا').replace(/ة/g,'ه').replace(/ى/g,'ي');
+  if(/اخلاق/.test(t)) return 0; if(/فني/.test(t)) return 1; if(/رياضه|رياضيه/.test(t)&&!/رياضيات/.test(t)) return 2; return -1; }
+function orderSubjects(list){
+  if(!Array.isArray(list)) return list;
+  var idx=[], items=[]; list.forEach(function(x,i){ var k=kindOf(x); if(k>=0){ idx.push(i); items.push({x:x,k:k}); } });
+  if(items.length<2) return list;
+  var seen={}; if(items.some(function(o){ if(seen[o.k]) return true; seen[o.k]=1; return false; })) return list; /* أسماء متكررة من نفس النوع: لا نلمسها */
+  var sorted=items.slice().sort(function(a,b){ return a.k-b.k; });
+  if(sorted.every(function(o,i){ return o===items[i]; })) return list;
+  var out=list.slice(); idx.forEach(function(pos,i){ out[pos]=sorted[i].x; }); return out;
+}
+window.nbOrderSubjects=orderSubjects;
+function wrapSFG(){ var f=window.subjectsForGrade; if(typeof f!=='function'||f.__nbOrd) return;
+  var w=function(){ var r=f.apply(this,arguments); try{ return orderSubjects(r); }catch(e){ return r; } };
+  for(var k in f){ try{ w[k]=f[k]; }catch(e){} } w.__nbOrd=true; window.subjectsForGrade=w; }
+wrapSFG(); setTimeout(wrapSFG,800); setTimeout(wrapSFG,3000);
+if(typeof window.getSubjects==='function'&&!window.getSubjects.__nbOrd){ var oG=window.getSubjects; window.getSubjects=function(){ var r=oG.apply(this,arguments); try{ return orderSubjects(r); }catch(e){ return r; } }; window.getSubjects.__nbOrd=true; }
+/* القوائم المحفوظة تُرتَّب مرة واحدة حتى تظهر بالترتيب نفسه في الإعدادات */
+(function(){ try{ if(!APP||!APP.school||APP.school.nbSubjOrd1) return; var ch=false;
+  ['subjects','professionalSubjects'].forEach(function(key){ var o=APP[key]; if(!o||typeof o!=='object') return;
+    Object.keys(o).forEach(function(k){ var a=o[k], b=orderSubjects(a); if(b!==a){ o[k]=b; ch=true; } }); });
+  APP.school.nbSubjOrd1=1; saveApp(); }catch(e){} })();
+
+/* ---------- (2) النتيجة: «إعفاء عام» للمعفى من كل المواد ---------- */
+function wrapRes(){ var f=window.studentOfficialResult; if(typeof f!=='function'||f.__nbExAll) return;
+  var w=function(g,sid,stId){ var r=f.apply(this,arguments);
+    try{ if(r&&r.key!=='pending'&&typeof window.nbExemptInfo==='function'){ var inf=window.nbExemptInfo(g,sid,stId); if(inf&&inf.coll) return {key:'passed',label:'إعفاء عام',exempt:'c'}; } }catch(e){}
+    return r; };
+  for(var k in f){ try{ w[k]=f[k]; }catch(e){} } w.__nbExAll=true; window.studentOfficialResult=w; }
+wrapRes();
+
+/* ---------- (3) بطاقة النتائج: «معفى» في خانة الامتحان النهائي، والدرجة النهائية = السعي ---------- */
+function norm(t){ return String(t==null?'':t).replace(/\s+/g,' ').trim(); }
+function cardExempt(card,g,sid,stId){
+  if(typeof window.nbExemptKind!=='function') return;
+  [].forEach.call(card.querySelectorAll('table tbody tr'),function(tr){
+    var se=tr.querySelector('td.subject'); var sub=norm(se&&se.textContent); if(!sub||sub==='المجموع') return;
+    var k=''; try{ k=window.nbExemptKind(g,sid,stId,sub)||''; }catch(e){} 
+    var boxes=[].slice.call(tr.querySelectorAll('.grade-box')); if(!boxes.length) return;
+    var fc=tr.querySelector('td.final-cell .grade-box'), i=fc?boxes.indexOf(fc)-1:(card.classList.contains('upper')?8:4);
+    var b=boxes[i]; if(!b) return;
+    if(k){ if(!norm(b.textContent)||b.classList.contains('nb200-ex')){ b.textContent='معفى'; b.classList.add('nb200-ex'); } }
+    else if(b.classList.contains('nb200-ex')){ b.textContent=''; b.classList.remove('nb200-ex'); }
+  });
+  /* الملاحظات / مربع النتيجة */
+  try{ var res=window.studentOfficialResult(g,sid,stId); if(res&&res.exempt==='c'){
+      var v=card.querySelector('.box.result .val'); if(v){ v.textContent=res.label; }
+      else { var td=card.querySelector('td.notes-cell'); if(td){ [].slice.call(td.childNodes).forEach(function(n){ if(n.nodeType===3&&/ناجح/.test(n.textContent)) n.textContent=n.textContent.replace('ناجح','إعفاء عام'); }); if(td.hasAttribute('data-nbk-auto')) td.setAttribute('data-nbk-auto','إعفاء عام'); } } } }catch(e){}
+}
+var XCSS='.card .grade-box.nb200-ex{font-size:.78em!important;font-weight:800;letter-spacing:0;white-space:nowrap}';
+(function(){ var main=document.getElementById('mainStyles'); if(main&&main.textContent.indexOf('/*nb200*/')<0) main.textContent+='\n/*nb200*/'+XCSS; if(!document.getElementById('nb200Css')){ var st=document.createElement('style'); st.id='nb200Css'; st.textContent=XCSS; document.head.appendChild(st); } })();
+if(typeof window.fillResultCardFromGradebook==='function'){
+  var oF=window.fillResultCardFromGradebook;
+  window.fillResultCardFromGradebook=function(card,grade,sid,stId){ var r=oF.apply(this,arguments);
+    try{ cardExempt(card,grade,sid,stId); }catch(e){ try{console.warn('nb200 ex',e);}catch(_){} }
+    try{ if(window.refreshCardQR) window.refreshCardQR(card); }catch(e){}
+    return r; };
+}
+
+/* ---------- (4) معلومات الملاك والموظفين: تثبيت التسلسل والاسم ---------- */
+var SCSS='#view-staff .nb200-sx{overflow:auto}#view-staff .nb200-sx table.staff-table{overflow:visible!important}'+
+ '#view-staff .nb200-sx table.staff-table thead th{position:sticky;top:0;z-index:3}'+
+ '#view-staff .nb200-sx table.staff-table .nb200-fx{position:sticky;right:var(--nbr,0);z-index:2;background-color:var(--nbbg,#fff)}'+
+ '#view-staff .nb200-sx table.staff-table thead th.nb200-fx{z-index:4}'+
+ '#view-staff .nb200-sx table.staff-table .nb200-fx.nb200-last{box-shadow:-6px 0 8px -6px rgba(0,0,0,.28)}';
+function bgOf(el){ while(el&&el.nodeType===1){ var c=getComputedStyle(el).backgroundColor; if(c&&c!=='transparent'&&!/rgba\(\s*\d+,\s*\d+,\s*\d+,\s*0\s*\)/.test(c)){ if(/rgba/.test(c)) c=c.replace(/,\s*[\d.]+\)$/,',1)'); return c; } el=el.parentElement; } return (document.documentElement.getAttribute('data-ui-skin')||'').indexOf('night')===0?'#1e1b24':'#fff'; }
+function stick(){
+  var t=document.querySelector('#view-staff table.staff-table'); if(!t) return; var w=t.closest('.staff-table-wrap')||t.parentElement; if(!w) return;
+  if(!document.getElementById('nb200sCss')){ var s=document.createElement('style'); s.id='nb200sCss'; s.textContent=SCSS; document.head.appendChild(s); }
+  if(window.innerWidth<700){ w.classList.remove('nb200-sx'); w.style.maxHeight=''; [].forEach.call(t.querySelectorAll('.nb200-fx'),function(c){ c.classList.remove('nb200-fx','nb200-last'); c.style.removeProperty('--nbr'); c.style.removeProperty('--nbbg'); }); return; }
+  w.classList.add('nb200-sx');
+  var top=w.getBoundingClientRect().top+(window.scrollY||0), vh=window.innerHeight;
+  w.style.maxHeight=Math.max(320,vh-Math.min(top,vh*.45)-24)+'px';
+  var hr=t.tHead&&t.tHead.rows[0]; if(!hr||hr.cells.length<3) return;
+  var N=2, off=[0, hr.cells[0].getBoundingClientRect().width];
+  [].forEach.call(t.rows,function(tr){ if(tr.cells.length<N) return; if((tr.cells[0].colSpan||1)>1) return;
+    for(var k=0;k<N;k++){ var c=tr.cells[k]; c.classList.add('nb200-fx'); c.classList.toggle('nb200-last',k===N-1); c.style.setProperty('--nbr',off[k]+'px'); c.style.removeProperty('--nbbg'); c.style.setProperty('--nbbg',bgOf(c)); } });
+}
+var sT=0; function stickSoon(){ clearTimeout(sT); sT=setTimeout(stick,60); }
+['renderStaffInfo','renderStaffEmployees','staffAfterRender'].forEach(function(n){ var f=window[n]; if(typeof f!=='function'||f.__nb200) return; var w=function(){ var r=f.apply(this,arguments); stickSoon(); setTimeout(stick,350); return r; }; w.__nb200=true; window[n]=w; });
+window.addEventListener('resize',stickSoon);
+try{ var vs=document.getElementById('view-staff'); if(vs) new MutationObserver(function(){ stickSoon(); }).observe(vs,{childList:true}); }catch(e){}
+})();
+</script>
+<script>
+/* ===== nb-v1.99.7: «الدور الثاني» للأول إلى الرابع الابتدائي ===== */
+(function(){
+'use strict';
+function has(v){ return v!==''&&v!=null&&String(v).trim()!==''; }
+function low(g){ try{ return isPrimaryTenMarkGrade(String(g||'').replace(/^\s*الصف\s+/,'').trim()); }catch(e){ return false; } }
+function ar(v){ try{ return toArabicDigits(String(v)); }catch(e){ return String(v); } }
+/* يحق للطالب الدور الثاني في المادة: راسب فيها بعد القرار، أو غائب/مؤجل في امتحان نهاية السنة */
+function canR2(g,sid,sub,stId){
+  try{ var rec=gbRecord(g,sid,sub,false), r=rec&&rec.rows&&rec.rows[stId]; if(!r) return false;
+    var s=r.resultSt||r.finalExamSt; if(s==='def'||s==='abs') return true;
+    var e=window.nbGbEffective?window.nbGbEffective(g,sid,sub,stId):null; var a=e?e.afterDecision:'';
+    if(!has(a)) return false; return Number(a)<resultPassMark(g); }catch(e){ return false; }
+}
+window.nbCanSecondRound=canR2;
+/* ---- سجل المعلم: خانة الدور الثاني تُفتح للمكمل فقط ---- */
+function ctx(){ return {g:(document.getElementById('gbGrade')||{}).value||'',sid:(document.getElementById('gbSection')||{}).value||'',sub:(document.getElementById('gbSubject')||{}).value||''}; }
+function refreshR2(){
+  var c=ctx(); if(!c.g||!low(c.g)) return; var host=document.getElementById('gbTableHost'); if(!host) return;
+  [].forEach.call(host.querySelectorAll('tr[data-student]'),function(tr){
+    var td=tr.querySelector('td.gb-r2-cell'), inp=td&&td.querySelector('input'); if(!inp) return;
+    var id=tr.getAttribute('data-student'), ok=canR2(c.g,c.sid,c.sub,id);
+    if(ok){ if(inp.disabled){ inp.disabled=false; } inp.classList.remove('nb-r2-off'); inp.placeholder=''; inp.title='درجة امتحان الدور الثاني — إذا نجح فيها تصبح هي الدرجة النهائية'; }
+    else{ if(document.activeElement===inp) inp.blur(); inp.disabled=true; inp.classList.add('nb-r2-off'); inp.placeholder='—'; inp.title='ناجح في الدور الأول (أو لم تُدخل درجة نهاية السنة بعد) — لا يُكتب في الدور الثاني'; }
+  });
+}
+window.nbRefreshSecondRound=refreshR2;
+var R2CSS='#gbTableHost td.gb-r2-cell input.nb-r2-off{background:repeating-linear-gradient(135deg,rgba(148,163,184,.14) 0 6px,transparent 6px 12px)!important;color:#94a3b8!important;-webkit-text-fill-color:#94a3b8!important;cursor:not-allowed}'+
+ '#gbTableHost th.gb-r2-head{background:linear-gradient(135deg,#37474f,#546e7a)!important;color:#fff!important}';
+(function(){ if(document.getElementById('nb201Css')) return; var st=document.createElement('style'); st.id='nb201Css'; st.textContent=R2CSS; document.head.appendChild(st); })();
+if(typeof window.markGradebookFailCells==='function'){
+  var oM=window.markGradebookFailCells; window.markGradebookFailCells=function(){ var r=oM.apply(this,arguments); try{ refreshR2(); }catch(e){} return r; };
+}
+if(typeof window.gbUpdate==='function'){
+  var oU=window.gbUpdate;
+  window.gbUpdate=function(stId,field,value){
+    var c=ctx();
+    if(field==='completion'&&low(c.g)&&!canR2(c.g,c.sid,c.sub,stId)){ try{ refreshR2(); }catch(e){} return; } /* الناجح لا يُكتب له في الدور الثاني */
+    var r=oU.apply(this,arguments);
+    try{ if(field==='completion'&&low(c.g)){ var tr=document.querySelector('#gbTableHost tr[data-student="'+CSS.escape(stId)+'"]'), w=tr&&tr.querySelector('[data-written="completion"]'), rec=gbRecord(c.g,c.sid,c.sub,false), row=rec&&rec.rows&&rec.rows[stId]; if(w) w.textContent=row?gradeWords(row.completion):''; } }catch(e){}
+    try{ refreshR2(); }catch(e){}
+    return r; };
+}
+if(typeof window.renderGradebookTable==='function'){
+  var oR=window.renderGradebookTable; window.renderGradebookTable=function(){ var r=oR.apply(this,arguments); try{ refreshR2(); }catch(e){} setTimeout(function(){ try{ refreshR2(); }catch(e){} },120); return r; };
+}
+/* ---- بطاقة النتائج (الأول إلى الرابع): سطر صغير بدرجات الدور الثاني، بلا تغيير في تخطيط البطاقة ---- */
+function cardR2(card,g,sid,stId){
+  var old=card.querySelectorAll('.nb201-r2'); [].forEach.call(old,function(x){ x.remove(); });
+  var had=!!card.dataset.nbR2; delete card.dataset.nbR2;
+  if(!low(g)||card.classList.contains('upper')||card.classList.contains('secondary')){ if(had&&window.nbCardRefresh) window.nbCardRefresh(card); return; }
+  var list=[], map={}; (gbSubjects(g)||[]).forEach(function(sub){ if(!canR2(g,sid,sub,stId)) return; var rec=gbRecord(g,sid,sub,false), r=rec&&rec.rows&&rec.rows[stId]; if(!r) return;
+    if(r.completionSt==='abs'){ list.push(sub+' غائب'); map[sub]=0; } else if(has(r.completion)){ list.push(sub+' '+ar(r.completion)); map[sub]=Number(r.completion); } });
+  if(list.length) card.dataset.nbR2=JSON.stringify(map);
+  if((list.length||had)&&window.nbCardRefresh){ try{ window.nbCardRefresh(card); }catch(e){} }
+  if(!list.length) return;
+  var d=document.createElement('div'); d.className='nb201-r2'; d.textContent='الدور الثاني: '+list.join('، ');
+  var box=card.querySelector('.box.result'); if(box){ box.appendChild(d); return; }
+  var td=card.querySelector('td.notes-cell'); if(td) td.appendChild(d);
+}
+var CCSS='.card .nb201-r2{display:block;margin-top:.6mm;font-size:2.2mm;line-height:1.25;font-weight:800;color:#37474f;-webkit-text-fill-color:#37474f;text-align:center;white-space:normal;overflow:hidden;max-height:5.6mm}';
+(function(){ var main=document.getElementById('mainStyles'); if(main&&main.textContent.indexOf('/*nb201*/')<0) main.textContent+='\n/*nb201*/'+CCSS; if(!document.getElementById('nb201cCss')){ var st=document.createElement('style'); st.id='nb201cCss'; st.textContent=CCSS; document.head.appendChild(st); } })();
+if(typeof window.fillResultCardFromGradebook==='function'){
+  var oF=window.fillResultCardFromGradebook;
+  window.fillResultCardFromGradebook=function(card,grade,sid,stId){ var r=oF.apply(this,arguments); try{ cardR2(card,grade,sid,stId); }catch(e){ try{console.warn('nb201',e);}catch(_){} } return r; };
+}
+/* الطباعة بدون درجات: يُزال سطر الدور الثاني */
+if(typeof window.nbBlankPrep==='function'){
+  var oB=window.nbBlankPrep; window.nbBlankPrep=function(d){ var r=oB.apply(this,arguments); try{ if(d&&d.body&&d.body.getAttribute&&d.querySelector('.card')){ var blank=!d.querySelector('.card .grade-box:not(:empty)'); if(blank) [].forEach.call(d.querySelectorAll('.nb201-r2'),function(x){ x.remove(); }); } }catch(e){} return r; };
+}
 })();
 </script>
 </body>
